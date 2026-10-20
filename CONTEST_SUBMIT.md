@@ -7,13 +7,31 @@
 
 ## 一、建仓命令清单（按顺序复制执行）
 
-### 步骤 1：在 GitHub 网页端创建空仓库（2 分钟）
+> ✅ **仓库已建好**：`https://github.com/Huangxxuan/mcd-savings-skill`（Public / 空仓 / main）
+> ✅ **本地已就绪**：git 仓库已初始化，4 次提交，13 个文件，工作区干净，只差推送
 
-1. 打开 <https://github.com/new>
-2. **Repository name** 填：`mcd-savings-skill`（你已建好，此步可跳过）
-3. 选 **Public**（必须公开，否则无法入榜）
-4. **不要**勾选 "Add a README file" / ".gitignore" / "license"（保持完全空仓库，避免首次推送冲突）
-5. 点 **Create repository**
+### 步骤 1：一键推送（推荐）
+
+在你的**系统终端**（Terminal.app，非沙箱）执行：
+
+```bash
+cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
+./scripts/push_to_github.sh
+```
+
+脚本会先做密钥扫描 → 配置身份 → 提交 → 推送，任一步失败都会给出对应的处理提示。
+
+### 步骤 2：或手动执行等价命令
+
+```bash
+cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
+git remote remove origin 2>/dev/null
+git remote add origin https://github.com/Huangxxuan/mcd-savings-skill.git
+git push -u origin main
+```
+
+> ⚠️ **认证提示**：用户名填 `Huangxxuan`，**密码填 Personal Access Token**（GitHub 已不支持账户密码推送）。
+> Token 生成：<https://github.com/settings/tokens> → Generate new token (classic) → 勾选 `repo`
 
 ### 步骤 2：本地初始化并推送
 
@@ -59,7 +77,17 @@ git push -u origin main
 
 **预期输出**：`Enumerating objects... Writing objects: 100%` → `branch 'main' set up to track 'origin/main'`
 
-### 步骤 3：推送前的安全检查（**必做**）
+### 步骤 3：验证推送结果
+
+```bash
+# 查看仓库根文件（应列出 13 个文件）
+curl -s "https://api.github.com/repos/Huangxxuan/mcd-savings-skill/contents/" | grep '"name"'
+
+# 确认可见性为 Public
+curl -s "https://api.github.com/repos/Huangxxuan/mcd-savings-skill" | grep '"private"'
+```
+
+### 步骤 4：推送前的安全检查（**必做**）
 
 ```bash
 # 检查 1：确认工作区无敏感文件
