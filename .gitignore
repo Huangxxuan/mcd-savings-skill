@@ -1,0 +1,21 @@
+# 环境变量与密钥（切勿提交）
+.env
+.env.*
+*.token
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
