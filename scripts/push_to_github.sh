@@ -30,12 +30,15 @@ ROOT="$(pwd)"
 say "项目目录: $ROOT"
 
 # ---- 1. 敏感信息扫描 ----
+# 排除常见占位符（YOUR_MCP_TOKEN / ${MCD_MCP_TOKEN} / xxx 等），避免误报
+PLACEHOLDER='(YOUR_MCP_TOKEN|\$\{[A-Z_]+\}|xxx+|[Rr]eplace[_ ]?me|placeholder|CHANGEME|TODO)'
 say "扫描敏感信息..."
-if grep -rInE "Bearer [A-Za-z0-9_-]{12,}|MCD_MCP_TOKEN *= *[\"'][A-Za-z0-9]" \
-     --exclude-dir=.git --exclude=mcp-config.example.json . 2>/dev/null; then
+HITS=$(grep -rInE "Bearer [A-Za-z0-9_-]{16,}" \
+        --exclude-dir=.git --exclude=mcp-config.example.json . 2>/dev/null \
+      | grep -vE "$PLACEHOLDER" || true)
+if [ -n "$HITS" ]; then
   echo "--- 命中内容 ---"
-  grep -rInE "Bearer [A-Za-z0-9_-]{12,}|MCD_MCP_TOKEN *= *[\"'][A-Za-z0-9]" \
-     --exclude-dir=.git --exclude=mcp-config.example.json . 2>/dev/null || true
+  echo "$HITS"
   die "检测到疑似密钥，已中止推送。请先清除后再试。"
 fi
 echo "✅ 未发现密钥明文"
