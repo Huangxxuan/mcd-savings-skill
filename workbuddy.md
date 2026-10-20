@@ -6,7 +6,7 @@
 ## 项目与账号
 
 - **项目名称**：麦麦省钱点单助手（mcd-savings-skill）
-- **项目地址**：`https://github.com/hoho-X/mcd-savings-skill`
+- **项目地址**：`https://github.com/Huangxxuan/mcd-savings-skill`
 - **开发方式**：全程在腾讯 WorkBuddy 智能体中，以自然语言对话驱动完成——从比赛规则解读、MCP Token 接入、
   数据管道编写、可视化页面开发到多轮交互打磨，未使用 WorkBuddy 之外的 AI 编码工具。
 

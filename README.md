@@ -1,6 +1,6 @@
 # 🍔 麦麦省钱点单助手 · mcd-savings-assistant
 
-> 项目地址：https://github.com/hoho-X/mcd-savings-skill
+> 项目地址：https://github.com/Huangxxuan/mcd-savings-skill
 > 会算账的麦当劳点单专家：一键领券 · 自动用最优券 · 智能搭配 · 卡路里可视 · 附近门店导航 · DIY 自由搭 · 一键下单
 
 基于 **麦当劳中国 MCP**（`https://mcp.mcd.cn`）能力开发的可交互可视化 Skill。

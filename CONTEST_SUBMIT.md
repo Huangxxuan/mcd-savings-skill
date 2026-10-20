@@ -10,14 +10,14 @@
 ### 步骤 1：在 GitHub 网页端创建空仓库（2 分钟）
 
 1. 打开 <https://github.com/new>
-2. **Repository name** 填：`mcd-savings-skill`
+2. **Repository name** 填：`mcd-savings-skill`（你已建好，此步可跳过）
 3. 选 **Public**（必须公开，否则无法入榜）
 4. **不要**勾选 "Add a README file" / ".gitignore" / "license"（保持完全空仓库，避免首次推送冲突）
 5. 点 **Create repository**
 
 ### 步骤 2：本地初始化并推送
 
-在你的项目目录执行（**把 `hoho-X` 换成你的真实用户名**）：
+在你的项目目录执行（用户名已按 `Huangxxuan` 填好，可直接复制）：
 
 ```bash
 # 进入项目目录
@@ -27,7 +27,7 @@ cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
 git init
 
 # 配置身份（如已全局配置可跳过）
-git config user.name  "hoho-X"
+git config user.name  "Huangxxuan"
 git config user.email "你的邮箱@example.com"
 
 # 确认主分支名与 GitHub 一致
@@ -51,7 +51,7 @@ git commit -m "feat: 麦麦省钱点单助手 — 基于麦当劳 MCP 的可视�
 - Retro-futuristic Terminal HUD 视觉 + CSS 3D + 祝福提示卡"
 
 # 关联远程仓库
-git remote add origin https://github.com/hoho-X/mcd-savings-skill.git
+git remote add origin https://github.com/Huangxxuan/mcd-savings-skill.git
 
 # 推送
 git push -u origin main
@@ -93,7 +93,7 @@ cat mcp-config.example.json
 ```
 【参赛申请】
 项目名称：麦麦省钱点单助手
-项目地址：https://github.com/hoho-X/mcd-savings-skill
+项目地址：https://github.com/Huangxxuan/mcd-savings-skill
 项目简介：会算账的麦当劳点单专家，一键领券 + 自动用最优券 + 卡路里可视 + 场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
 ```
 
@@ -104,7 +104,29 @@ cat mcp-config.example.json
 
 ---
 
-## 三、提交前最终检查清单
+## 三、仓库资料设置（建仓后 1 分钟，强烈建议）
+
+**Description（仓库描述，填这句）：**
+```
+🍔 基于麦当劳中国 MCP 的可交互可视化点单 Skill：一键领券 · 自动用最优券 · 卡路里可视 · 五大场景搭配 · 拼单凑单 · 门店导航
+```
+
+**Topics（标签，提升搜索曝光）：**
+```
+mcdonalds    mcp    model-context-protocol    workbuddy    skill
+1024        m-code   ai-agent    可视化      点单
+```
+
+**README 首屏占位（录好 GIF 后替换 `demo.gif`）：**
+```html
+<p align="center">
+  <img src="./assets/demo.gif" width="820" alt="麦麦省钱点单助手演示">
+</p>
+```
+
+---
+
+## 四、提交前最终检查清单
 
 | # | 检查项 | 命令/方式 | 期望 |
 |---|---|---|---|
