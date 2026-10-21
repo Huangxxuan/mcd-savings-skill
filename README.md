@@ -1,16 +1,16 @@
 # 🍔 麦麦省钱点单助手 · mcd-savings-assistant
 
-> 会算账的麦当劳点单专家：一键领券 · 自动用最优券 · 智能搭配 · 卡路里可视 · 附近门店导航 · DIY 自由搭 · 一键下单
+> 会算账的麦当劳点单专家：一键领券 · 自动用最优券 · 智能搭配省钱榜单 · 卡路里可视 · 附近门店导航 · DIY 自由搭 · 一键下单
 
 基于 **麦当劳中国 MCP**（`https://mcp.mcd.cn`）能力开发的可交互可视化 Skill。
-它不只是一个聊天机器人——它会把 MCP 返回的真实菜单、优惠券、营养与门店数据，渲染成一个**可点击、可勾选、实时算价算热量**的 HTML 点单助手。
+它会把 MCP 返回的真实菜单、优惠券、营养与门店数据，渲染成一个**可点击、可勾选、实时算价算热量**的 HTML 可视化实时点单助手。
 
 [![Powered by McDonald's MCP](https://img.shields.io/badge/Powered%20by-McDonald's%20MCP-DA291C)](https://open.mcd.cn/mcp)
 [![Built with WorkBuddy](https://img.shields.io/badge/Built%20with-WorkBuddy-0052D9)](https://www.workbuddy.cn)
 
 ---
 
-<img width="1020" height="737" alt="image" src="https://github.com/user-attachments/assets/d5bbb9e5-f467-4843-aa2a-e1566818898e" />
+<img width="1345" height="697" alt="image" src="https://github.com/user-attachments/assets/0448fe2d-e7a4-4189-b126-6f3b13e6ff4d" />
 
 
 ## ✨ 核心能力
