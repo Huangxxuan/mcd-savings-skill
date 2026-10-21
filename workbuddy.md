@@ -71,7 +71,7 @@ CSS 3D（perspective + preserve-3d 卡片、祝福卡 rotateY 翻转）、五大
 - 完善一键领券：发现 `available-coupons` 接口**自带「状态：已领取/未领取」字段**，
   改为直采该字段（原先交叉比对把「免费脆薯饼」误判为未领取），保留交叉判定兜底；
 - 券计算引擎补充**特价券 / 免费换购券**两类解析；
-- 新增 `ROADMAP.md` 待办节点清单，同步 `SKILL.md` / `README.md` / `MCP_INTEGRATION.md` / `workbuddy.md`。
+- 新增本地待办节点清单（仅本地留存，未纳入仓库），同步 `SKILL.md` / `README.md` / `MCP_INTEGRATION.md` / `workbuddy.md`。
 
 ### 第 9 轮（缺陷修复）：场景方案「应用后看不到商品 / 无法取消 / 切不回全部菜单」
 
@@ -114,8 +114,8 @@ CSS 3D（perspective + preserve-3d 卡片、祝福卡 rotateY 翻转）、五大
   提醒规则「五类」更正为 **8 类**（引擎实际实现 8 类，当前账号数据生成 12 条）；
   `MCP_INTEGRATION.md` 商城面板编号 05→06、门店经纬度限制改为零 Key 导航口径；
   `workbuddy.md` 餐品 110→100、营养 61→60、DOM id 引用 60→63（共 91 次）、回归 2 套→3 套；
-  `ROADMAP.md` P0 五项由待办改正为已完成、删除不存在的 `store-map.html` 条目；
-  `CONTEST_SUBMIT.md` 原本还写着「只差推送、13 个文件」且有两个重复的「步骤 2」，整体重写。
+  内部待办清单 P0 五项由待办改正为已完成、删除不存在的 `store-map.html` 条目；
+  提交辅助材料原本还写着「只差推送、13 个文件」且有两个重复的「步骤 2」，已整体重写。
 - **补上官方硬性要求**：官方 README 明确要求 `README.md` 含「项目介绍 / 安装方法 / 使用示例 / **目标用户**」，
   原文缺目标用户段落 → 新增「🎯 目标用户」表（学生 / 上班族拼单 / 控卡健身 / 带娃家长 / 麦门重度用户），
   「快速开始」改为「安装与使用」。
@@ -125,8 +125,19 @@ CSS 3D（perspective + preserve-3d 卡片、祝福卡 rotateY 翻转）、五大
 - **推送完整性验证方法**：不只看 `git status`，而是把远端每个文件用 raw 拉回来与本地做**字节级比对** ——
   12 个文件全部一致（README 15,274B / SKILL 22,132B / MCP_INTEGRATION 9,029B / data.js 109,232B …），
   `CONTEST_DECLARATION.md` 与官方原文 1,522B 逐字节相同（官方要求内容不可改动）。
-- **榜单情报**：抓官方 `RANKING.md` 发现进榜门槛是 **23 Star**（第 100 名），当前 4 Star，差 19 颗，
-  据此把 ROADMAP 的 P1 重排为「Topics → GIF → 传播」三步冲刺。
+- **榜单情报**：抓官方 `RANKING.md` 了解排行榜采集口径（每日约 13:00 更新、按公开 Star 排序），
+  据此把对外推广的优先级重排为「Topics → 演示 GIF → 内容传播」三步。
+
+### 第 12 轮（交付瘦身）：移除内部运营文档，只留官方必需文件
+
+- **问题定位**：仓库里混入了两份「给自己看」的内部文档 —— 待办节点清单与提交操作手册。
+  它们含冲榜目标、Token 轮换记录、自动化提交受限等运营信息，对读者零价值，还稀释专业感；
+  官方 README 的必需清单只有 5 项（README / CONTEST_DECLARATION / MCP_INTEGRATION / 源代码 / workbuddy.md），
+  **这两份文件从未被要求提交**。
+- **处理**：从版本库移除（`git rm --cached`，本地保留）并写入 `.gitignore`；
+  同步清掉 `README.md` 项目结构树、`SKILL.md` 后续计划、`workbuddy.md` 中的全部引用，避免死链。
+- **顺带修正**：`SKILL.md` 计划段里仍写着已作废的报名 Issue #932，更正为 #936；
+  交付文档数 14 → 12（移除后仓库实际文件数）。
 
 
 
@@ -136,16 +147,17 @@ CSS 3D（perspective + preserve-3d 卡片、祝福卡 rotateY 翻转）、五大
 |---|---|
 | 对话式需求分析与方案输出 | 比赛规则解读、MVP 方案、每轮迭代拆解 |
 | MCP 连接（Streamable HTTP） | 直连麦当劳 MCP Server，35 个 Tool 全量验证 |
-| 本地文件读写与代码工程 | SKILL.md / build_data.py / order-assistant.html / README 等 14 个交付文件 |
+| 本地文件读写与代码工程 | SKILL.md / build_data.py / order-assistant.html / README 等 12 个交付文件 |
 | Shell 执行与验证 | MCP 实时调用、数据管道构建、Node DOM 冒烟测试、计算准确性验证 |
 | 前端可视化生成 | 单文件 HTML（CSS 3D、终端风视觉、状态驱动渲染） |
 | 多轮上下文记忆 | 跨 11 轮迭代保持架构一致性与数据口径纪律 |
 
-## 待办节点（详见 ROADMAP.md）
+## 后续计划
 
-- **P0（报名前）**：✅ 全部完成 —— Token 已轮换、仓库已 Public 上线、报名 **Issue #936 审核通过**（官方回复「已成功参赛」）、占位符已全部替换、全仓敏感信息扫描 0 命中；
-- **P1（冲名次，唯一硬目标 Star 4 → 23+）**：⬜ 补仓库 Topics → 录 `assets/demo.gif` → 按《传播话术包》10/21–10/25 发帖；
-- **P2（增强）**：⬜ 可选 —— 页面内 `create-order` 下单、团餐满减与问卷券接入、营养匹配率提升、多门店缓存。
+- **已完成**：Token 轮换、仓库 Public 上线、报名 **Issue #936 审核通过**（官方回复「已成功参赛」）、
+  占位符替换、全仓敏感信息扫描 0 命中；
+- **对外推广**：补仓库 Topics → 录 `assets/demo.gif` 放 README 首屏 → 按传播排期做内容分发；
+- **功能增强**：页面内 `create-order` 下单、团餐满减与问卷券接入、营养匹配率提升、多门店缓存。
 
 ## 质量验证（WorkBuddy 自动化执行）
 

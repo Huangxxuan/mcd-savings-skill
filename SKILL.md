@@ -251,16 +251,13 @@ python3 scripts/build_data.py --rank
     如「19.9 元王牌炸鸡任选 2」，程序按「挑该品类最贵的 2 件」算最省（省 ¥9.6）；
     实际可选商品以门店券详情为准，页面文案要写清「按券面任选推算」。
 
-## 待办节点与下一步（见 ROADMAP.md）
+## 后续计划
 
-**P0 报名前（截止 2026-10-25 23:59）**：✅ 全部完成 —— Token 已轮换并只用 `${MCD_MCP_TOKEN}` 占位符、
-GitHub 仓库已 Public 上线（<https://github.com/Huangxxuan/mcd-savings-skill>）、
-报名 Issue 已按官方模板提交（#932）、地址占位符已全部替换、全仓敏感信息扫描 0 命中。
+**已完成**：Token 轮换并只用 `${MCD_MCP_TOKEN}` 占位符；GitHub 仓库已 Public 上线
+（<https://github.com/Huangxxuan/mcd-savings-skill>）；报名 Issue 已按官方模板提交并通过（#936）；
+地址占位符已全部替换；全仓敏感信息扫描 0 命中。
 
-**P1 名次冲刺**：⬜ 录演示 GIF（点场景 → 应用方案 → 菜单高亮 → 自动用券出立省 → 点省钱榜单 → 祝福卡翻转）
-放 README 首屏、补首屏对比图、按《传播话术包》在 10/21–10/25 发布冲 Star。
-
-**P2 增强**：页面内直连 `create-order` 下单（涉及真实支付，谨慎）、接入 `query-promotions` 团餐满减与
+**增强方向**：页面内直连 `create-order` 下单（涉及真实支付，谨慎）、接入 `query-promotions` 团餐满减与
 `query-survey-coupon`、提升营养匹配率、多门店菜单缓存、券面额从 `calculate-price` 反推。
 
 ## 团餐搭配参考规则（官方 README 给出）

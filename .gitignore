@@ -20,3 +20,7 @@ Thumbs.db
 
 # 日志
 *.log
+
+# 内部运营文档（仅本地留存，不对外提交）
+ROADMAP.md
+CONTEST_SUBMIT.md

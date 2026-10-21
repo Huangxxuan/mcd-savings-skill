@@ -147,8 +147,6 @@ mcd-savings-skill/
 ├── MCP_INTEGRATION.md           # MCP 集成说明（Server / Tools / 流程 / 价值）
 ├── mcp-config.example.json      # 脱敏 MCP 配置示例（仅环境变量占位符）
 ├── workbuddy.md                 # WorkBuddy 开发对话上下文（专项奖必需）
-├── ROADMAP.md                   # 待办节点与迭代计划
-├── CONTEST_SUBMIT.md            # 参赛提交状态与操作手册
 ├── .gitignore                   # 排除 .env / *.token / __pycache__ 等
 ├── assets/
 │   ├── order-assistant.html     # 可视化交互点单页（券开关/热量条/DIY勾选/门店导航）
