@@ -2886,5 +2886,1329 @@ window.MCD_REAL_DATA = {
     }
   ],
   "scenesRebuiltAt": "2026-10-21 11:31:29",
-  "scenesRebuildNote": "离线重算：数据仍为原快照，仅按新规则重选组合"
+  "scenesRebuildNote": "离线重算：数据仍为原快照，仅按新规则重选组合",
+  "savings": {
+    "generatedAt": "2026-10-21 12:06:28",
+    "basis": "price/origin/kcal/protein 全部来自 MCP 快照；券面额由券 Title 解析，最终以 calculate-price 为准",
+    "hero": {
+      "items": [
+        {
+          "code": "9900004236",
+          "name": "人气超值四件套随心选",
+          "price": 28.0,
+          "kcal": 0
+        }
+      ],
+      "origin": 57.0,
+      "pay": 28.0,
+      "save": 29.0,
+      "kind": "single",
+      "savePct": 51,
+      "kcal": 0,
+      "kcalKnown": false,
+      "protein": 0,
+      "perYuanKcal": 0,
+      "perYuanProtein": 0,
+      "coupon": "",
+      "note": "官方直降 51%，省 29.0 元",
+      "tip": "同样的东西原价 ¥57.00，实付 ¥28.00，省 29.00 元（51%）"
+    },
+    "boards": [
+      {
+        "id": "coupon",
+        "name": "券后最省",
+        "icon": "🎟️",
+        "desc": "把卡包里的券用到极致，按省下的钱排序（面额由券 Title 解析，最终以 calculate-price 为准）",
+        "unit": "省",
+        "rows": [
+          {
+            "items": [
+              {
+                "code": "1440",
+                "name": "麦辣鸡腿汉堡",
+                "price": 22.5,
+                "kcal": 485
+              }
+            ],
+            "origin": 22.5,
+            "pay": 11.9,
+            "save": 10.6,
+            "kind": "single",
+            "savePct": 47,
+            "kcal": 485,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 40.8,
+            "perYuanProtein": 2.02,
+            "coupon": "11.9元麦辣鸡腿堡",
+            "note": "用「11.9元麦辣鸡腿堡」券后 ¥11.90，省 10.6 元"
+          },
+          {
+            "items": [
+              {
+                "code": "521881",
+                "name": "马来咖喱风味薄皮肉骨鸡3块",
+                "price": 15.5,
+                "kcal": 0
+              },
+              {
+                "code": "1401",
+                "name": "麦乐鸡",
+                "price": 14.0,
+                "kcal": 213
+              }
+            ],
+            "origin": 29.5,
+            "pay": 19.9,
+            "save": 9.6,
+            "kind": "combo",
+            "savePct": 33,
+            "kcal": 213,
+            "kcalKnown": false,
+            "protein": 12.0,
+            "perYuanKcal": 10.7,
+            "perYuanProtein": 0.6,
+            "coupon": "19.9元王牌炸鸡任选2",
+            "note": "19.9 元任选 2 件：马来咖喱风味薄皮肉骨鸡3块 + 麦乐鸡"
+          },
+          {
+            "items": [
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 13.9,
+            "pay": 9.73,
+            "save": 4.17,
+            "kind": "single",
+            "savePct": 30,
+            "kcal": 148,
+            "kcalKnown": true,
+            "protein": 8.0,
+            "perYuanKcal": 15.2,
+            "perYuanProtein": 0.82,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "用「新人专享-中杯奶铁7折」券后 ¥9.73，省 4.2 元"
+          },
+          {
+            "items": [
+              {
+                "code": "507411",
+                "name": "麦咖啡™美式",
+                "price": 11.9,
+                "kcal": 13
+              }
+            ],
+            "origin": 11.9,
+            "pay": 8.33,
+            "save": 3.57,
+            "kind": "single",
+            "savePct": 30,
+            "kcal": 13,
+            "kcalKnown": true,
+            "protein": 1.0,
+            "perYuanKcal": 1.6,
+            "perYuanProtein": 0.12,
+            "coupon": "新人专享-中杯美式7折",
+            "note": "用「新人专享-中杯美式7折」券后 ¥8.33，省 3.6 元"
+          },
+          {
+            "items": [
+              {
+                "code": "510479",
+                "name": "燕麦奶铁",
+                "price": 9.9,
+                "kcal": 132
+              }
+            ],
+            "origin": 9.9,
+            "pay": 6.93,
+            "save": 2.97,
+            "kind": "single",
+            "savePct": 30,
+            "kcal": 132,
+            "kcalKnown": true,
+            "protein": 3.0,
+            "perYuanKcal": 19.0,
+            "perYuanProtein": 0.43,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "用「新人专享-中杯奶铁7折」券后 ¥6.93，省 3.0 元"
+          }
+        ]
+      },
+      {
+        "id": "drop",
+        "name": "官方直降",
+        "icon": "🏷️",
+        "desc": "MCP 返回的划线价对比，不用券也比原价便宜",
+        "unit": "降",
+        "rows": [
+          {
+            "items": [
+              {
+                "code": "9900015561",
+                "name": "麦咖啡冰爽一夏",
+                "price": 9.9,
+                "kcal": 0
+              }
+            ],
+            "origin": 23.0,
+            "pay": 9.9,
+            "save": 13.1,
+            "kind": "single",
+            "savePct": 57,
+            "kcal": 0,
+            "kcalKnown": false,
+            "protein": 0,
+            "perYuanKcal": 0,
+            "perYuanProtein": 0,
+            "coupon": "",
+            "note": "官方直降 57%，省 13.1 元"
+          },
+          {
+            "items": [
+              {
+                "code": "521717",
+                "name": "椰奶雪冰",
+                "price": 9.9,
+                "kcal": 0
+              }
+            ],
+            "origin": 23.0,
+            "pay": 9.9,
+            "save": 13.1,
+            "kind": "single",
+            "savePct": 57,
+            "kcal": 0,
+            "kcalKnown": false,
+            "protein": 0,
+            "perYuanKcal": 0,
+            "perYuanProtein": 0,
+            "coupon": "",
+            "note": "官方直降 57%，省 13.1 元"
+          },
+          {
+            "items": [
+              {
+                "code": "510479",
+                "name": "燕麦奶铁",
+                "price": 9.9,
+                "kcal": 132
+              }
+            ],
+            "origin": 23.0,
+            "pay": 9.9,
+            "save": 13.1,
+            "kind": "single",
+            "savePct": 57,
+            "kcal": 132,
+            "kcalKnown": true,
+            "protein": 3.0,
+            "perYuanKcal": 13.3,
+            "perYuanProtein": 0.3,
+            "coupon": "",
+            "note": "官方直降 57%，省 13.1 元"
+          },
+          {
+            "items": [
+              {
+                "code": "9900004236",
+                "name": "人气超值四件套随心选",
+                "price": 28.0,
+                "kcal": 0
+              }
+            ],
+            "origin": 57.0,
+            "pay": 28.0,
+            "save": 29.0,
+            "kind": "single",
+            "savePct": 51,
+            "kcal": 0,
+            "kcalKnown": false,
+            "protein": 0,
+            "perYuanKcal": 0,
+            "perYuanProtein": 0,
+            "coupon": "",
+            "note": "官方直降 51%，省 29.0 元"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000891",
+                "name": "麦辣鸡腿堡四件套",
+                "price": 28.0,
+                "kcal": 0
+              }
+            ],
+            "origin": 57.0,
+            "pay": 28.0,
+            "save": 29.0,
+            "kind": "single",
+            "savePct": 51,
+            "kcal": 0,
+            "kcalKnown": false,
+            "protein": 0,
+            "perYuanKcal": 0,
+            "perYuanProtein": 0,
+            "coupon": "",
+            "note": "官方直降 51%，省 29.0 元"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000890",
+                "name": "板烧鸡腿堡四件套",
+                "price": 28.0,
+                "kcal": 391
+              }
+            ],
+            "origin": 57.0,
+            "pay": 28.0,
+            "save": 29.0,
+            "kind": "single",
+            "savePct": 51,
+            "kcal": 391,
+            "kcalKnown": true,
+            "protein": 23.0,
+            "perYuanKcal": 14.0,
+            "perYuanProtein": 0.82,
+            "coupon": "",
+            "note": "官方直降 51%，省 29.0 元"
+          }
+        ]
+      },
+      {
+        "id": "combo",
+        "name": "套餐最优",
+        "icon": "🍱",
+        "desc": "主食 + 饮品（可加小食）自动套最优券；可用预算筛选「20 块怎么吃」",
+        "unit": "省",
+        "rows": [
+          {
+            "items": [
+              {
+                "code": "1440",
+                "name": "麦辣鸡腿汉堡",
+                "price": 22.5,
+                "kcal": 485
+              },
+              {
+                "code": "9900008751",
+                "name": "可乐",
+                "price": 9.5,
+                "kcal": 147
+              }
+            ],
+            "origin": 32.0,
+            "pay": 21.4,
+            "save": 10.6,
+            "kind": "combo",
+            "savePct": 33,
+            "kcal": 632,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 29.5,
+            "perYuanProtein": 1.12,
+            "coupon": "11.9元麦辣鸡腿堡",
+            "note": "麦辣鸡腿汉堡 + 可乐，用「11.9元麦辣鸡腿堡」"
+          },
+          {
+            "items": [
+              {
+                "code": "521881",
+                "name": "马来咖喱风味薄皮肉骨鸡3块",
+                "price": 15.5,
+                "kcal": 0
+              },
+              {
+                "code": "1401",
+                "name": "麦乐鸡",
+                "price": 14.0,
+                "kcal": 213
+              }
+            ],
+            "origin": 29.5,
+            "pay": 19.9,
+            "save": 9.6,
+            "kind": "combo",
+            "savePct": 33,
+            "kcal": 213,
+            "kcalKnown": false,
+            "protein": 12.0,
+            "perYuanKcal": 10.7,
+            "perYuanProtein": 0.6,
+            "coupon": "19.9元王牌炸鸡任选2",
+            "note": "19.9 元任选 2 件：马来咖喱风味薄皮肉骨鸡3块 + 麦乐鸡"
+          },
+          {
+            "items": [
+              {
+                "code": "521156",
+                "name": "那么大鸡排（椒盐风味）",
+                "price": 14.0,
+                "kcal": 385
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 36.4,
+            "pay": 32.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 11,
+            "kcal": 765,
+            "kcalKnown": true,
+            "protein": 34.0,
+            "perYuanKcal": 23.7,
+            "perYuanProtein": 1.05,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "那么大鸡排（椒盐风味） + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900003586",
+                "name": "双层深海鳕鱼堡",
+                "price": 24.0,
+                "kcal": 485
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 46.4,
+            "pay": 42.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 865,
+            "kcalKnown": true,
+            "protein": 38.0,
+            "perYuanKcal": 20.5,
+            "perYuanProtein": 0.9,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "双层深海鳕鱼堡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "511782",
+                "name": "芝士安格斯厚牛堡",
+                "price": 31.5,
+                "kcal": 696
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 45.4,
+            "pay": 41.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 844,
+            "kcalKnown": true,
+            "protein": 40.0,
+            "perYuanKcal": 20.5,
+            "perYuanProtein": 0.97,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "芝士安格斯厚牛堡 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "1120",
+                "name": "双层吉士汉堡",
+                "price": 23.0,
+                "kcal": 429
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 45.4,
+            "pay": 41.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 809,
+            "kcalKnown": true,
+            "protein": 37.0,
+            "perYuanKcal": 19.6,
+            "perYuanProtein": 0.9,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "双层吉士汉堡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "4648",
+                "name": "不素之霸双层牛堡",
+                "price": 26.5,
+                "kcal": 493
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 48.9,
+            "pay": 44.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 873,
+            "kcalKnown": true,
+            "protein": 38.0,
+            "perYuanKcal": 19.5,
+            "perYuanProtein": 0.85,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "不素之霸双层牛堡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "511781",
+                "name": "培根安格斯厚牛堡",
+                "price": 34.5,
+                "kcal": 707
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 48.4,
+            "pay": 44.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 855,
+            "kcalKnown": true,
+            "protein": 42.0,
+            "perYuanKcal": 19.3,
+            "perYuanProtein": 0.95,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "培根安格斯厚牛堡 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "1106",
+                "name": "培根蔬萃双层牛堡",
+                "price": 24.5,
+                "kcal": 442
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 46.9,
+            "pay": 42.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 822,
+            "kcalKnown": true,
+            "protein": 34.0,
+            "perYuanKcal": 19.2,
+            "perYuanProtein": 0.8,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "培根蔬萃双层牛堡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "1406",
+                "name": "板烧鸡腿堡",
+                "price": 23.5,
+                "kcal": 391
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 45.9,
+            "pay": 41.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 771,
+            "kcalKnown": true,
+            "protein": 33.0,
+            "perYuanKcal": 18.5,
+            "perYuanProtein": 0.79,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "板烧鸡腿堡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "1401",
+                "name": "麦乐鸡",
+                "price": 14.0,
+                "kcal": 213
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 36.4,
+            "pay": 32.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 11,
+            "kcal": 593,
+            "kcalKnown": true,
+            "protein": 22.0,
+            "perYuanKcal": 18.4,
+            "perYuanProtein": 0.68,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "麦乐鸡 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000888",
+                "name": "巨无霸四件套",
+                "price": 32.0,
+                "kcal": 513
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 45.9,
+            "pay": 41.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 661,
+            "kcalKnown": true,
+            "protein": 35.0,
+            "perYuanKcal": 15.8,
+            "perYuanProtein": 0.84,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "巨无霸四件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000886",
+                "name": "不素之霸双层牛堡四件套",
+                "price": 32.0,
+                "kcal": 493
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 45.9,
+            "pay": 41.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 641,
+            "kcalKnown": true,
+            "protein": 36.0,
+            "perYuanKcal": 15.4,
+            "perYuanProtein": 0.86,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "不素之霸双层牛堡四件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000893",
+                "name": "双层深海鳕鱼堡四件套",
+                "price": 32.0,
+                "kcal": 485
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 45.9,
+            "pay": 41.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 633,
+            "kcalKnown": true,
+            "protein": 36.0,
+            "perYuanKcal": 15.2,
+            "perYuanProtein": 0.86,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "双层深海鳕鱼堡四件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005449",
+                "name": "吉士汉堡包套餐",
+                "price": 26.0,
+                "kcal": 294
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 48.4,
+            "pay": 44.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 674,
+            "kcalKnown": true,
+            "protein": 26.0,
+            "perYuanKcal": 15.2,
+            "perYuanProtein": 0.59,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "吉士汉堡包套餐 + 麦咖啡™奶铁 + 派，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000890",
+                "name": "板烧鸡腿堡四件套",
+                "price": 28.0,
+                "kcal": 391
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "521951",
+                "name": "灰焰圆筒",
+                "price": 5.0,
+                "kcal": 93
+              }
+            ],
+            "origin": 46.9,
+            "pay": 42.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 632,
+            "kcalKnown": true,
+            "protein": 33.0,
+            "perYuanKcal": 14.8,
+            "perYuanProtein": 0.77,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "板烧鸡腿堡四件套 + 麦咖啡™奶铁 + 灰焰圆筒，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005456",
+                "name": "麦辣鸡腿汉堡三件套",
+                "price": 33.5,
+                "kcal": 485
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 47.4,
+            "pay": 43.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 633,
+            "kcalKnown": true,
+            "protein": 32.0,
+            "perYuanKcal": 14.6,
+            "perYuanProtein": 0.74,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "麦辣鸡腿汉堡三件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900009245",
+                "name": "牛气满满套餐",
+                "price": 35.0,
+                "kcal": 495
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 48.9,
+            "pay": 44.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 643,
+            "kcalKnown": true,
+            "protein": 34.0,
+            "perYuanKcal": 14.4,
+            "perYuanProtein": 0.76,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "牛气满满套餐 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005453",
+                "name": "麦香鸡套餐",
+                "price": 28.0,
+                "kcal": 369
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "521951",
+                "name": "灰焰圆筒",
+                "price": 5.0,
+                "kcal": 93
+              }
+            ],
+            "origin": 46.9,
+            "pay": 42.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 610,
+            "kcalKnown": true,
+            "protein": 25.0,
+            "perYuanKcal": 14.3,
+            "perYuanProtein": 0.59,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "麦香鸡套餐 + 麦咖啡™奶铁 + 灰焰圆筒，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005413",
+                "name": "双层深海鳕鱼堡三件套",
+                "price": 35.0,
+                "kcal": 485
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 48.9,
+            "pay": 44.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 633,
+            "kcalKnown": true,
+            "protein": 36.0,
+            "perYuanKcal": 14.2,
+            "perYuanProtein": 0.8,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "双层深海鳕鱼堡三件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900000885",
+                "name": "培根蔬萃双层牛堡四件套",
+                "price": 32.0,
+                "kcal": 442
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 45.9,
+            "pay": 41.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 590,
+            "kcalKnown": true,
+            "protein": 32.0,
+            "perYuanKcal": 14.1,
+            "perYuanProtein": 0.77,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "培根蔬萃双层牛堡四件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900003538",
+                "name": "学生专享饮品随心选",
+                "price": 10.0,
+                "kcal": 0
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              },
+              {
+                "code": "9900008745",
+                "name": "新地",
+                "price": 12.0,
+                "kcal": 282
+              }
+            ],
+            "origin": 35.9,
+            "pay": 31.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 12,
+            "kcal": 430,
+            "kcalKnown": false,
+            "protein": 13.0,
+            "perYuanKcal": 13.6,
+            "perYuanProtein": 0.41,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "学生专享饮品随心选 + 麦咖啡™奶铁 + 新地，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005464",
+                "name": "双层吉士汉堡套餐",
+                "price": 34.0,
+                "kcal": 429
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 47.9,
+            "pay": 43.73,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 577,
+            "kcalKnown": true,
+            "protein": 35.0,
+            "perYuanKcal": 13.2,
+            "perYuanProtein": 0.8,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "双层吉士汉堡套餐 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          },
+          {
+            "items": [
+              {
+                "code": "9900005462",
+                "name": "板烧鸡腿堡三件套",
+                "price": 34.5,
+                "kcal": 391
+              },
+              {
+                "code": "507409",
+                "name": "麦咖啡™奶铁",
+                "price": 13.9,
+                "kcal": 148
+              }
+            ],
+            "origin": 48.4,
+            "pay": 44.23,
+            "save": 4.17,
+            "kind": "combo",
+            "savePct": 9,
+            "kcal": 539,
+            "kcalKnown": true,
+            "protein": 31.0,
+            "perYuanKcal": 12.2,
+            "perYuanProtein": 0.7,
+            "coupon": "新人专享-中杯奶铁7折",
+            "note": "板烧鸡腿堡三件套 + 麦咖啡™奶铁，用「新人专享-中杯奶铁7折」"
+          }
+        ]
+      },
+      {
+        "id": "kcal",
+        "name": "每元管饱",
+        "icon": "🍚",
+        "desc": "每 1 元能换多少大卡，管饱优先",
+        "unit": "kcal/元",
+        "rows": [
+          {
+            "items": [
+              {
+                "code": "521156",
+                "name": "那么大鸡排（椒盐风味）",
+                "price": 14.0,
+                "kcal": 385
+              }
+            ],
+            "origin": 14.0,
+            "pay": 14.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 385,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 27.5,
+            "perYuanProtein": 1.71,
+            "coupon": "",
+            "note": "385 kcal ÷ ¥14.0 = 27.5"
+          },
+          {
+            "items": [
+              {
+                "code": "9900008752",
+                "name": "派",
+                "price": 8.5,
+                "kcal": 232
+              }
+            ],
+            "origin": 8.5,
+            "pay": 8.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 232,
+            "kcalKnown": true,
+            "protein": 2.0,
+            "perYuanKcal": 27.3,
+            "perYuanProtein": 0.24,
+            "coupon": "",
+            "note": "232 kcal ÷ ¥8.5 = 27.3"
+          },
+          {
+            "items": [
+              {
+                "code": "9900008745",
+                "name": "新地",
+                "price": 12.0,
+                "kcal": 282
+              }
+            ],
+            "origin": 12.0,
+            "pay": 12.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 282,
+            "kcalKnown": true,
+            "protein": 5.0,
+            "perYuanKcal": 23.5,
+            "perYuanProtein": 0.42,
+            "coupon": "",
+            "note": "282 kcal ÷ ¥12.0 = 23.5"
+          },
+          {
+            "items": [
+              {
+                "code": "511782",
+                "name": "芝士安格斯厚牛堡",
+                "price": 31.5,
+                "kcal": 696
+              }
+            ],
+            "origin": 31.5,
+            "pay": 31.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 696,
+            "kcalKnown": true,
+            "protein": 32.0,
+            "perYuanKcal": 22.1,
+            "perYuanProtein": 1.02,
+            "coupon": "",
+            "note": "696 kcal ÷ ¥31.5 = 22.1"
+          },
+          {
+            "items": [
+              {
+                "code": "1450",
+                "name": "麦香鸡",
+                "price": 17.0,
+                "kcal": 369
+              }
+            ],
+            "origin": 17.0,
+            "pay": 17.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 369,
+            "kcalKnown": true,
+            "protein": 15.0,
+            "perYuanKcal": 21.7,
+            "perYuanProtein": 0.88,
+            "coupon": "",
+            "note": "369 kcal ÷ ¥17.0 = 21.7"
+          },
+          {
+            "items": [
+              {
+                "code": "1440",
+                "name": "麦辣鸡腿汉堡",
+                "price": 22.5,
+                "kcal": 485
+              }
+            ],
+            "origin": 22.5,
+            "pay": 22.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 485,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 21.6,
+            "perYuanProtein": 1.07,
+            "coupon": "",
+            "note": "485 kcal ÷ ¥22.5 = 21.6"
+          }
+        ]
+      },
+      {
+        "id": "protein",
+        "name": "每元蛋白",
+        "icon": "💪",
+        "desc": "每 1 元能换多少蛋白质，健身向",
+        "unit": "g/元",
+        "rows": [
+          {
+            "items": [
+              {
+                "code": "521156",
+                "name": "那么大鸡排（椒盐风味）",
+                "price": 14.0,
+                "kcal": 385
+              }
+            ],
+            "origin": 14.0,
+            "pay": 14.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 385,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 27.5,
+            "perYuanProtein": 1.71,
+            "coupon": "",
+            "note": "24.0g 蛋白 ÷ ¥14.0 = 1.71"
+          },
+          {
+            "items": [
+              {
+                "code": "9900003586",
+                "name": "双层深海鳕鱼堡",
+                "price": 24.0,
+                "kcal": 485
+              }
+            ],
+            "origin": 24.0,
+            "pay": 24.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 485,
+            "kcalKnown": true,
+            "protein": 28.0,
+            "perYuanKcal": 20.2,
+            "perYuanProtein": 1.17,
+            "coupon": "",
+            "note": "28.0g 蛋白 ÷ ¥24.0 = 1.17"
+          },
+          {
+            "items": [
+              {
+                "code": "1120",
+                "name": "双层吉士汉堡",
+                "price": 23.0,
+                "kcal": 429
+              }
+            ],
+            "origin": 23.0,
+            "pay": 23.0,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 429,
+            "kcalKnown": true,
+            "protein": 27.0,
+            "perYuanKcal": 18.7,
+            "perYuanProtein": 1.17,
+            "coupon": "",
+            "note": "27.0g 蛋白 ÷ ¥23.0 = 1.17"
+          },
+          {
+            "items": [
+              {
+                "code": "1440",
+                "name": "麦辣鸡腿汉堡",
+                "price": 22.5,
+                "kcal": 485
+              }
+            ],
+            "origin": 22.5,
+            "pay": 22.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 485,
+            "kcalKnown": true,
+            "protein": 24.0,
+            "perYuanKcal": 21.6,
+            "perYuanProtein": 1.07,
+            "coupon": "",
+            "note": "24.0g 蛋白 ÷ ¥22.5 = 1.07"
+          },
+          {
+            "items": [
+              {
+                "code": "1100",
+                "name": "巨无霸",
+                "price": 25.5,
+                "kcal": 513
+              }
+            ],
+            "origin": 25.5,
+            "pay": 25.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 513,
+            "kcalKnown": true,
+            "protein": 27.0,
+            "perYuanKcal": 20.1,
+            "perYuanProtein": 1.06,
+            "coupon": "",
+            "note": "27.0g 蛋白 ÷ ¥25.5 = 1.06"
+          },
+          {
+            "items": [
+              {
+                "code": "4648",
+                "name": "不素之霸双层牛堡",
+                "price": 26.5,
+                "kcal": 493
+              }
+            ],
+            "origin": 26.5,
+            "pay": 26.5,
+            "save": 0,
+            "kind": "single",
+            "savePct": 0,
+            "kcal": 493,
+            "kcalKnown": true,
+            "protein": 28.0,
+            "perYuanKcal": 18.6,
+            "perYuanProtein": 1.06,
+            "coupon": "",
+            "note": "28.0g 蛋白 ÷ ¥26.5 = 1.06"
+          }
+        ]
+      }
+    ]
+  }
 };

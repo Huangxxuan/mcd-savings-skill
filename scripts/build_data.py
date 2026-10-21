@@ -454,6 +454,248 @@ def build_scene_bundles(menu: list) -> list:
 
 
 # =============================================================================
+# 省钱榜单引擎
+# 只使用 MCP 真实返回的字段：price（现价）/ origin（划线原价）/ kcal / protein
+# 以及券 Title 里解析出的规则。任何算不出来的情况都留空，不编造。
+# =============================================================================
+DRINK_CATS = ("饮品", "麦咖啡™")
+MAIN_RE = re.compile(r"堡|卷|饭|满分|粥|鸡排|麦乐鸡|套餐|四件套|三件套|随心选|随心配|拼")
+NON_FOOD_RE = re.compile(r"徽章|周边|玩具|卡片|马克杯|杯垫|袋子")
+PICK_RE = re.compile(r"(\d+(?:\.\d+)?)\s*元\s*(.{1,8}?)任选\s*(\d+)")
+
+
+def parse_coupon_rule(c: dict) -> dict:
+    """把券标题解析成可计算的规则（与前端 parseCoupon 保持同一套口径）"""
+    t = (c.get("name") or c.get("title") or "").strip()
+    applies = [x for x in (c.get("applyTo") or []) if x]
+    m = re.search(r"满\s*(\d+(?:\.\d+)?)\s*减\s*(\d+(?:\.\d+)?)", t)
+    if m:
+        return {"type": "threshold", "min": float(m.group(1)), "value": float(m.group(2)), "label": t}
+    m = PICK_RE.search(t)
+    if m:
+        return {"type": "pick", "price": float(m.group(1)), "kw": m.group(2), "n": int(m.group(3)),
+                "applies": applies, "label": t}
+    m = re.search(r"(\d+(?:\.\d+)?)\s*折", t)
+    if m:
+        return {"type": "percent", "rate": float(m.group(1)) / 10, "applies": applies, "label": t}
+    m = re.search(r"(?:减|省|立减)\s*(\d+(?:\.\d+)?)\s*元", t)
+    if m:
+        return {"type": "amount", "value": float(m.group(1)), "applies": applies, "label": t}
+    m = re.search(r"^(\d+(?:\.\d+)?)\s*元", t)
+    if m:
+        return {"type": "fixed", "value": float(m.group(1)), "applies": applies, "label": t}
+    if re.search(r"免费|0\s*元", t):
+        return {"type": "free", "applies": applies, "label": t}
+    return {"type": "unknown", "label": t}
+
+
+def coupon_discount(rule: dict, items: list) -> float:
+    """给定一份点单（items: [{code,name,price}]），算这张券能抵多少钱"""
+    sub = sum(i["price"] for i in items)
+    codes = {i["code"] for i in items}
+    t = rule["type"]
+    if t == "threshold":
+        return rule["value"] if sub >= rule["min"] else 0.0
+    if t == "percent":
+        if rule["applies"]:
+            return sum(i["price"] for i in items if i["code"] in rule["applies"]) * (1 - rule["rate"])
+        return sub * (1 - rule["rate"])
+    if t == "amount":
+        if rule["applies"] and not (codes & set(rule["applies"])):
+            return 0.0
+        return rule["value"]
+    if t == "fixed":
+        if not rule["applies"]:
+            return 0.0
+        d = 0.0
+        for i in items:
+            if i["code"] in rule["applies"]:
+                d = max(d, i["price"] - rule["value"])
+        return max(0.0, d)
+    if t == "pick":
+        hits = [i for i in items if rule["kw"] in i["name"]]
+        if len(hits) < rule["n"]:
+            return 0.0
+        top = sorted(hits, key=lambda x: -x["price"])[:rule["n"]]
+        return max(0.0, sum(i["price"] for i in top) - rule["price"])
+    if t == "free":
+        if not rule["applies"]:
+            return 0.0
+        prices = [i["price"] for i in items if i["code"] in rule["applies"]]
+        return min(prices) if prices else 0.0
+    return 0.0
+
+
+def best_coupon(rules: list, items: list):
+    """返回 (抵扣金额, 券标题)；无可用券时返回 (0, '')"""
+    best, name = 0.0, ""
+    for r in rules:
+        d = coupon_discount(r, items)
+        if d > best + 1e-9:
+            best, name = d, r["label"]
+    return round(best, 2), name
+
+
+def _row(items: list, origin: float, save: float, coupon: str, note: str = "", kind: str = "single"):
+    pay = max(0.0, origin - save)
+    kcal = sum(i.get("kcal") or 0 for i in items)
+    protein = sum(i.get("protein") or 0 for i in items)
+    known = all((i.get("kcal") or 0) > 0 for i in items)
+    return {
+        "items": [{"code": i["code"], "name": i["name"], "price": i["price"],
+                   "kcal": i.get("kcal") or 0} for i in items],
+        "origin": round(origin, 2), "pay": round(pay, 2), "save": round(save, 2), "kind": kind,
+        "savePct": round(save / origin * 100) if origin > 0 else 0,
+        "kcal": kcal, "kcalKnown": known, "protein": round(protein, 1),
+        "perYuanKcal": round(kcal / pay, 1) if pay > 0 and kcal > 0 else 0,
+        "perYuanProtein": round(protein / pay, 2) if pay > 0 and protein > 0 else 0,
+        "coupon": coupon, "note": note,
+    }
+
+
+def _item(m: dict) -> dict:
+    """把菜单项压缩成算价需要的字段（protein 必须带上，否则蛋白榜会全部算成 0）"""
+    return {"code": m["code"], "name": m["name"], "price": m["price"],
+            "kcal": m.get("kcal") or 0, "protein": m.get("protein") or 0}
+
+
+def build_savings(menu: list, coupons: list) -> dict:
+    """生成省钱榜单：券后最省 / 官方直降 / 每元管饱 / 每元蛋白 / 套餐最优"""
+    rules = [parse_coupon_rule(c) for c in coupons]
+    food = [m for m in menu if not NON_FOOD_RE.search(m["name"]) and (m["price"] or 0) > 0]
+
+    # ---------- 单项：券后最省 ----------
+    coupon_rows = []
+    for m in food:
+        items = [_item(m)]
+        save, cname = best_coupon(rules, items)
+        if save > 0:
+            coupon_rows.append(_row(items, m["price"], save, cname,
+                                    f"用「{cname}」券后 ¥{max(0, m['price'] - save):.2f}，省 {save:.1f} 元"))
+    coupon_rows.sort(key=lambda r: (-r["save"], -r["savePct"]))
+
+    # ---------- 单项：官方直降（划线价） ----------
+    drop_rows = []
+    for m in food:
+        origin = m.get("origin") or 0
+        if origin > m["price"] > 0:
+            drop_rows.append(_row([_item(m)], origin, origin - m["price"], "",
+                                  f"官方直降 {round((origin - m['price']) / origin * 100)}%，省 {origin - m['price']:.1f} 元"))
+    drop_rows.sort(key=lambda r: (-r["savePct"], -r["save"]))
+
+    # ---------- 单项：每元管饱 / 每元蛋白 ----------
+    kcal_rows = sorted([_row([_item(m)], m["price"], 0, "",
+                             f"{m['kcal']} kcal ÷ ¥{m['price']} = {m['kcal'] / m['price']:.1f}")
+                        for m in food if (m.get("kcal") or 0) > 0],
+                       key=lambda r: -r["perYuanKcal"])
+    protein_rows = sorted([_row([_item(m)], m["price"], 0, "",
+                                f"{round(m['protein'], 1)}g 蛋白 ÷ ¥{m['price']} = {m['protein'] / m['price']:.2f}")
+                           for m in food if (m.get("protein") or 0) > 0],
+                          key=lambda r: -r["perYuanProtein"])
+
+    # ---------- 组合：套餐最优（主食 + 饮品[+ 小食]，含券） ----------
+    mains = [m for m in food if MAIN_RE.search(m["name"]) and m["price"] <= 45]
+    drinks = [m for m in food if m["cat"] in DRINK_CATS]
+    sides = [m for m in food if m["cat"] not in DRINK_CATS and not MAIN_RE.search(m["name"])
+             and m["price"] <= 15]
+    combo_rows = []
+    for a in mains:
+        for b in drinks:
+            items = [_item(a), _item(b)]
+            origin = a["price"] + b["price"]
+            if origin > 50:
+                continue
+            save, cname = best_coupon(rules, items)
+            note = f"{a['name']} + {b['name']}" + (f"，用「{cname}」" if cname else "，无需用券")
+            combo_rows.append(_row(items, origin, save, cname, note, "combo"))
+        for b in drinks:
+            for c in sides:
+                items = [_item(a), _item(b), _item(c)]
+                origin = a["price"] + b["price"] + c["price"]
+                if origin > 55:
+                    continue
+                save, cname = best_coupon(rules, items)
+                note = f"{a['name']} + {b['name']} + {c['name']}" + (f"，用「{cname}」" if cname else "")
+                combo_rows.append(_row(items, origin, save, cname, note, "combo"))
+
+    # ---------- 「N 元任选 M 件」类券：直接按券凑一单 ----------
+    for r in rules:
+        if r["type"] != "pick":
+            continue
+        kw = r["kw"][-2:]
+        cand = [m for m in food
+                if (kw in m["name"] or kw in m["cat"])
+                and not re.search(r"套餐|四件套|三件套", m["name"]) and m["price"] <= 30]
+        if len(cand) < r["n"]:
+            continue
+        top = sorted(cand, key=lambda x: -x["price"])[: r["n"]]
+        items = [_item(x) for x in top]
+        origin = sum(x["price"] for x in top)
+        save = max(0.0, origin - r["price"])
+        note = f"{r['price']} 元任选 {r['n']} 件：{' + '.join(x['name'] for x in top)}"
+        row = _row(items, origin, save, r["label"], note, "combo")
+        combo_rows.append(row)
+        coupon_rows.append(row)
+
+    # 完整套餐优先（必须有主食 + 饮品），按「省得多 + 每元热量高」排；过贵的不进榜
+    combo_rows = [r for r in combo_rows if r["kcal"] > 0 and r["pay"] <= 45]
+    combo_rows.sort(key=lambda r: (-r["save"], -r["perYuanKcal"]))
+    # 同一主食只保留最优的一条，避免整屏都是同一个堡
+    uniq, seen = [], set()
+    for r in combo_rows:
+        key = r["items"][0]["code"]
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(r)
+    combo_rows = uniq
+
+    # 券后最省：单项与组合混排，按省下的钱排
+    coupon_rows = [r for r in coupon_rows if r["save"] > 0]
+    coupon_rows.sort(key=lambda r: (-r["save"], -r["savePct"]))
+
+    # ---------- 今日最优解：省得多、还得是一顿完整的饭 ----------
+    full_meal = [r for r in combo_rows if r["save"] > 0]
+    full_meal += [r for r in drop_rows
+                  if re.search(r"套餐|四件套|三件套|随心选", r["items"][0]["name"])]
+    hero = None
+    if full_meal:
+        hero = max(full_meal, key=lambda r: (r["save"], r["savePct"]))
+    elif combo_rows:
+        hero = combo_rows[0]
+    if hero:
+        hero = dict(hero)
+        hero["tip"] = (f"同样的东西原价 ¥{hero['origin']:.2f}，实付 ¥{hero['pay']:.2f}，"
+                       f"省 {hero['save']:.2f} 元（{hero['savePct']}%）")
+
+
+    boards = [
+        {"id": "coupon", "name": "券后最省", "icon": "🎟️",
+         "desc": "把卡包里的券用到极致，按省下的钱排序（面额由券 Title 解析，最终以 calculate-price 为准）",
+         "unit": "省", "rows": coupon_rows[:6]},
+        {"id": "drop", "name": "官方直降", "icon": "🏷️",
+         "desc": "MCP 返回的划线价对比，不用券也比原价便宜", "unit": "降",
+         "rows": drop_rows[:6]},
+        {"id": "combo", "name": "套餐最优", "icon": "🍱",
+         "desc": "主食 + 饮品（可加小食）自动套最优券；可用预算筛选「20 块怎么吃」", "unit": "省",
+         "rows": combo_rows[:24]},
+        {"id": "kcal", "name": "每元管饱", "icon": "🍚",
+         "desc": "每 1 元能换多少大卡，管饱优先", "unit": "kcal/元",
+         "rows": kcal_rows[:6]},
+        {"id": "protein", "name": "每元蛋白", "icon": "💪",
+         "desc": "每 1 元能换多少蛋白质，健身向", "unit": "g/元",
+         "rows": protein_rows[:6]},
+    ]
+
+    return {
+        "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "basis": "price/origin/kcal/protein 全部来自 MCP 快照；券面额由券 Title 解析，最终以 calculate-price 为准",
+        "hero": hero,
+        "boards": boards,
+    }
+
+
+# =============================================================================
 # 提醒聚合：券过期 / 可领未领 / 积分过期 / 抽奖机会 / 奖品核销 / 活动日历
 # =============================================================================
 DT_RE = re.compile(r"\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?")
@@ -673,33 +915,70 @@ def parse_campaigns(raw: str) -> list:
 # =============================================================================
 # 主流程
 # =============================================================================
+def _load_cache() -> dict:
+    path = os.path.join(ROOT, "assets", "data.js")
+    with open(path, encoding="utf-8") as f:
+        raw = f.read()
+    body = raw[raw.index("window.MCD_REAL_DATA"):]
+    body = body[body.index("=") + 1:].strip().rstrip(";")
+    return json.loads(body)
+
+
+def _write_cache(payload: dict):
+    path = os.path.join(ROOT, "assets", "data.js")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
+        f.write("window.MCD_REAL_DATA = ")
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+        f.write(";\n")
+    return path
+
+
+def rank_from_cache(also_scenes: bool = False):
+    """离线重算省钱榜单：不做任何 MCP 调用，只用 assets/data.js 里已有的真实快照。
+
+    价格 / 划线原价 / 热量 / 蛋白全部是 MCP 当时的返回值，只重新做组合与排序，
+    不会新增任何编造数据。
+    """
+    payload = _load_cache()
+    menu = payload.get("menu") or []
+    if also_scenes:
+        for m in menu:
+            m["scenes"] = classify_scenes(m)
+        payload["scenes"] = build_scene_bundles(menu)
+        payload["scenesRebuiltAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    payload["savings"] = build_savings(menu, payload.get("coupons") or [])
+    path = _write_cache(payload)
+
+    print(f"已离线重算省钱榜单并写回: {path}")
+    sv = payload["savings"]
+    hero = sv.get("hero")
+    if hero:
+        print(f"      今日最优解: {' + '.join(i['name'] for i in hero['items'])}"
+              f" → 原价 ¥{hero['origin']} / 券后 ¥{hero['pay']} / 省 ¥{hero['save']}")
+    for b in sv["boards"]:
+        print(f"      {b['icon']} {b['name']}: {len(b['rows'])} 条")
+        for i, r in enumerate(b["rows"][:3], 1):
+            names = " + ".join(x["name"] for x in r["items"])
+            print(f"          {i}. {names} ¥{r['pay']} (省 {r['save']}, {r['perYuanKcal']} kcal/元)")
+
+
 def repick_from_cache():
     """离线重算场景组合：不做任何 MCP 调用，只用 assets/data.js 里已有的真实快照。
 
     用途：调整 build_scene_bundles 的挑选规则后，无需重新联网也能让快照与规则一致
     （餐品、价格、热量仍然是 MCP 当时返回的原值，不新增任何编造数据）。
     """
-    path = os.path.join(ROOT, "assets", "data.js")
-    with open(path, encoding="utf-8") as f:
-        raw = f.read()
-    body = raw[raw.index("window.MCD_REAL_DATA"):]
-    body = body[body.index("=") + 1:].strip().rstrip(";")
-    payload = json.loads(body)
-
+    payload = _load_cache()
     menu = payload.get("menu") or []
     for m in menu:
         m["scenes"] = classify_scenes(m)
     payload["scenes"] = build_scene_bundles(menu)
     payload["scenesRebuiltAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     payload["scenesRebuildNote"] = "离线重算：数据仍为原快照，仅按新规则重选组合"
+    _write_cache(payload)
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
-        f.write("window.MCD_REAL_DATA = ")
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-        f.write(";\n")
-
-    print(f"已离线重算场景组合并写回: {path}")
+    print(f"已离线重算场景组合并写回: {os.path.join(ROOT, 'assets', 'data.js')}")
     for s in payload["scenes"]:
         sc_pool = {m["code"] for m in menu if s["id"] in (m.get("scenes") or [])}
         outside = 0
@@ -722,7 +1001,13 @@ def main():
                     help="先调用 auto-bind-coupons 一键领取全部可领券（写操作，需用户同意）")
     ap.add_argument("--repick", action="store_true",
                     help="离线重算场景组合（不联网，只用现有 assets/data.js 快照）")
+    ap.add_argument("--rank", action="store_true",
+                    help="离线重算省钱榜单（不联网，只用现有 assets/data.js 快照）")
     args = ap.parse_args()
+
+    if args.rank:
+        rank_from_cache(also_scenes=args.repick)
+        return
 
     if args.repick:
         repick_from_cache()
