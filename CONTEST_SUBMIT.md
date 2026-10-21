@@ -9,17 +9,50 @@
 
 | 项 | 状态 | 详情 |
 |---|---|---|
-| 仓库 | ✅ 已上线 | <https://github.com/Huangxxuan/mcd-savings-skill>（Public / main） |
+| 仓库 | ✅ 已上线 | <https://github.com/Huangxxuan/mcd-savings-skill>（Public / main，创建于 2026-10-20T14:12Z） |
 | 推送 | ✅ 完成 | 本地与远端已同步，14 个文件，工作区干净 |
-| 报名 Issue | ✅ 已提交 | [Issue #932](https://github.com/M-China/mcd-developer-innovation-challenge/issues/932)（open） |
-| 五个必需文件 | ✅ 齐全 | `README.md` / `CONTEST_DECLARATION.md` / `MCP_INTEGRATION.md` / `mcp-config.example.json` / `workbuddy.md` |
+| 报名 Issue #932 | ❌ **审核未通过** | 官方机器人 2026-10-20T14:59Z 回复：「缺少 README.md/参赛申明/MCP说明」——**原因：机器人检查时首次推送尚未完成，仓库还是空的** |
+| 必需文件 | ✅ 齐全 | `README.md` / `CONTEST_DECLARATION.md`（与官方原文逐字节一致，1522 B）/ `MCP_INTEGRATION.md` / 源代码 / `workbuddy.md` |
 | 敏感信息 | ✅ 无 | 仅 `mcp-config.example.json` 内 `${MCD_MCP_TOKEN}` 占位符 |
-| 仓库 Description / Topics | ⬜ 待填 | 见第三节，1 分钟搞定 |
+| 仓库 Description / Topics | 🟡 部分 | Description 已填；Topics 待确认 |
 | 演示 GIF | ⬜ 待录 | 见第三节，README 首屏用 |
+| **重新报名** | ⬜ **待办（最紧急）** | 文件现已齐全，需**重新提交一个新 Issue**，见第二节 |
 
 ---
 
-## 二、日常更新流程（改完代码后推送）
+## 二、重新报名（最紧急，先做这个）
+
+> 官方规则原文：「如果因不满足条件导致报名失败，系统也会在报名 Issue 下回复失败原因。完成相应修改后，你可以**重新提交 Issue**。」
+> #932 已作废，**不要再在 #932 下回复**，直接新建一个 Issue。
+
+**Issue Title：**
+```
+【参赛申请】麦麦省钱点单助手
+```
+
+**Issue Body（4 行，行内不换行，地址裸写）：**
+```
+【参赛申请】
+项目名称：麦麦省钱点单助手
+项目地址：https://github.com/Huangxxuan/mcd-savings-skill
+项目简介：会算账的麦当劳点单专家，用真实价格和优惠券算出省钱榜单最优解，一键领券 + 自动用最优券 + 卡路里可视 + 五大场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
+```
+
+新建入口：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/new>
+
+**提交前 30 秒自检**（缺一不可）：
+
+```bash
+for f in README.md CONTEST_DECLARATION.md MCP_INTEGRATION.md workbuddy.md; do
+  printf "%s  " "$(curl -s -o /dev/null -w '%{http_code}' https://raw.githubusercontent.com/Huangxxuan/mcd-savings-skill/main/$f)"
+  echo "$f"
+done
+# 期望全部 200
+```
+
+---
+
+## 三、日常更新流程（改完代码后推送）
 
 ```bash
 cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
@@ -54,7 +87,7 @@ cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
 
 ---
 
-## 三、还差的两步（提升 Star 转化率）
+## 四、还差的两步（提升 Star 转化率）
 
 ### 1. 仓库 Description 与 Topics
 
@@ -86,7 +119,7 @@ mcdonalds mcp model-context-protocol workbuddy skill 1024 m-code ai-agent visual
 
 ---
 
-## 四、报名 Issue 存档（已提交，勿重复提交）
+## 五、报名 Issue 存档（#932 已作废，仅作记录）
 
 **Title：**
 ```
@@ -103,7 +136,7 @@ mcdonalds mcp model-context-protocol workbuddy skill 1024 m-code ai-agent visual
 
 ---
 
-## 五、终审检查清单（10-25 当天跑一遍）
+## 六、终审检查清单（10-25 当天跑一遍）
 
 | # | 检查项 | 命令/方式 | 期望 |
 |---|---|---|---|
@@ -113,7 +146,7 @@ mcdonalds mcp model-context-protocol workbuddy skill 1024 m-code ai-agent visual
 | 4 | `CONTEST_DECLARATION.md` 原样未改 | 与官方文件对比 | 完全一致 |
 | 5 | `workbuddy.md` 存在且地址真实 | 打开文件 | 专项奖必需 ✅ |
 | 6 | 页面可独立打开 | 双击 `assets/order-assistant.html` | 正常渲染、无 JS 报错 |
-| 7 | 报名 Issue 仍 open | 检查 #932 | 未被关闭 |
+| 7 | 报名 Issue 已通过审核 | 新 Issue 下有官方「报名成功」回复 | ✅ 有回复即为成功；失败会写原因 |
 | 8 | 无残留占位符 | `grep -rn "你的GitHub用户名" .` | 无结果 |
 
 ### 一键自检
