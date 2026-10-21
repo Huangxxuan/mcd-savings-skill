@@ -1,16 +1,18 @@
-# 待办节点清单（2026-10-20 更新）
+# 待办节点清单（2026-10-21 更新）
 
 > 比赛关键时间点：**2026-10-25 23:59 报名截止** ｜ **2026-10-26 00:00 定榜**（纯按 GitHub Star 数排名）
+>
+> 仓库地址：<https://github.com/Huangxxuan/mcd-savings-skill> ｜ 报名 Issue：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/932>
 
 ## 🔴 P0 — 报名前必须完成（截止 10-25）
 
 | # | 节点 | 状态 | 说明 |
 |---|---|---|---|
-| 1 | **轮换 MCP Token** | ⬜ 待办 | Token 曾在对话中明文出现，存在泄露风险。去 open.mcd.cn/mcp 重新生成，之后只用 `${MCD_MCP_TOKEN}` 占位符，**切勿提交进仓库** |
-| 2 | **创建 GitHub 公开仓库** | ⬜ 待办 | 仓库必须保持 Public；同一账号多项目仅取 Star 最高者入榜 |
-| 3 | **提交报名 Issue** | ⬜ 待办 | 用官方指定模板，格式严格：不换行、地址不用 Markdown 链接 |
-| 4 | **替换占位符** | ⬜ 待办 | `workbuddy.md` / `README.md` 中的 `https://github.com/<你的GitHub用户名>/mcd-savings-skill` 替换为真实地址 |
-| 5 | **检查仓库无敏感信息** | ⬜ 待办 | 全仓搜索 Token 明文，确认只出现在 `mcp-config.example.json` 的 `${MCD_MCP_TOKEN}` |
+| 1 | **轮换 MCP Token** | ✅ 已完成 | Token 曾在对话中明文出现，已重新生成；仓库内只保留 `${MCD_MCP_TOKEN}` 占位符。**建议每次外发/截图前再轮换一次** |
+| 2 | **创建 GitHub 公开仓库** | ✅ 已完成 | <https://github.com/Huangxxuan/mcd-savings-skill>，Public；同一账号多项目仅取 Star 最高者入榜 |
+| 3 | **提交报名 Issue** | ✅ 已完成 | [Issue #932](https://github.com/M-China/mcd-developer-innovation-challenge/issues/932)，open，四行格式、地址裸写无 Markdown 链接 |
+| 4 | **替换占位符** | ✅ 已完成 | `README.md` / `workbuddy.md` 均已使用真实仓库地址，全仓扫描无 `<你的GitHub用户名>` 残留 |
+| 5 | **检查仓库无敏感信息** | ✅ 已完成 | 全仓扫描 `MCD_MCP_TOKEN` / `github_pat` / 32 位十六进制串，0 命中；`.gitignore` 已排除 `.env`、`*.token` |
 
 ### 当前提交物自查
 
@@ -18,18 +20,19 @@
 - [x] `CONTEST_DECLARATION.md` —— 官方原样下载，未做任何改动
 - [x] `MCP_INTEGRATION.md` —— Server 配置、工具清单、调用流程、限流策略、实测验证
 - [x] `mcp-config.example.json` —— **必需**，仅含 `${MCD_MCP_TOKEN}` 占位符
-- [x] `SKILL.md` —— 触发词 + 八阶段工作流 + 35 Tool 速查 + 踩坑记录
+- [x] `SKILL.md` —— 触发词 + 九阶段工作流 + 35 Tool 速查 + 踩坑记录
 - [x] `workbuddy.md` —— **WorkBuddy 专项奖必需**，对话上下文记录
-- [x] 源码 —— `scripts/build_data.py`、`scripts/mcp_call.sh`、`assets/order-assistant.html`
+- [x] 源码 —— `scripts/build_data.py`、`scripts/mcp_call.sh`、`scripts/push_to_github.sh`、`assets/order-assistant.html`、`assets/data.js`
+- [x] `ROADMAP.md` + `CONTEST_SUBMIT.md` —— 待办清单与提交辅助材料（加分项）
 
 ## 🟡 P1 — 名次冲刺（决定 Star 数）
 
 | # | 节点 | 状态 | 说明 |
 |---|---|---|---|
-| 6 | **录演示 GIF/视频** | ⬜ 待办 | 放 README 首屏。主线：点场景 → 弹推荐 → 应用方案 → 菜单高亮 → 自动用券出立省 → 翻转祝福卡 |
-| 7 | **README 首屏视觉强化** | ⬜ 待办 | 加徽章、效果对比图、一句话价值主张 |
-| 8 | **传播文案** | ⬜ 待办 | 一句话介绍 + 9 图，发 CSDN / 公众号 / 开发者社群 |
-| 9 | **store-map.html 门店地图** | ⬜ 待办 | 当前「导航到店」用高德 `uri.amap.com` 网页跳转（零 Key 方案）；接入高德 Web 服务 Key 后可做真实坐标地图 |
+| 6 | **录演示 GIF/视频** | ⬜ 待办 | 放 README 首屏 `assets/demo.gif`。主线：点场景 → 弹推荐 → 应用方案 → 菜单高亮 → 自动用券出立省 → 翻转祝福卡；加录一段「点省钱榜单 → 一键应用 hero 方案」 |
+| 7 | **README 首屏视觉强化** | 🟡 进行中 | 已加徽章与一句话价值主张；待补 GIF 与前后对比图 |
+| 8 | **传播文案** | ✅ 已产出 | `麦当劳大赛-传播话术包.md`：10/21–10/25 五天排期、3 个版本正文、13 条标题库、配图清单、避坑提醒 |
+| 9 | **发布到开发者社区** | ⬜ 待办 | 按话术包排期发 CSDN / 掘金 / 即刻 / 小红书 / V2EX，统一 Star 引导 |
 
 ## 🟢 P2 — 功能增强（可选）
 
@@ -38,25 +41,32 @@
 | 10 | 真实 `create-order` 下单 | ⬜ 待办 | 当前页面只生成指令交给 Agent；可接入后做到页面内直接下单（需谨慎，涉及真实支付） |
 | 11 | `query-promotions` 团餐满减 | ⬜ 待办 | 已验证可用但未接入前端 |
 | 12 | `query-survey-coupon` 问卷券 | ⬜ 待办 | 已验证可用但未接入前端 |
-| 13 | 营养匹配率提升 | ⬜ 部分 | 当前 100 餐品匹配 60 条；剩余多为组合餐/周边，无官方单品营养数据 |
+| 13 | 营养匹配率提升 | 🟡 部分 | 当前 100 餐品匹配 60 条（53 精确 + 7 近似），40 个待核；剩余多为组合餐/周边，无官方单品营养数据 |
 | 14 | 多门店菜单缓存 | ⬜ 待办 | 目前仅缓存选中门店菜单 |
+| 15 | 券面额从核价接口反推 | ⬜ 待办 | 现在从券标题解析预估值；可对每张券调一次 `calculate-price` 拿真实面额，代价是多 5–10 次调用 |
 
 ## ✅ 已完成
 
 - [x] 35 个 MCP Tool 全量验证与参数速查
 - [x] 真实数据链路（门店 → 菜单 → 券 → 营养 → 提醒 → 商城订单）
-- [x] 五大场景分类 + 贪心/枚举推荐组合
+- [x] 九阶段数据管道（`build_data.py`，含离线 `--rank` / `--repick` 子命令）
+- [x] 五大场景分类 + 贪心/枚举推荐组合（14 个方案，跨场景 0 件）
+- [x] **省钱榜单**：5 个维度（券后 / 官方直降 / 套餐组合 / 低卡 / 高蛋白）+ hero 最优解，纯本地测算不增加 MCP 调用
+- [x] **立省口径统一**：原价 = Σ 划线价，立省 = 原价 − 实付商品金额；券门槛与起送判断仍用现价合计
 - [x] 拼单凑单分账与分享文案
-- [x] 5 类「优惠不错过」提醒（可点击选品）
+- [x] 「优惠不错过」提醒引擎（8 类规则，当前账号实测 12 条，券类可点击选品）
 - [x] 一键领券（真实 `auto-bind-coupons`）+ 已领取/未领取状态
-- [x] 自动用券（多券试算择优）+ 特价券/免费券折扣计算
+- [x] 自动用券（多券试算择优）+ 特价券/免费券/任选券折扣计算
 - [x] 复制点单指令三级降级（含可视化输出框）
 - [x] 麦麦商城订单列表 + 详情面板
 - [x] CSS 3D 与终端风视觉改版、祝福提示卡
+- [x] 已选清单逐行 − / + / ✕ 与「清空」，跨场景/跨品类菜单自动定位
+- [x] jsdom 三套回归（榜单 17 项 / 主流程 20 项 / 场景 14 方案）全通过
 
 ## 已知数据口径限制（诚实声明）
 
 1. **营养数据覆盖有限**：MCP `list-nutrition-foods` 约 158 条，新品与组合餐无官方热量 —— 页面显示「热量待核」或 `≈` 估算，**不编造**。
 2. **券面额为预估值**：从券标题解析（如「7折」「11.9元」），精确金额以 `calculate-price` 核价为准。
-3. **门店接口无真实经纬度**：`latitude` / `longitude` 恒为 `0.0`，地图需自建或走网页跳转导航。
+3. **门店接口无真实经纬度**：`latitude` / `longitude` 恒为 `0.0`，因此不做地图，只用高德 `uri.amap.com` 网页跳转导航（零 Key 方案）。
 4. **领券状态有延迟**：`auto-bind-coupons` 成功后 `available-coupons` 可能短时间仍显示「未领取」。
+5. **数据为快照**：`assets/data.js` 生成于 2026-10-20 21:37，场景于 2026-10-21 11:31 重算。券有有效期，过期后需重跑 `python3 scripts/build_data.py`（需要新的 `MCD_MCP_TOKEN`）。

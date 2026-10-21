@@ -1,183 +1,138 @@
-# 参赛提交材料：建仓命令清单 + 报名 Issue 文案
+# 参赛提交状态与操作手册
 
 > 关键时间点：**2026-10-25 23:59 报名截止** ｜ **2026-10-26 00:00 定榜**
-> 排名规则：纯按 GitHub 公开 **Star 数**（无评委评审）
+> 排名规则：纯按 GitHub 公开 **Star 数**（无评委评审，前 100 名进榜，Star=0 不进榜）
 
 ---
 
-## 一、建仓命令清单（按顺序复制执行）
+## 一、当前状态（2026-10-21 核对）
 
-> ✅ **仓库已建好**：`https://github.com/Huangxxuan/mcd-savings-skill`（Public / 空仓 / main）
-> ✅ **本地已就绪**：git 仓库已初始化，4 次提交，13 个文件，工作区干净，只差推送
+| 项 | 状态 | 详情 |
+|---|---|---|
+| 仓库 | ✅ 已上线 | <https://github.com/Huangxxuan/mcd-savings-skill>（Public / main） |
+| 推送 | ✅ 完成 | 本地与远端已同步，14 个文件，工作区干净 |
+| 报名 Issue | ✅ 已提交 | [Issue #932](https://github.com/M-China/mcd-developer-innovation-challenge/issues/932)（open） |
+| 五个必需文件 | ✅ 齐全 | `README.md` / `CONTEST_DECLARATION.md` / `MCP_INTEGRATION.md` / `mcp-config.example.json` / `workbuddy.md` |
+| 敏感信息 | ✅ 无 | 仅 `mcp-config.example.json` 内 `${MCD_MCP_TOKEN}` 占位符 |
+| 仓库 Description / Topics | ⬜ 待填 | 见第三节，1 分钟搞定 |
+| 演示 GIF | ⬜ 待录 | 见第三节，README 首屏用 |
 
-### 步骤 1：一键推送（推荐）
+---
 
-在你的**系统终端**（Terminal.app，非沙箱）执行：
+## 二、日常更新流程（改完代码后推送）
+
+```bash
+cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
+
+# 1. 先看改了什么
+git status --porcelain
+
+# 2. 敏感信息扫描（必做，任一命中就停下）
+grep -rInE "Bearer [A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{20,}" . 2>/dev/null \
+  | grep -v "example.json" || echo "✅ 无敏感信息"
+
+# 3. 提交并推送（远端有新提交时先 rebase）
+git add -A
+git commit -m "docs: 更新说明"
+git pull --rebase origin main
+git push origin main
+
+# 4. 核对本地与远端一致
+git fetch origin && git rev-parse HEAD origin/main
+```
+
+也可以直接用一键脚本（内含密钥扫描，命中会中止）：
 
 ```bash
 cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
 ./scripts/push_to_github.sh
 ```
 
-脚本会先做密钥扫描 → 配置身份 → 提交 → 推送，任一步失败都会给出对应的处理提示。
-
-### 步骤 2：或手动执行等价命令
-
-```bash
-cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
-git remote remove origin 2>/dev/null
-git remote add origin https://github.com/Huangxxuan/mcd-savings-skill.git
-git push -u origin main
-```
-
-> ⚠️ **认证提示**：用户名填 `Huangxxuan`，**密码填 Personal Access Token**（GitHub 已不支持账户密码推送）。
-> Token 生成：<https://github.com/settings/tokens> → Generate new token (classic) → 勾选 `repo`
-
-### 步骤 2：本地初始化并推送
-
-在你的项目目录执行（用户名已按 `Huangxxuan` 填好，可直接复制）：
-
-```bash
-# 进入项目目录
-cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
-
-# 初始化仓库
-git init
-
-# 配置身份（如已全局配置可跳过）
-git config user.name  "Huangxxuan"
-git config user.email "你的邮箱@example.com"
-
-# 确认主分支名与 GitHub 一致
-git branch -M main
-
-# 添加全部文件
-git add .
-
-# ⚠️ 提交前务必确认没有敏感信息（见下方检查命令）
-git status
-
-# 首次提交
-git commit -m "feat: 麦麦省钱点单助手 — 基于麦当劳 MCP 的可视化点单 Skill
-
-- 一键领券（auto-bind-coupons，实测领取 5 张成功）
-- 自动用券：多券试算择优，支持满减/折扣/直减/特价/免费换购
-- 五大场景搭配推荐 + 卡路里预算 DIY
-- 拼单凑单分账与分享文案
-- 优惠不错过提醒（可点击联动菜单选品）
-- 麦麦商城订单列表与详情
-- Retro-futuristic Terminal HUD 视觉 + CSS 3D + 祝福提示卡"
-
-# 关联远程仓库
-git remote add origin https://github.com/Huangxxuan/mcd-savings-skill.git
-
-# 推送
-git push -u origin main
-```
-
-**预期输出**：`Enumerating objects... Writing objects: 100%` → `branch 'main' set up to track 'origin/main'`
-
-### 步骤 3：验证推送结果
-
-```bash
-# 查看仓库根文件（应列出 13 个文件）
-curl -s "https://api.github.com/repos/Huangxxuan/mcd-savings-skill/contents/" | grep '"name"'
-
-# 确认可见性为 Public
-curl -s "https://api.github.com/repos/Huangxxuan/mcd-savings-skill" | grep '"private"'
-```
-
-### 步骤 4：推送前的安全检查（**必做**）
-
-```bash
-# 检查 1：确认工作区无敏感文件
-git status --porcelain
-
-# 检查 2：确认没有 Token 明文被暂存
-git diff --cached | grep -iE "token|secret|password" || echo "✅ 无敏感信息"
-
-# 检查 3：确认 mcp-config.example.json 只含占位符
-cat mcp-config.example.json
-# 期望：{"mcpServers":{"mcd-mcp":{"type":"streamablehttp","url":"https://mcp.mcd.cn","headers":{"Authorization":"Bearer ${MCD_MCP_TOKEN}"}}}}
-```
+> ⚠️ 认证：用户名 `Huangxxuan`，密码填 **Personal Access Token**（GitHub 已不支持账户密码推送）。
+> Token 生成：<https://github.com/settings/tokens> → Generate new token (classic) → 勾 `repo`。
+> **Token 一旦出现在截图/聊天/提交记录里，立刻吊销重建。**
 
 ---
 
-## 二、报名 Issue 文案（**严格按官方格式**）
+## 三、还差的两步（提升 Star 转化率）
 
-### 官方格式要求（务必遵守）
+### 1. 仓库 Description 与 Topics
 
-- ✅ 每个字段**各占一行**，字段内部**不换行**
-- ✅ **项目地址不要用 Markdown 链接语法**（不要 `[xxx](url)`，直接写裸 URL）
-
-### 复制以下内容（Title 和 Body 分别填）
-
-**Issue Title：**
+**Description：**
 ```
-【参赛申请】麦麦省钱点单助手
+🍔 基于麦当劳中国 MCP 的可交互可视化点单 Skill：省钱榜单 · 一键领券 · 自动用最优券 · 卡路里可视 · 五大场景搭配 · 拼单凑单
 ```
 
-**Issue Body：**
+**Topics（空格分隔，逐个回车录入）：**
 ```
-【参赛申请】
-项目名称：麦麦省钱点单助手
-项目地址：https://github.com/Huangxxuan/mcd-savings-skill
-项目简介：会算账的麦当劳点单专家，一键领券 + 自动用最优券 + 卡路里可视 + 场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
+mcdonalds mcp model-context-protocol workbuddy skill 1024 m-code ai-agent visualization ordering
 ```
 
-### 提交入口
+### 2. 演示 GIF
 
-- 活动页：<https://builderx.csdn.net/activity-site/m-code/pages>
-- 在 **M-China/mcd-developer-innovation-challenge** 仓库点 **New Issue** → 选择**参赛申请模板** → 粘贴上面内容 → Submit
+录一段 30 秒内、能一眼看懂价值的动线：
 
----
+> 点「办公下午茶」场景 → 弹出推荐方案 → 应用方案（菜单自动高亮） → 底部立省数字跳动 → 点「省钱榜单」→ 一键应用最优解 → 翻转祝福卡
 
-## 三、仓库资料设置（建仓后 1 分钟，强烈建议）
+存为 `assets/demo.gif`，README 首屏已留位置：
 
-**Description（仓库描述，填这句）：**
-```
-🍔 基于麦当劳中国 MCP 的可交互可视化点单 Skill：一键领券 · 自动用最优券 · 卡路里可视 · 五大场景搭配 · 拼单凑单 · 门店导航
-```
-
-**Topics（标签，提升搜索曝光）：**
-```
-mcdonalds    mcp    model-context-protocol    workbuddy    skill
-1024        m-code   ai-agent    可视化      点单
-```
-
-**README 首屏占位（录好 GIF 后替换 `demo.gif`）：**
 ```html
 <p align="center">
   <img src="./assets/demo.gif" width="820" alt="麦麦省钱点单助手演示">
 </p>
 ```
 
+> 建议 820px 宽、≤5 MB（GitHub 大图加载慢会掉星）。
+
 ---
 
-## 四、提交前最终检查清单
+## 四、报名 Issue 存档（已提交，勿重复提交）
+
+**Title：**
+```
+【参赛申请】麦麦省钱点单助手
+```
+
+**Body（四行、每行不换行、地址裸写不用 Markdown 链接）：**
+```
+【参赛申请】
+项目名称：麦麦省钱点单助手
+项目地址：https://github.com/Huangxxuan/mcd-savings-skill
+项目简介：会算账的麦当劳点单专家，省钱榜单找最优解 + 一键领券 + 自动用最优券 + 卡路里可视 + 场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
+```
+
+---
+
+## 五、终审检查清单（10-25 当天跑一遍）
 
 | # | 检查项 | 命令/方式 | 期望 |
 |---|---|---|---|
-| 1 | 仓库为 Public | GitHub 页面确认 | ✅ 非 Private |
-| 2 | 无 Token 明文 | `git grep -n "Bearer " -- .` | 无结果 |
+| 1 | 仓库仍为 Public | GitHub 页面右上角 | ✅ Public |
+| 2 | 无 Token 明文 | `git grep -nE "Bearer [A-Za-z0-9]{10,}"` | 无结果 |
 | 3 | `mcp-config.example.json` 仅占位符 | `cat mcp-config.example.json` | 只有 `${MCD_MCP_TOKEN}` |
-| 4 | `CONTEST_DECLARATION.md` 原样未改 | 对比官方文件 | 内容一致 |
-| 5 | `workbuddy.md` 已存在且地址真实 | 打开文件 | 专项奖必需 ✅ |
-| 6 | 页面可独立打开 | 双击 `assets/order-assistant.html` | 正常渲染 |
+| 4 | `CONTEST_DECLARATION.md` 原样未改 | 与官方文件对比 | 完全一致 |
+| 5 | `workbuddy.md` 存在且地址真实 | 打开文件 | 专项奖必需 ✅ |
+| 6 | 页面可独立打开 | 双击 `assets/order-assistant.html` | 正常渲染、无 JS 报错 |
+| 7 | 报名 Issue 仍 open | 检查 #932 | 未被关闭 |
+| 8 | 无残留占位符 | `grep -rn "你的GitHub用户名" .` | 无结果 |
 
-### 一键自检命令
+### 一键自检
 
 ```bash
 cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
 
-echo "--- 1. 敏感信息扫描 ---"
-grep -rInE "Bearer [A-Za-z0-9]{10,}" . 2>/dev/null | grep -v "example.json" || echo "✅ 安全"
+echo "--- 1. 敏感信息 ---"
+grep -rInE "Bearer [A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{20,}" . 2>/dev/null \
+  | grep -v "example.json" || echo "✅ 安全"
 
 echo "--- 2. 必需文件 ---"
 for f in README.md CONTEST_DECLARATION.md MCP_INTEGRATION.md mcp-config.example.json SKILL.md workbuddy.md; do
   [ -f "$f" ] && echo "✅ $f" || echo "❌ 缺失 $f"
 done
 
-echo "--- 3. 占位符检查 ---"
-grep -rn "你的GitHub用户名\|<用户名>" README.md workbuddy.md 2>/dev/null || echo "✅ 无残留占位符"
+echo "--- 3. 占位符 ---"
+grep -rn "你的GitHub用户名" README.md workbuddy.md SKILL.md 2>/dev/null || echo "✅ 无残留占位符"
+
+echo "--- 4. 语法 ---"
+node --check assets/order-assistant.html 2>/dev/null || echo "（HTML 跳过，用浏览器控制台验证）"
 ```

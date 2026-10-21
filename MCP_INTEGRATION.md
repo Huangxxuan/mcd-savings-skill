@@ -79,7 +79,7 @@ calculate-price                               → 核价（合并多人的商品
 → 本地计算差额与人均金额，生成分享文本
 ```
 
-**优惠不错过提醒**
+**优惠不错过提醒（8 类规则，当前账号实测生成 12 条）**
 ```
 query-my-coupons     → 券有效期 → 临期提醒（≤3天 danger / ≤7天 warn）
 available-coupons    → 接口自带「状态：已领取/未领取」→ 可领未领提醒（warn）
@@ -101,14 +101,25 @@ available-coupons    → 复查状态（自带领取状态字段；有延迟属�
 ```
 mall-order-list      → size ≤ 10 / lastId 翻页 → 订单摘要（orderId、状态、件数、商品）
 mall-order-detail    → orderId（必填）→ 商品明细、下单时间、实付金额
-→ 写入快照 orders[]，页面「05 麦麦商城订单」面板展示，点击卡片展开详情
+→ 写入快照 orders[]，页面「06 麦麦商城订单」面板展示，点击卡片展开详情
+```
+
+**省钱榜单（不新增 MCP 调用，纯本地测算）**
+```
+query-meals（现价 currentPrice + 划线价 originalPrice + kcal/protein）
+  + query-store-coupons / available-coupons（券 Title + applyTo 商品编码）
+        ↓  build_data.py  build_savings()   ← 可 --rank 离线重算
+  券后最省 / 官方直降 / 套餐最优 / 每元管饱 / 每元蛋白  +  今日最优解
+        ↓
+  写入快照 savings{}，页面「03 省钱榜单」面板展示，点任意一条即按该方案落已选
+  最终金额仍以 calculate-price 核价为准
 ```
 
 ## 3. 业务价值
 
 | 价值点 | 说明 |
 |---|---|
-| 省钱 | 一键领券 + 券适配 + 券后价对比，把「不知道有券 / 不会用券」变成「自动省最多」，单笔订单可省 5–15 元 |
+| 省钱 | 一键领券 + 券适配 + **省钱榜单（5 维度最优解）**，把「不知道有券 / 不会用券 / 不知道套餐和单点哪个划算」变成「自动算给你」，单个订单可省 4–29 元（实测四件套划线 57 → 28） |
 | 省时 | 门店距离排序 + 一键导航，减少找店与排队决策成本 |
 | 健康可控 | 卡路里预算约束搭配 + 蛋白质/脂肪/碳水结构可视化，让「控卡期吃麦当劳」有据可依 |
 | 降低决策成本 | DIY 可视化勾选，实时联动总价与总热量，选择困难症友好 |
@@ -123,7 +134,7 @@ mall-order-detail    → orderId（必填）→ 商品明细、下单时间、�
 | 工具总数 | **35 个**（比官方 README 工具表多出 `query-promotions`、`query-survey-coupon` 等） |
 | 鉴权 | Bearer Token 生效，返回 200 |
 | `query-nearby-stores`（深圳·科技园，beType=1，searchType=2） | ✅ 返回 5 家门店，含 storeCode / 地址 / distance(米) / 营业时间 / 预约时段 |
-| `query-meals`（storeCode=1420762，beType=1，orderType=1） | ✅ 返回 15 个分类、108 个餐品，含分类、编码、价格、标签、图片、优惠类型 |
+| `query-meals`（storeCode=1420762，beType=1，orderType=1） | ✅ 返回 15 个分类、108 条分类-餐品记录；同一餐品会出现在多个分类，按编码去重后为 **100 个餐品**（含分类、编码、现价/划线价、标签、图片、优惠类型） |
 | `query-store-coupons` | ✅ 返回 5 张可用券（领取后），含 couponId / couponCode / 有效期 / 适用商品编码 |
 | `list-nutrition-foods` | ✅ 返回 158 条营养数据（紧凑文本格式） |
 | `available-coupons` | ✅ 返回 5 张可领券，含「状态：已领取/未领取」字段 |
@@ -136,7 +147,7 @@ mall-order-detail    → orderId（必填）→ 商品明细、下单时间、�
 | `now-time-info` | ✅ 返回服务器时间 |
 
 **验证中发现的关键限制（见 SKILL.md「实测踩坑记录」）**：
-1. 门店接口**不返回真实经纬度**（恒为 0.0），地图功能需自建地理编码；
+1. 门店接口**不返回真实经纬度**（恒为 0.0），因此不做地图，只用高德 `uri.amap.com` 网页跳转导航（零 Key 方案）；
 2. 营养数据是**紧凑文本**而非 JSON，需自行解析并按名称模糊匹配；
 3. 优惠券**不返回面额**，精确金额须由 `calculate-price` 核出；
 4. `beCode` 传参规则严格（到店自取不可传，外送/得来速/团餐必传），传错直接报错。
