@@ -1,16 +1,19 @@
-# 待办节点清单（2026-10-21 更新）
+# 待办节点清单（2026-10-21 13:20 更新）
 
 > 比赛关键时间点：**2026-10-25 23:59 报名截止** ｜ **2026-10-26 00:00 定榜**（纯按 GitHub Star 数排名）
 >
-> 仓库地址：<https://github.com/Huangxxuan/mcd-savings-skill> ｜ 报名 Issue：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/932>
+> 仓库地址：<https://github.com/Huangxxuan/mcd-savings-skill> ｜ 报名 Issue：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/936>
+>
+> ✅ **报名已通过**：官方 2026-10-20 23:59 回复「您的作品已成功参赛」（#936）。
+> 🎯 **进榜门槛（2026-10-21 13:00 榜单实测）**：第 100 名 = **23 Star**。当前 **4 Star**，还差 **19 颗**。
 
-## 🔴 P0 — 报名前必须完成（截止 10-25）
+## 🔴 P0 — 报名已全部完成
 
 | # | 节点 | 状态 | 说明 |
 |---|---|---|---|
 | 1 | **轮换 MCP Token** | ✅ 已完成 | Token 曾在对话中明文出现，已重新生成；仓库内只保留 `${MCD_MCP_TOKEN}` 占位符。**建议每次外发/截图前再轮换一次** |
 | 2 | **创建 GitHub 公开仓库** | ✅ 已完成 | <https://github.com/Huangxxuan/mcd-savings-skill>，Public；同一账号多项目仅取 Star 最高者入榜 |
-| 3 | **提交报名 Issue** | ✅ 已完成 | [Issue #932](https://github.com/M-China/mcd-developer-innovation-challenge/issues/932)，open，四行格式、地址裸写无 Markdown 链接 |
+| 3 | **提交报名 Issue** | ✅ **已通过** | [Issue #936](https://github.com/M-China/mcd-developer-innovation-challenge/issues/936) 官方回复「已成功参赛」。（#932 因推送时序被判缺失文件，已作废） |
 | 4 | **替换占位符** | ✅ 已完成 | `README.md` / `workbuddy.md` 均已使用真实仓库地址，全仓扫描无 `<你的GitHub用户名>` 残留 |
 | 5 | **检查仓库无敏感信息** | ✅ 已完成 | 全仓扫描 `MCD_MCP_TOKEN` / `github_pat` / 32 位十六进制串，0 命中；`.gitignore` 已排除 `.env`、`*.token` |
 
@@ -25,28 +28,31 @@
 - [x] 源码 —— `scripts/build_data.py`、`scripts/mcp_call.sh`、`scripts/push_to_github.sh`、`assets/order-assistant.html`、`assets/data.js`
 - [x] `ROADMAP.md` + `CONTEST_SUBMIT.md` —— 待办清单与提交辅助材料（加分项）
 
-## 🟡 P1 — 名次冲刺（决定 Star 数）
+## 🟡 P1 — 名次冲刺（**当前唯一硬目标：Star 4 → 23+**）
 
 | # | 节点 | 状态 | 说明 |
 |---|---|---|---|
-| 6 | **录演示 GIF/视频** | ⬜ 待办 | 放 README 首屏 `assets/demo.gif`。主线：点场景 → 弹推荐 → 应用方案 → 菜单高亮 → 自动用券出立省 → 翻转祝福卡；加录一段「点省钱榜单 → 一键应用 hero 方案」 |
-| 7 | **README 首屏视觉强化** | 🟡 进行中 | 已加徽章与一句话价值主张；待补 GIF 与前后对比图 |
-| 8 | **传播文案** | ✅ 已产出 | `麦当劳大赛-传播话术包.md`：10/21–10/25 五天排期、3 个版本正文、13 条标题库、配图清单、避坑提醒 |
-| 9 | **发布到开发者社区** | ⬜ 待办 | 按话术包排期发 CSDN / 掘金 / 即刻 / 小红书 / V2EX，统一 Star 引导 |
+| 6 | **补仓库 Topics** | ⬜ 待办（5 分钟） | 当前 `topics` 为空，直接影响 GitHub 搜索曝光。填：`mcdonalds` `mcp` `model-context-protocol` `workbuddy` `skill` `1024` `m-code` `ai-agent` `visualization` `ordering` |
+| 7 | **录演示 GIF** | ⬜ 待办（今天） | 放 README 首屏 `assets/demo.gif`，820px 宽、≤5 MB。主线：点场景 → 弹推荐 → 应用方案 → 菜单高亮 → 底部立省跳动 → 点省钱榜单 → 一键应用 hero → 祝福卡翻转。**没有动图，路人不会点 Star** |
+| 8 | **README 首屏视觉强化** | 🟡 进行中 | 已有徽章 + 一句话价值主张 + 实拍截图；待补 GIF 与「省钱榜单」前后对比图 |
+| 9 | **传播文案** | ✅ 已产出 | `麦当劳大赛-传播话术包.md`：10/21–10/25 五天排期、3 个版本正文、13 条标题库、配图清单、避坑提醒 |
+| 10 | **按排期发帖冲 Star** | ⬜ 待办（**最紧急**） | 10/21 朋友圈 + 3 个技术群（版本 C 一句话 + GIF，目标前 10–20 星）→ 10/22 CSDN/掘金 → 10/23 即刻/小红书/公众号 → 10/24 V2EX → 10/25 倒计时 |
+| 11 | **每天看榜核对名次** | ⬜ 待办 | 官方 `RANKING.md` 每天约 13:00 更新；23 Star 即进前 100，进榜即有实物周边 + WorkBuddy 3000 积分 |
 
 ## 🟢 P2 — 功能增强（可选）
 
 | # | 节点 | 状态 | 说明 |
 |---|---|---|---|
-| 10 | 真实 `create-order` 下单 | ⬜ 待办 | 当前页面只生成指令交给 Agent；可接入后做到页面内直接下单（需谨慎，涉及真实支付） |
-| 11 | `query-promotions` 团餐满减 | ⬜ 待办 | 已验证可用但未接入前端 |
-| 12 | `query-survey-coupon` 问卷券 | ⬜ 待办 | 已验证可用但未接入前端 |
-| 13 | 营养匹配率提升 | 🟡 部分 | 当前 100 餐品匹配 60 条（53 精确 + 7 近似），40 个待核；剩余多为组合餐/周边，无官方单品营养数据 |
-| 14 | 多门店菜单缓存 | ⬜ 待办 | 目前仅缓存选中门店菜单 |
-| 15 | 券面额从核价接口反推 | ⬜ 待办 | 现在从券标题解析预估值；可对每张券调一次 `calculate-price` 拿真实面额，代价是多 5–10 次调用 |
+| 12 | 真实 `create-order` 下单 | ⬜ 待办 | 当前页面只生成指令交给 Agent；可接入后做到页面内直接下单（需谨慎，涉及真实支付） |
+| 13 | `query-promotions` 团餐满减 | ⬜ 待办 | 已验证可用但未接入前端 |
+| 14 | `query-survey-coupon` 问卷券 | ⬜ 待办 | 已验证可用但未接入前端 |
+| 15 | 营养匹配率提升 | 🟡 部分 | 当前 100 餐品匹配 60 条（53 精确 + 7 近似），40 个待核；剩余多为组合餐/周边，无官方单品营养数据 |
+| 16 | 多门店菜单缓存 | ⬜ 待办 | 目前仅缓存选中门店菜单 |
+| 17 | 券面额从核价接口反推 | ⬜ 待办 | 现在从券标题解析预估值；可对每张券调一次 `calculate-price` 拿真实面额，代价是多 5–10 次调用 |
 
 ## ✅ 已完成
 
+- [x] **官方报名审核通过**（Issue #936，2026-10-20 23:59 收到「已成功参赛」）
 - [x] 35 个 MCP Tool 全量验证与参数速查
 - [x] 真实数据链路（门店 → 菜单 → 券 → 营养 → 提醒 → 商城订单）
 - [x] 九阶段数据管道（`build_data.py`，含离线 `--rank` / `--repick` 子命令）

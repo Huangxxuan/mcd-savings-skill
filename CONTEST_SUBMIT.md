@@ -5,32 +5,33 @@
 
 ---
 
-## 一、当前状态（2026-10-21 核对）
+## 一、当前状态（2026-10-21 13:20 核对）
 
 | 项 | 状态 | 详情 |
 |---|---|---|
 | 仓库 | ✅ 已上线 | <https://github.com/Huangxxuan/mcd-savings-skill>（Public / main，创建于 2026-10-20T14:12Z） |
-| 推送 | ✅ 完成 | 本地与远端已同步，14 个文件，工作区干净 |
-| 报名 Issue #932 | ❌ **审核未通过** | 官方机器人 2026-10-20T14:59Z 回复：「缺少 README.md/参赛申明/MCP说明」——**原因：机器人检查时首次推送尚未完成，仓库还是空的** |
+| 推送 | ✅ 完成 | 本地 HEAD == 远端 `39858eb`；12 个文本/代码文件**字节级一致**；工作区干净 |
+| **报名审核** | ✅ **已通过** | [Issue #936](https://github.com/M-China/mcd-developer-innovation-challenge/issues/936)，官方 2026-10-20 23:59 回复「您的作品已成功参赛」 |
 | 必需文件 | ✅ 齐全 | `README.md` / `CONTEST_DECLARATION.md`（与官方原文逐字节一致，1522 B）/ `MCP_INTEGRATION.md` / 源代码 / `workbuddy.md` |
 | 敏感信息 | ✅ 无 | 仅 `mcp-config.example.json` 内 `${MCD_MCP_TOKEN}` 占位符 |
-| 仓库 Description / Topics | 🟡 部分 | Description 已填；Topics 待确认 |
-| 演示 GIF | ⬜ 待录 | 见第三节，README 首屏用 |
-| **重新报名** | ⬜ **待办（最紧急）** | 文件现已齐全，需**重新提交一个新 Issue**，见第二节 |
+| 仓库 Description | ✅ 已填 | 含省钱榜单等卖点 |
+| 仓库 Topics | ⬜ **未设置** | 影响搜索曝光，5 分钟可补 |
+| 演示 GIF | ⬜ 待录 | README 首屏用，今天必做 |
+| **进榜距离** | ⚠️ **4 / 23 Star** | 2026-10-21 13:00 榜单：第 100 名门槛 **23 Star**，还差 **19 颗** |
+
+> ℹ️ #932 因「首次推送晚于机器人检查」被判缺文件，已作废；#936 是有效报名。
 
 ---
 
-## 二、重新报名（最紧急，先做这个）
+## 二、报名记录（已通过，无需再提交）
 
-> 官方规则原文：「如果因不满足条件导致报名失败，系统也会在报名 Issue 下回复失败原因。完成相应修改后，你可以**重新提交 Issue**。」
-> #932 已作废，**不要再在 #932 下回复**，直接新建一个 Issue。
+> ✅ **有效报名：[Issue #936](https://github.com/M-China/mcd-developer-innovation-challenge/issues/936)**
+> 官方 `M-China-Official` 于 2026-10-20 23:59 回复：「您的作品已成功参赛，您可以通过官方项目的排行榜.md查看排名」。
+>
+> ❌ #932 已作废（首次推送晚于机器人检查，被判缺文件），**不要在 #932 下回复任何内容**。
 
-**Issue Title：**
-```
-【参赛申请】麦麦省钱点单助手
-```
+存档正文（如后续官方要求重新核验，可原样再提交）：
 
-**Issue Body（4 行，行内不换行，地址裸写）：**
 ```
 【参赛申请】
 项目名称：麦麦省钱点单助手
@@ -38,23 +39,17 @@
 项目简介：会算账的麦当劳点单专家，用真实价格和优惠券算出省钱榜单最优解，一键领券 + 自动用最优券 + 卡路里可视 + 五大场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
 ```
 
-新建入口：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/new>
+> 💡 经验：以后任何「报名类 Issue」都必须在**仓库文件推完之后**再提交，否则机器人会在几秒内判定为空仓库。
 
-> ⚠️ 自动化提交已实测受阻：现有 fine-grained PAT 与 GitHub 连接器都返回
-> `403 Resource not accessible`（缺 Issues 写权限 / 未覆盖该仓库）。
-> 想脚本化提交，需新建 **classic PAT 勾选 `public_repo`**，或给 fine-grained PAT 加上
-> 「Issues: Read and write」并授权 `M-China/mcd-developer-innovation-challenge` 仓库。
-> 否则**用浏览器手工提交最快**（约 1 分钟）。
-
-**提交前 30 秒自检**（缺一不可）：
+**推送完整性自检**（改完东西想知道有没有真推上去）：
 
 ```bash
-for f in README.md CONTEST_DECLARATION.md MCP_INTEGRATION.md workbuddy.md; do
-  printf "%s  " "$(curl -s -o /dev/null -w '%{http_code}' https://raw.githubusercontent.com/Huangxxuan/mcd-savings-skill/main/$f)"
-  echo "$f"
-done
-# 期望全部 200
+cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
+echo "本地 HEAD: $(git rev-parse HEAD)"
+curl -s https://api.github.com/repos/Huangxxuan/mcd-savings-skill/commits/main | grep -m1 '"sha"'
+# 两个 sha 必须完全一致
 ```
+
 
 ---
 
@@ -93,9 +88,12 @@ cd /Users/huang/WorkBuddy/2026-10-20-17-09-03/mcd-savings-skill
 
 ---
 
-## 四、还差的两步（提升 Star 转化率）
+## 四、冲进前 100 的三步（**门槛 23 Star，当前 4**）
 
-### 1. 仓库 Description 与 Topics
+> 2026-10-21 13:00 官方榜单实测：第 100 名 = 23 Star，第 1 名 = 813 Star。
+> 进榜即有实物周边（汉堡回车键 + 徽章）+ WorkBuddy 3,000 积分。**还差 19 颗，完全够得着。**
+
+### 1. 仓库 Description 与 Topics（5 分钟）
 
 **Description：**
 ```
@@ -123,26 +121,21 @@ mcdonalds mcp model-context-protocol workbuddy skill 1024 m-code ai-agent visual
 
 > 建议 820px 宽、≤5 MB（GitHub 大图加载慢会掉星）。
 
----
+### 3. 按排期发帖（决定 80% 的 Star）
 
-## 五、报名 Issue 存档（#932 已作废，仅作记录）
+| 日期 | 渠道 | 用哪版文案 | 目标 |
+|---|---|---|---|
+| **10/21（今天）** | 朋友圈 + 3 个技术群 | 版本 C 一句话 + GIF | 前 10–20 星 |
+| 10/22（四） | CSDN 活动页评论区 + 掘金 | 版本 A 技术长文 | 搜索流量与同行认可 |
+| 10/23（五） | 即刻 / 小红书 / 公众号 | 版本 B 产品向图文 | 破圈到非技术人群 |
+| 10/24（六） | V2EX / 少数派 / Discord、TG、微信群 | 版本 A 精简版 | 周末流量高峰 |
+| 10/25（日） | 全渠道倒计时提醒 | 版本 C 变体 | 最后冲刺 |
 
-**Title：**
-```
-【参赛申请】麦麦省钱点单助手
-```
-
-**Body（四行、每行不换行、地址裸写不用 Markdown 链接）：**
-```
-【参赛申请】
-项目名称：麦麦省钱点单助手
-项目地址：https://github.com/Huangxxuan/mcd-savings-skill
-项目简介：会算账的麦当劳点单专家，省钱榜单找最优解 + 一键领券 + 自动用最优券 + 卡路里可视 + 场景搭配 + 拼单凑单 + 门店导航，把 MCP 真实数据渲染成可点击的点单助手
-```
+文案全文见 `麦当劳大赛-传播话术包.md`（含 13 条标题库、配图清单、Star 引导话术）。
 
 ---
 
-## 六、终审检查清单（10-25 当天跑一遍）
+## 五、终审检查清单（10-25 当天跑一遍）
 
 | # | 检查项 | 命令/方式 | 期望 |
 |---|---|---|---|
