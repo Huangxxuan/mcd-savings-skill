@@ -40,6 +40,12 @@
 
 新建入口：<https://github.com/M-China/mcd-developer-innovation-challenge/issues/new>
 
+> ⚠️ 自动化提交已实测受阻：现有 fine-grained PAT 与 GitHub 连接器都返回
+> `403 Resource not accessible`（缺 Issues 写权限 / 未覆盖该仓库）。
+> 想脚本化提交，需新建 **classic PAT 勾选 `public_repo`**，或给 fine-grained PAT 加上
+> 「Issues: Read and write」并授权 `M-China/mcd-developer-innovation-challenge` 仓库。
+> 否则**用浏览器手工提交最快**（约 1 分钟）。
+
 **提交前 30 秒自检**（缺一不可）：
 
 ```bash
