@@ -10,7 +10,7 @@
 
 ---
 
-<img width="1020" height="737" alt="image" src="https://github.com/user-attachments/assets/d5bbb9e5-f467-4843-aa2a-e1566818898e" />
+<img width="1345" height="697" alt="image" src="https://github.com/user-attachments/assets/94d70a8f-e485-463e-94e2-2bec54a13d7d" />
 
 
 ## ✨ 核心能力
