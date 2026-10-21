@@ -11,6 +11,7 @@
 ---
 
 <img width="1345" height="697" alt="image" src="https://github.com/user-attachments/assets/94d70a8f-e485-463e-94e2-2bec54a13d7d" />
+<img width="1343" height="699" alt="image" src="https://github.com/user-attachments/assets/189208f6-24ac-4e40-b413-1b4403f9fc3c" />
 
 
 ## ✨ 核心能力
