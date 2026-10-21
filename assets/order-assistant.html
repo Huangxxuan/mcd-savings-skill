@@ -529,6 +529,34 @@ body {
 }
 .empty { font-family: var(--mono); font-size: 11px; color: var(--muted); padding: 12px; text-align: center; }
 
+/* ---------- 已选清单：每条可 +/−/移除，另有「清空」 ---------- */
+.mgroup { color: var(--acc); font-size: 10.5px; letter-spacing: .06em; margin: 6px 0 2px; }
+.cline {
+  display: flex; align-items: center; gap: 5px; padding: 4px 0;
+  border-bottom: 1px dashed rgba(124, 141, 163, .14);
+}
+.cline .cn {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text); font-size: 11px; line-height: 1.5; cursor: pointer;
+}
+.cline .cn:hover { color: var(--acc); }
+.cline .cq { font-family: var(--num); font-size: 10px; color: var(--muted); }
+.cline .cp { font-family: var(--num); font-size: 11px; color: var(--acc); min-width: 50px; text-align: right; }
+.cbtn {
+  font-family: var(--num); font-size: 11px; line-height: 1;
+  width: 19px; height: 19px; display: grid; place-items: center; cursor: pointer;
+  color: var(--muted); background: rgba(124, 141, 163, .10);
+  border: 1px solid var(--line); border-radius: 4px;
+  transition: all var(--dur-1) ease;
+}
+.cbtn:hover { color: var(--bg); background: var(--acc); border-color: var(--acc); }
+.cbtn.del:hover { background: var(--danger); border-color: var(--danger); }
+
+/* 超预算商品只降透明度，不再从列表里消失 */
+.item.dim { opacity: .42; }
+.item.dim:hover { opacity: .85; }
+.chip.budget { border-color: var(--warn); color: var(--warn); font-weight: 700; }
+
 /* ---------- 入场编排：3–6 组，错峰 60–120ms ---------- */
 .reveal { opacity: 0; transform: translateY(22px); }
 .reveal.in { opacity: 1; transform: none;
@@ -622,7 +650,9 @@ body {
       </section>
 
       <section class="panel reveal d4">
-        <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span></h2>
+        <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span>
+          <button class="mini-btn ghost" id="btnClearCart" style="display:none" title="清空当前点单人的已选">清空</button>
+        </h2>
         <div id="cart" style="font-family:var(--num);font-size:11.5px;line-height:1.9;color:var(--muted)">尚未选择</div>
         <div class="bar"><i id="kcalBar"></i></div>
         <div class="barinfo"><span id="kcalText">总热量 0 kcal</span><span id="macroText">蛋白 0g / 脂肪 0g / 碳水 0g</span></div>
@@ -989,7 +1019,7 @@ function renderBundles() {
   var panel = $("#bundlePanel");
   if (!sc) { panel.style.display = "none"; return; }
   panel.style.display = "block";
-  $("#bundleTag").textContent = "// " + sc.name + " · Top 3" +
+  $("#bundleTag").textContent = "// " + sc.name + " · Top " + ((sc.bundles || []).length || 0) +
     (sc.fallback ? " · 当前时段无专属商品，已按热量/品类兜底" : "");
   if (!sc.bundles || !sc.bundles.length) {
     $("#bundles").innerHTML = '<div class="empty">[ 当前时段无匹配组合，换个场景 ]</div>';
@@ -1004,25 +1034,37 @@ function renderCats() {
   var pool = scenePool();
   var cats = [];
   pool.forEach(function (it) { if (cats.indexOf(it.cat) < 0) cats.push(it.cat); });
-  if (cats.length && cats.indexOf(state.cat) < 0) state.cat = cats[0];
-  $("#cats").innerHTML = cats.map(function (c) {
+  /* 「全部」是合法分类值；当前分类不在本场景内时回退到第一个分类 */
+  if (state.cat !== "__all" && cats.indexOf(state.cat) < 0) state.cat = cats.length ? cats[0] : "__all";
+  var html = '<button class="chip' + (state.cat === "__all" ? " active" : "") +
+    '" data-cat="__all">全部 · ' + pool.length + '</button>';
+  html += cats.map(function (c) {
     return '<button class="chip' + (c === state.cat ? " active" : "") + '" data-cat="' + c + '">' + c + '</button>';
   }).join("");
+  /* 卡路里预算生效时给出可一键取消的提示 chip */
+  if (state.kcalBudget > 0) {
+    html += '<button class="chip budget" data-kcal="0" title="点击取消卡路里预算">预算 ≤' +
+      state.kcalBudget + ' kcal ✕</button>';
+  }
+  $("#cats").innerHTML = html;
 }
 
+/* 菜单渲染：预算只做「降透明度」提示，绝不隐藏商品 ——
+   否则「热量待核」的餐品会整卡消失，用户以为方案没生效 */
 function renderItems() {
-  var pool = scenePool().filter(function (it) { return it.cat === state.cat; });
-  // DIY 卡路里预算过滤（仅保留有真实热量数据且未超预算的餐品）
-  var list = state.kcalBudget > 0
-    ? pool.filter(function (it) { return (it.kcal || 0) > 0 && it.kcal <= state.kcalBudget; })
-    : pool;
-  if (!list.length) {
-    $("#items").innerHTML = '<div class="empty">[ 该条件下暂无商品，试试放宽预算 ]</div>';
+  var pool = scenePool();
+  if (state.cat && state.cat !== "__all") {
+    pool = pool.filter(function (it) { return it.cat === state.cat; });
+  }
+  if (!pool.length) {
+    $("#items").innerHTML = '<div class="empty">[ 当前分类暂无商品 · 点「全部」查看本场景所有餐品 ]</div>';
     return;
   }
-  $("#items").innerHTML = list.map(function (it) {
+  $("#items").innerHTML = pool.map(function (it) {
     var on = (activeMember().items[it.code] || 0) > 0;
+    var over = state.kcalBudget > 0 && (it.kcal || 0) > state.kcalBudget;
     return '<div class="item' + (on ? " on" : "") + (state.flash[it.code] ? " flash" : "") +
+      (over ? " dim" : "") +
       '" data-code="' + it.code + '" tabindex="0" role="checkbox" aria-checked="' + (on ? "true" : "false") + '">' +
       '<div class="thumb">' + thumbHtml(it) + '</div>' +
       '<div class="name">' + it.name + '</div>' + fmtKcal(it) +
@@ -1213,15 +1255,25 @@ function renderCart(r) {
   var el = $("#cart"), cnt = 0;
   r.lines.forEach(function (l) { cnt += l.qty; });
   $("#cartCount").textContent = "// " + cnt + " 件";
+  var bc = $("#btnClearCart");
+  if (bc) bc.style.display = r.lines.length ? "" : "none";
   if (!r.lines.length) { el.innerHTML = "尚未选择"; return; }
   var html = "";
   state.members.forEach(function (m) {
     var keys = Object.keys(m.items).filter(function (c) { return m.items[c] > 0; });
     if (!keys.length) return;
-    html += '<div style="color:var(--acc)">' + m.name + '</div>';
+    html += '<div class="mgroup">' + m.name + '</div>';
     keys.forEach(function (c) {
       var it = itemByCode(c);
-      if (it) html += it.name + " ×" + m.items[c] + "　" + money(it.price * m.items[c]) + "<br>";
+      if (!it) return;
+      html += '<div class="cline">' +
+        '<span class="cn" data-locate="' + c + '" title="点击在菜单中定位">' + it.name + '</span>' +
+        '<span class="cq">×' + m.items[c] + '</span>' +
+        '<span class="cp">' + money(it.price * m.items[c]) + '</span>' +
+        '<button class="cbtn" data-mminus="' + c + '" data-mid="' + m.id + '" title="减一份">−</button>' +
+        '<button class="cbtn" data-mplus="' + c + '" data-mid="' + m.id + '" title="加一份">+</button>' +
+        '<button class="cbtn del" data-mdel="' + c + '" data-mid="' + m.id + '" title="移除">✕</button>' +
+        '</div>';
     });
   });
   el.innerHTML = html;
@@ -1249,7 +1301,11 @@ function render() {
   var target = state.kcalBudget > 0 ? state.kcalBudget : 667;
   var pct = target > 0 ? Math.min(100, Math.round(r.kcal / target * 100)) : 0;
   $("#kcalBar").style.width = pct + "%";
-  $("#kcalText").textContent = "总热量 " + r.kcal + " kcal / 预算 " + target;
+  /* 有商品缺官方热量时如实标注，避免「总热量 0 kcal」被误读成真的没热量 */
+  var unknownN = r.lines.filter(function (l) { return !(l.item.kcal > 0); }).length;
+  var kcalTxt = r.kcal > 0 ? r.kcal + " kcal" : (r.lines.length ? "待核" : "0 kcal");
+  if (unknownN && r.lines.length) kcalTxt += "（" + unknownN + " 项无官方数据）";
+  $("#kcalText").textContent = "总热量 " + kcalTxt + " / 预算 " + target;
   $("#macroText").textContent = "蛋白 " + r.protein + "g · 脂肪 " + r.fat + "g · 碳水 " + r.carb + "g";
 
   $("#btnBless").disabled = r.lines.length === 0;
@@ -1257,17 +1313,41 @@ function render() {
 }
 
 /* ---------- 选中后：把菜单切到对应分类并高亮，保证「组合名 ↔ 菜单项」一致 ---------- */
+/* 关键：组合里的商品可能不属于当前场景（如「心形薯饼5块」只打了 beauty 标签，
+   却出现在办公下午茶方案里）。此时必须自动切到「全部菜单」，否则用户在菜单里
+   永远找不到它，也就无法取消选择 —— 这是上一版「已选了却看不到商品」的根因之一。 */
 function syncMenuToSelection(codes) {
   if (!codes.length) return;
-  var first = itemByCode(codes[0]);
-  if (first) state.cat = first.cat;
+  var poolCodes = scenePool().map(function (it) { return it.code; });
+  var outside = codes.filter(function (c) { return poolCodes.indexOf(c) < 0 && itemByCode(c); });
+  var cats = [];
+  codes.forEach(function (c) {
+    var it = itemByCode(c);
+    if (it && it.cat && cats.indexOf(it.cat) < 0) cats.push(it.cat);
+  });
+  var switched = false;
+  if (outside.length) {
+    /* 组合里有当前场景根本没有的商品 → 切到全部菜单，否则用户永远找不到它 */
+    state.scene = "all";
+    state.cat = "__all";
+    switched = true;
+  } else if (cats.length > 1) {
+    /* 组合横跨两个品类（汉堡 + 咖啡）时，只切到第一个品类会把另一个藏起来，
+       所以用本场景的「全部」视图，两个商品都能看到并高亮 */
+    state.cat = "__all";
+  } else if (cats.length === 1) {
+    state.cat = cats[0];
+  }
   state.flash = {};
   codes.forEach(function (c) { state.flash[c] = true; });
+  renderScenes();
+  renderBundles();
   renderCats();
   renderItems();
   var el = $("#items");
   if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(function () { state.flash = {}; renderItems(); }, 750);
+  setTimeout(function () { state.flash = {}; renderItems(); }, 900);
+  return switched;
 }
 
 /* ---------- DIY：按卡路里预算推荐 ---------- */
@@ -1406,7 +1486,44 @@ function showBlessing() {
 /* ---------- 事件 ---------- */
 document.addEventListener("click", function (e) {
   var sc = e.target.closest(".scene");
-  if (sc) { openSceneModal(sc.dataset.scene); return; }
+  if (sc) {
+    var sid = sc.dataset.scene;
+    /* 「全部菜单」不是场景 id，不能走弹窗逻辑 —— 上一版直接 return 导致点了没反应 */
+    if (sid === "all") {
+      state.scene = "all";
+      state.cat = "__all";
+      var sm = $("#sceneModal");
+      if (sm) sm.classList.remove("show");
+      render();
+      toast("已切换到全部菜单 · 共 " + D.menu.length + " 个餐品");
+      return;
+    }
+    openSceneModal(sid);
+    return;
+  }
+
+  /* 已选清单：− / + / 移除 / 点击名称定位 */
+  var cl2 = e.target.closest("[data-mminus],[data-mplus],[data-mdel]");
+  if (cl2) {
+    var mmid = cl2.dataset.mid;
+    var ccode = cl2.dataset.mminus || cl2.dataset.mplus || cl2.dataset.mdel;
+    var mem = null;
+    state.members.forEach(function (x) { if (x.id === mmid) mem = x; });
+    mem = mem || activeMember();
+    if (cl2.dataset.mdel) {
+      delete mem.items[ccode];
+    } else if (cl2.dataset.mminus) {
+      mem.items[ccode] = (mem.items[ccode] || 0) - 1;
+      if (mem.items[ccode] <= 0) delete mem.items[ccode];
+    } else {
+      mem.items[ccode] = (mem.items[ccode] || 0) + 1;
+    }
+    render();
+    return;
+  }
+
+  var loc = e.target.closest("[data-locate]");
+  if (loc) { syncMenuToSelection([loc.dataset.locate]); return; }
 
   var chip = e.target.closest(".chip[data-cat]");
   if (chip) { state.cat = chip.dataset.cat; renderCats(); renderItems(); return; }
@@ -1433,8 +1550,9 @@ document.addEventListener("click", function (e) {
       b.items.forEach(function (x) { mm.items[x.code] = 1; });
       render();
       if (inModal) $("#sceneModal").classList.remove("show");
-      syncMenuToSelection(b.items.map(function (x) { return x.code; }));
-      toast("已应用方案 " + (idx + 1) + "，菜单已同步高亮");
+      var sw = syncMenuToSelection(b.items.map(function (x) { return x.code; }));
+      toast(sw ? "已应用方案 " + (idx + 1) + " · 含跨场景商品，已切到全部菜单并高亮"
+        : "已应用方案 " + (idx + 1) + "，菜单已同步高亮");
     }
     return;
   }
@@ -1521,6 +1639,10 @@ function setKcal(v) {
   $("#kcalRange").value = state.kcalBudget > 0 ? state.kcalBudget : 1000;
   $("#kcalRangeVal").textContent = state.kcalBudget > 0 ? state.kcalBudget + " kcal" : "不限";
   renderDIY();
+  /* 预算变化要同步刷新分类 chip 与商品卡（超预算只降透明度，不隐藏） */
+  renderCats();
+  renderItems();
+  render();
 }
 
 $("#kcalRange").addEventListener("input", function (e) {
@@ -1647,6 +1769,14 @@ function doClaim() {
   }
 }
 $("#btnClaim").addEventListener("click", doClaim);
+
+/* 清空当前点单人的已选（不动其他拼单人） */
+var bcc = $("#btnClearCart");
+if (bcc) bcc.addEventListener("click", function () {
+  activeMember().items = {};
+  render();
+  toast("已清空当前点单人的选择");
+});
 
 function syncAutoBtn() {
   var b = $("#btnAuto");

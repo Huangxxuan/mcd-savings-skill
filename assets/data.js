@@ -1672,8 +1672,10 @@ window.MCD_REAL_DATA = {
       ],
       "discountType": null,
       "scenes": [
-        "office"
-      ]
+        "office",
+        "beauty"
+      ],
+      "sceneFallback": true
     },
     {
       "code": "521717",
@@ -1736,8 +1738,10 @@ window.MCD_REAL_DATA = {
       ],
       "discountType": "促销优惠",
       "scenes": [
-        "office"
-      ]
+        "office",
+        "fitness"
+      ],
+      "sceneFallback": true
     },
     {
       "code": "510479",
@@ -2473,22 +2477,42 @@ window.MCD_REAL_DATA = {
         {
           "items": [
             {
-              "code": "521922",
-              "name": "奶香大米派",
-              "price": 9.5,
-              "kcal": 0
+              "code": "9900008752",
+              "name": "派",
+              "price": 8.5,
+              "kcal": 232
             },
             {
-              "code": "9900016082",
-              "name": "心形薯饼5块",
-              "price": 14.5,
-              "kcal": 0
+              "code": "520689",
+              "name": "鲜萃咖啡",
+              "price": 9.5,
+              "kcal": 13
             }
           ],
-          "total": 24.0,
-          "kcal": 0,
-          "protein": 0.0,
-          "kcalKnown": false
+          "total": 18.0,
+          "kcal": 245,
+          "protein": 3.0,
+          "kcalKnown": true
+        },
+        {
+          "items": [
+            {
+              "code": "4810",
+              "name": "薯条",
+              "price": 13.5,
+              "kcal": 289
+            },
+            {
+              "code": "520689",
+              "name": "鲜萃咖啡",
+              "price": 9.5,
+              "kcal": 13
+            }
+          ],
+          "total": 23.0,
+          "kcal": 302,
+          "protein": 5.0,
+          "kcalKnown": true
         },
         {
           "items": [
@@ -2499,33 +2523,13 @@ window.MCD_REAL_DATA = {
               "kcal": 0
             },
             {
-              "code": "521901",
-              "name": "月下相思扭扭薯",
-              "price": 15.0,
+              "code": "9900015561",
+              "name": "麦咖啡冰爽一夏",
+              "price": 9.9,
               "kcal": 0
             }
           ],
-          "total": 24.5,
-          "kcal": 0,
-          "protein": 0.0,
-          "kcalKnown": false
-        },
-        {
-          "items": [
-            {
-              "code": "521922",
-              "name": "奶香大米派",
-              "price": 9.5,
-              "kcal": 0
-            },
-            {
-              "code": "9900016076",
-              "name": "“我就喜欢”鸡薯双全盒",
-              "price": 15.9,
-              "kcal": 0
-            }
-          ],
-          "total": 25.4,
+          "total": 19.4,
           "kcal": 0,
           "protein": 0.0,
           "kcalKnown": false
@@ -2545,62 +2549,62 @@ window.MCD_REAL_DATA = {
         {
           "items": [
             {
+              "code": "6102",
+              "name": "苹果片",
+              "price": 7.0,
+              "kcal": 32
+            },
+            {
+              "code": "6362",
+              "name": "100% 苹果汁(盒装)",
+              "price": 11.5,
+              "kcal": 88
+            }
+          ],
+          "total": 18.5,
+          "kcal": 120,
+          "protein": 0.0,
+          "kcalKnown": true
+        },
+        {
+          "items": [
+            {
               "code": "4437",
               "name": "玉米杯",
               "price": 13.0,
               "kcal": 87
             },
             {
-              "code": "521950",
-              "name": "蓝莓爆爆珠麦旋风",
-              "price": 16.5,
-              "kcal": 295
-            }
-          ],
-          "total": 29.5,
-          "kcal": 382,
-          "protein": 10.0,
-          "kcalKnown": true
-        },
-        {
-          "items": [
-            {
               "code": "6362",
               "name": "100% 苹果汁(盒装)",
               "price": 11.5,
               "kcal": 88
-            },
-            {
-              "code": "521950",
-              "name": "蓝莓爆爆珠麦旋风",
-              "price": 16.5,
-              "kcal": 295
             }
           ],
-          "total": 28.0,
-          "kcal": 383,
-          "protein": 6.0,
+          "total": 24.5,
+          "kcal": 175,
+          "protein": 4.0,
           "kcalKnown": true
         },
         {
           "items": [
             {
-              "code": "3755",
-              "name": "纯牛奶(盒装)",
-              "price": 10.5,
-              "kcal": 129
+              "code": "9900016058",
+              "name": "鱼排堡开心乐园餐",
+              "price": 24.0,
+              "kcal": 0
             },
             {
-              "code": "521950",
-              "name": "蓝莓爆爆珠麦旋风",
-              "price": 16.5,
-              "kcal": 295
+              "code": "6102",
+              "name": "苹果片",
+              "price": 7.0,
+              "kcal": 32
             }
           ],
-          "total": 27.0,
-          "kcal": 424,
-          "protein": 13.0,
-          "kcalKnown": true
+          "total": 31.0,
+          "kcal": 32,
+          "protein": 0.0,
+          "kcalKnown": false
         }
       ],
       "fallback": false
@@ -2612,7 +2616,7 @@ window.MCD_REAL_DATA = {
       "desc": "高蛋白控卡 · 蛋白 ≥ 15g",
       "kcalMax": 550,
       "proteinMin": 15,
-      "count": 22,
+      "count": 23,
       "bundles": [
         {
           "items": [
@@ -2684,7 +2688,7 @@ window.MCD_REAL_DATA = {
       "desc": "犒赏自己的小甜头 · 目标 ≤ 400 kcal",
       "kcalMax": 400,
       "priceMax": 35,
-      "count": 15,
+      "count": 16,
       "bundles": [
         {
           "items": [
@@ -2880,5 +2884,7 @@ window.MCD_REAL_DATA = {
       "deadline": "2030-12-31",
       "days": 1533
     }
-  ]
+  ],
+  "scenesRebuiltAt": "2026-10-21 11:31:29",
+  "scenesRebuildNote": "离线重算：数据仍为原快照，仅按新规则重选组合"
 };

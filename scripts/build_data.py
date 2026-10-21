@@ -352,17 +352,29 @@ def build_scene_bundles(menu: list) -> list:
         }
         cre = COMPANION_RE.get(sc["id"], r"咖啡|茶|可乐|薯")
         mains = ok
-        companions = [m for m in menu if re.search(cre, m["name"]) and m["code"] not in
-                      {x["code"] for x in mains}]
+        scene_codes = {m["code"] for m in pool}
+        hit = [m for m in menu if re.search(cre, m["name"])]
+        # 同场景优先：搭档必须尽量来自本场景池，否则会出现「办公下午茶方案里塞一个
+        # 只打了 beauty 标签的商品」——前端应用方案后在本场景菜单里根本定位不到它。
+        # 注意不能把 mains 从候选里剔除：场景里的饮品往往本身就是 main，
+        # 剔掉后会只剩场景外的商品可选（上一版就是这么错的）。
+        companions = [m for m in hit if m["code"] in scene_codes] + \
+                     [m for m in hit if m["code"] not in scene_codes]
         if not companions:
-            companions = [m for m in menu if m["code"] not in {x["code"] for x in mains}][:10]
+            companions = menu[:10]
 
         # 「全是饮品」的组合不成立（会推出「红茶 + 冰咖啡」这种）
         SOLID_RE = re.compile(r"堡|卷|饭|满分|粥|蛋|薯|翅|鸡|玉米|派|沙拉|盒|盒装")
+        DRINK_RE = re.compile(r"咖啡|奶铁|拿铁|美式|茶|可乐|雪碧|果汁|豆浆|牛奶|奶(?:$|[（(])|雪冰|饮品")
 
         combos, seen = [], set()
         for m1 in mains[:8]:
             for m2 in companions[:12]:
+                if m1["code"] == m2["code"]:
+                    continue
+                # 同品类不搭（避免「玉米杯 + 苹果汁」这类两杯/两小食的组合）
+                if m1.get("cat") == m2.get("cat"):
+                    continue
                 key = tuple(sorted({m1["code"], m2["code"]}))
                 if key in seen:
                     continue
@@ -378,6 +390,9 @@ def build_scene_bundles(menu: list) -> list:
                 if protein_min and pr < protein_min:
                     continue
                 if not any(SOLID_RE.search(x["name"]) for x in items):
+                    continue
+                # 两份都是饮品也不成立（牛奶 + 苹果汁）
+                if all(DRINK_RE.search(x["name"]) for x in items):
                     continue
                 combos.append({
                     "items": [{"code": x["code"], "name": x["name"], "price": x["price"],
@@ -404,7 +419,37 @@ def build_scene_bundles(menu: list) -> list:
         else:
             combos.sort(key=lambda c: (not c["kcalKnown"], c["kcal"] or 0, c["total"]))
 
-        out.append({**sc, "count": len(pool), "bundles": combos[:3], "fallback": is_fallback})
+        # 三个方案尽量用不同主食，避免「方案1/2/3 都是同一个派配不同咖啡」
+        ranked, used_main, used_idx = [], set(), set()
+        for idx, c in enumerate(combos):
+            mc = c["items"][0]["code"]
+            if mc in used_main:
+                continue
+            used_main.add(mc)
+            used_idx.add(idx)
+            ranked.append(c)
+            if len(ranked) == 3:
+                break
+        if len(ranked) < 3:
+            for idx, c in enumerate(combos):
+                if idx in used_idx:
+                    continue
+                ranked.append(c)
+                if len(ranked) == 3:
+                    break
+        combos = ranked
+
+        # 组合里用到的商品若尚未打本场景标签就补上 —— 保证「方案里的商品一定能
+        # 在本场景菜单里找到」，否则前端点方案后既看不到也取消不了（真实踩过的坑）
+        for c in combos[:3]:
+            for it in c["items"]:
+                for m in menu:
+                    if m["code"] == it["code"] and sc["id"] not in (m.get("scenes") or []):
+                        m.setdefault("scenes", []).append(sc["id"])
+                        m["sceneFallback"] = True
+        count_now = sum(1 for m in menu if sc["id"] in (m.get("scenes") or []))
+
+        out.append({**sc, "count": count_now, "bundles": combos[:3], "fallback": is_fallback})
     return out
 
 
@@ -628,6 +673,45 @@ def parse_campaigns(raw: str) -> list:
 # =============================================================================
 # 主流程
 # =============================================================================
+def repick_from_cache():
+    """离线重算场景组合：不做任何 MCP 调用，只用 assets/data.js 里已有的真实快照。
+
+    用途：调整 build_scene_bundles 的挑选规则后，无需重新联网也能让快照与规则一致
+    （餐品、价格、热量仍然是 MCP 当时返回的原值，不新增任何编造数据）。
+    """
+    path = os.path.join(ROOT, "assets", "data.js")
+    with open(path, encoding="utf-8") as f:
+        raw = f.read()
+    body = raw[raw.index("window.MCD_REAL_DATA"):]
+    body = body[body.index("=") + 1:].strip().rstrip(";")
+    payload = json.loads(body)
+
+    menu = payload.get("menu") or []
+    for m in menu:
+        m["scenes"] = classify_scenes(m)
+    payload["scenes"] = build_scene_bundles(menu)
+    payload["scenesRebuiltAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    payload["scenesRebuildNote"] = "离线重算：数据仍为原快照，仅按新规则重选组合"
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
+        f.write("window.MCD_REAL_DATA = ")
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+        f.write(";\n")
+
+    print(f"已离线重算场景组合并写回: {path}")
+    for s in payload["scenes"]:
+        sc_pool = {m["code"] for m in menu if s["id"] in (m.get("scenes") or [])}
+        outside = 0
+        for b in s.get("bundles") or []:
+            for it in b["items"]:
+                if it["code"] not in sc_pool:
+                    outside += 1
+        tag = "兜底" if s.get("fallback") else "命中"
+        print(f"      {s['icon']} {s['name']}: {s['count']} 品 / {len(s['bundles'])} 组合"
+              f" [{tag}] 跨场景商品 {outside} 件")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="深圳市")
@@ -636,7 +720,13 @@ def main():
     ap.add_argument("--store-name", default="")
     ap.add_argument("--claim", action="store_true",
                     help="先调用 auto-bind-coupons 一键领取全部可领券（写操作，需用户同意）")
+    ap.add_argument("--repick", action="store_true",
+                    help="离线重算场景组合（不联网，只用现有 assets/data.js 快照）")
     args = ap.parse_args()
+
+    if args.repick:
+        repick_from_cache()
+        return
 
     token = os.environ.get("MCD_MCP_TOKEN", "")
     if not token:
