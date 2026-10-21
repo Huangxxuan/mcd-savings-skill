@@ -1,17 +1,17 @@
 # 🍔 麦麦省钱点单助手 · mcd-savings-assistant
 
-> 会算账的麦当劳点单专家：一键领券 · 自动用最优券 · 智能搭配 · 卡路里可视 · 附近门店导航 · DIY 自由搭 · 一键下单
+> 会算账的麦当劳点单专家：一键领券 · 自动用最优券 · 智能搭配 · **省钱榜单** · 卡路里可视 · 附近门店导航 · DIY 自由搭 · 一键下单
 
 基于 **麦当劳中国 MCP**（`https://mcp.mcd.cn`）能力开发的可交互可视化 Skill。
-它不只是一个聊天机器人——它会把 MCP 返回的真实菜单、优惠券、营养与门店数据，渲染成一个**可点击、可勾选、实时算价算热量**的 HTML 点单助手。
+它不只是一个聊天机器人——它会把 MCP 返回的真实菜单、优惠券、营养与门店数据，渲染成一个**可点击、可勾选、实时算价算热量**的 HTML 可视化点单助手。
 
 [![Powered by McDonald's MCP](https://img.shields.io/badge/Powered%20by-McDonald's%20MCP-DA291C)](https://open.mcd.cn/mcp)
 [![Built with WorkBuddy](https://img.shields.io/badge/Built%20with-WorkBuddy-0052D9)](https://www.workbuddy.cn)
 
 ---
 
-<img width="1345" height="697" alt="image" src="https://github.com/user-attachments/assets/94d70a8f-e485-463e-94e2-2bec54a13d7d" />
-<img width="1343" height="699" alt="image" src="https://github.com/user-attachments/assets/189208f6-24ac-4e40-b413-1b4403f9fc3c" />
+<img width="1345" height="697" alt="麦麦省钱点单助手 · 省钱榜单与场景推荐" src="https://github.com/user-attachments/assets/94d70a8f-e485-463e-94e2-2bec54a13d7d" />
+<img width="1343" height="699" alt="麦麦省钱点单助手 · 菜单自选与购物车" src="https://github.com/user-attachments/assets/189208f6-24ac-4e40-b413-1b4403f9fc3c" />
 
 
 ## ✨ 核心能力
