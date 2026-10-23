@@ -1,6 +1,6 @@
 /* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */
 window.MCD_REAL_DATA = {
-  "generatedAt": "2026-10-20 21:37:25",
+  "generatedAt": "2026-10-23 15:20:53",
   "store": {
     "code": "1420762",
     "name": "麦当劳深圳同方信息港餐厅"
@@ -9,54 +9,15 @@ window.MCD_REAL_DATA = {
     {
       "id": "1420762",
       "name": "麦当劳深圳同方信息港餐厅",
-      "addr": "科技园北区朗山路11号同方信息港E栋G层5号商铺",
-      "dist": 0.4,
-      "hours": "07:00-23:00",
-      "open": true,
-      "lat": 0,
-      "lng": 0
-    },
-    {
-      "id": "1420659",
-      "name": "麦当劳深圳金拱门食品有限公司(禹洲广场)餐厅",
-      "addr": "科苑路共享大厦A座一层L1-01号/室商铺",
-      "dist": 0.48,
-      "hours": "07:00-23:00",
-      "open": true,
-      "lat": 0,
-      "lng": 0
-    },
-    {
-      "id": "1420888",
-      "name": "麦当劳深圳科技园长园得来速餐厅",
-      "addr": "粤海街道科技园社区高新中一道2号长园新材料港1 2 3 4栋的C栋一层102 103号",
-      "dist": 0.73,
-      "hours": "07:00-22:00",
-      "open": true,
-      "lat": 0,
-      "lng": 0
-    },
-    {
-      "id": "1421057",
-      "name": "麦当劳深圳松坪山餐厅",
-      "addr": "西丽街道松坪山社区松坪山群芳街40号松坪村综合楼一层B39商铺",
-      "dist": 0.81,
-      "hours": "00:00-23:59",
-      "open": true,
-      "lat": 0,
-      "lng": 0
-    },
-    {
-      "id": "1420412",
-      "name": "麦当劳深圳科苑路餐厅",
-      "addr": "讯美科技广场3号首层",
-      "dist": 1.23,
-      "hours": "07:00-23:00",
+      "addr": "",
+      "dist": 0,
+      "hours": "",
       "open": true,
       "lat": 0,
       "lng": 0
     }
   ],
+  "deliveryAddressCount": 0,
   "menu": [
     {
       "code": "9900016076",
@@ -64,6 +25,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 15.9,
       "origin": 28.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -83,6 +45,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 29.9,
       "origin": 50.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -102,6 +65,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 26.9,
       "origin": 47.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -116,20 +80,81 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
-      "code": "521955",
-      "name": "麦当劳联名徽章",
+      "code": "9900016077",
+      "name": "蘸酱炸鸡",
       "cat": "人气热卖",
-      "price": 34.9,
-      "origin": 39.9,
+      "price": 11.9,
+      "origin": 17.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
       "fat": 0.0,
       "carb": 0.0,
       "sodium": 0,
-      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_G521955_320.png",
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016077_320.gif",
+      "tags": [
+        "韩式芝士风味酱上新"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "521956",
+      "name": "麦当劳限定丝巾",
+      "cat": "人气热卖",
+      "price": 34.9,
+      "origin": 39.9,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20261023/product/MS_G521955_320.png",
       "tags": [],
       "discountType": "随单购麦金卡优惠",
+      "scenes": []
+    },
+    {
+      "code": "521952",
+      "name": "龙焰鸡腿堡",
+      "cat": "人气热卖",
+      "price": 15.9,
+      "origin": 24.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521952_320.png",
+      "tags": [
+        "韩式辣椒黄油风味"
+      ],
+      "discountType": "促销优惠",
+      "scenes": []
+    },
+    {
+      "code": "9900016566",
+      "name": "心形薯饼8块",
+      "cat": "人气热卖",
+      "price": 9.9,
+      "origin": 22.5,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016566_320.png",
+      "tags": [
+        "限时特惠"
+      ],
+      "discountType": "促销优惠",
       "scenes": []
     },
     {
@@ -138,6 +163,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 29.0,
       "origin": 57.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -155,6 +181,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 34.5,
       "origin": 46.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -174,6 +201,7 @@ window.MCD_REAL_DATA = {
       "cat": "人气热卖",
       "price": 16.5,
       "origin": 16.5,
+      "memberPrice": false,
       "kcal": 295,
       "kcalEstimated": true,
       "protein": 6.0,
@@ -196,6 +224,7 @@ window.MCD_REAL_DATA = {
       "cat": "精选单人餐",
       "price": 28.0,
       "origin": 57.0,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -215,6 +244,7 @@ window.MCD_REAL_DATA = {
       "cat": "精选单人餐",
       "price": 32.0,
       "origin": 58.5,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -234,6 +264,7 @@ window.MCD_REAL_DATA = {
       "cat": "精选单人餐",
       "price": 37.0,
       "origin": 66.0,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -253,6 +284,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 27.0,
       "origin": 27.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -268,31 +300,12 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
-      "code": "521952",
-      "name": "龙焰鸡腿堡",
-      "cat": "鸡肉汉堡/卷",
-      "price": 24.0,
-      "origin": 24.0,
-      "kcal": 0,
-      "kcalEstimated": false,
-      "protein": 0.0,
-      "fat": 0.0,
-      "carb": 0.0,
-      "sodium": 0,
-      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521952_320.png",
-      "tags": [
-        "上新",
-        "韩式辣椒黄油风味"
-      ],
-      "discountType": null,
-      "scenes": []
-    },
-    {
       "code": "9900016310",
       "name": "龙焰芝士棒鸡腿堡四件套",
       "cat": "鸡肉汉堡/卷",
       "price": 32.0,
       "origin": 57.0,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -312,6 +325,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 29.0,
       "origin": 57.0,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -331,6 +345,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 28.0,
       "origin": 57.0,
+      "memberPrice": true,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -350,6 +365,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 28.0,
       "origin": 57.0,
+      "memberPrice": true,
       "kcal": 391,
       "kcalEstimated": false,
       "protein": 23.0,
@@ -373,6 +389,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 34.5,
       "origin": 47.0,
+      "memberPrice": false,
       "kcal": 391,
       "kcalEstimated": false,
       "protein": 23.0,
@@ -398,6 +415,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 33.5,
       "origin": 46.0,
+      "memberPrice": false,
       "kcal": 485,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -418,6 +436,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 28.0,
       "origin": 40.5,
+      "memberPrice": false,
       "kcal": 369,
       "kcalEstimated": false,
       "protein": 15.0,
@@ -438,6 +457,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 27.0,
       "origin": 27.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -457,6 +477,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 22.5,
       "origin": 22.5,
+      "memberPrice": false,
       "kcal": 485,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -478,6 +499,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 23.5,
       "origin": 23.5,
+      "memberPrice": false,
       "kcal": 391,
       "kcalEstimated": false,
       "protein": 23.0,
@@ -503,6 +525,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 17.0,
       "origin": 17.0,
+      "memberPrice": false,
       "kcal": 369,
       "kcalEstimated": false,
       "protein": 15.0,
@@ -522,6 +545,7 @@ window.MCD_REAL_DATA = {
       "cat": "鸡肉汉堡/卷",
       "price": 23.5,
       "origin": 23.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -537,11 +561,54 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
+      "code": "9900006332",
+      "name": "薄皮V翅双拼十翅",
+      "cat": "小食拼盘/多人餐",
+      "price": 49.9,
+      "origin": 77.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20260610/product/MS_9900006332_320.png",
+      "tags": [
+        "小食拼盘",
+        "超值"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "9900015730",
+      "name": "BFF四宫格小食盘",
+      "cat": "小食拼盘/多人餐",
+      "price": 39.8,
+      "origin": 54.5,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900015730_320.gif",
+      "tags": [
+        "小食拼盘",
+        "随心拼"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
       "code": "9900004066",
       "name": "堡堡随心拼（7件任选）",
       "cat": "小食拼盘/多人餐",
       "price": 72.5,
       "origin": 101.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -557,11 +624,74 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
+      "code": "9900005321",
+      "name": "BFF四宫格小食盘双人餐",
+      "cat": "小食拼盘/多人餐",
+      "price": 62.9,
+      "origin": 122.5,
+      "memberPrice": true,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20260304/product/MS_9900005321_320.png",
+      "tags": [
+        "麦金卡"
+      ],
+      "discountType": "随单购麦金卡优惠",
+      "scenes": []
+    },
+    {
+      "code": "9900016078",
+      "name": "蘸酱麦麦脆汁鸡",
+      "cat": "蘸酱炸鸡",
+      "price": 11.9,
+      "origin": 18.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900016078_320.png",
+      "tags": [
+        "蘸酱炸鸡",
+        "韩式芝士风味酱上新"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "9900015729",
+      "name": "蘸酱BFF四宫格小食盘",
+      "cat": "蘸酱炸鸡",
+      "price": 42.8,
+      "origin": 57.5,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900015729_320.gif",
+      "tags": [
+        "蘸酱炸鸡",
+        "蘸酱炸鸡新吃法"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
       "code": "521966",
       "name": "韩式烟熏芝士风味酱",
       "cat": "蘸酱炸鸡",
       "price": 3.0,
       "origin": 3.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -570,6 +700,7 @@ window.MCD_REAL_DATA = {
       "sodium": 0,
       "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521966_320.png",
       "tags": [
+        "蘸酱",
         "韩式风味",
         "浓郁芝香"
       ],
@@ -582,6 +713,7 @@ window.MCD_REAL_DATA = {
       "cat": "随心配1+1",
       "price": 14.9,
       "origin": 14.9,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -601,6 +733,7 @@ window.MCD_REAL_DATA = {
       "cat": "随心配1+1",
       "price": 13.9,
       "origin": 13.9,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -615,30 +748,12 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
-      "code": "9900015602",
-      "name": "大堡口福三件套",
-      "cat": "大堡口福单人餐",
-      "price": 22.9,
-      "origin": 47.0,
-      "kcal": 0,
-      "kcalEstimated": false,
-      "protein": 0.0,
-      "fat": 0.0,
-      "carb": 0.0,
-      "sodium": 0,
-      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900015602_320.png",
-      "tags": [
-        "大口吃肉好快乐"
-      ],
-      "discountType": null,
-      "scenes": []
-    },
-    {
       "code": "9900000888",
       "name": "巨无霸四件套",
       "cat": "巨无霸牛鱼肉堡",
       "price": 32.0,
       "origin": 58.5,
+      "memberPrice": true,
       "kcal": 513,
       "kcalEstimated": false,
       "protein": 27.0,
@@ -660,6 +775,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 32.0,
       "origin": 58.5,
+      "memberPrice": true,
       "kcal": 493,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -681,6 +797,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 32.0,
       "origin": 58.5,
+      "memberPrice": true,
       "kcal": 442,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -704,6 +821,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 32.0,
       "origin": 58.5,
+      "memberPrice": true,
       "kcal": 485,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -725,6 +843,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 37.5,
       "origin": 50.0,
+      "memberPrice": false,
       "kcal": 493,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -747,6 +866,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 36.5,
       "origin": 49.0,
+      "memberPrice": false,
       "kcal": 513,
       "kcalEstimated": false,
       "protein": 27.0,
@@ -769,6 +889,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 35.5,
       "origin": 48.0,
+      "memberPrice": false,
       "kcal": 442,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -793,6 +914,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 35.0,
       "origin": 47.5,
+      "memberPrice": false,
       "kcal": 485,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -815,6 +937,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 33.5,
       "origin": 46.0,
+      "memberPrice": false,
       "kcal": 325,
       "kcalEstimated": false,
       "protein": 16.0,
@@ -835,6 +958,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 34.0,
       "origin": 46.5,
+      "memberPrice": false,
       "kcal": 429,
       "kcalEstimated": false,
       "protein": 27.0,
@@ -859,6 +983,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 26.0,
       "origin": 38.5,
+      "memberPrice": false,
       "kcal": 294,
       "kcalEstimated": false,
       "protein": 16.0,
@@ -883,6 +1008,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 25.5,
       "origin": 25.5,
+      "memberPrice": false,
       "kcal": 513,
       "kcalEstimated": false,
       "protein": 27.0,
@@ -905,6 +1031,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 24.0,
       "origin": 24.0,
+      "memberPrice": false,
       "kcal": 485,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -927,6 +1054,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 22.5,
       "origin": 22.5,
+      "memberPrice": false,
       "kcal": 325,
       "kcalEstimated": false,
       "protein": 16.0,
@@ -947,6 +1075,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 26.5,
       "origin": 26.5,
+      "memberPrice": false,
       "kcal": 493,
       "kcalEstimated": false,
       "protein": 28.0,
@@ -969,6 +1098,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 24.5,
       "origin": 24.5,
+      "memberPrice": false,
       "kcal": 442,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -991,6 +1121,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 23.0,
       "origin": 23.0,
+      "memberPrice": false,
       "kcal": 429,
       "kcalEstimated": false,
       "protein": 27.0,
@@ -1015,6 +1146,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 22.5,
       "origin": 22.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1036,6 +1168,7 @@ window.MCD_REAL_DATA = {
       "cat": "巨无霸牛鱼肉堡",
       "price": 15.0,
       "origin": 15.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1056,6 +1189,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 37.0,
       "origin": 66.0,
+      "memberPrice": true,
       "kcal": 707,
       "kcalEstimated": false,
       "protein": 34.0,
@@ -1075,6 +1209,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 37.0,
       "origin": 66.0,
+      "memberPrice": true,
       "kcal": 696,
       "kcalEstimated": false,
       "protein": 32.0,
@@ -1094,6 +1229,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 45.5,
       "origin": 58.0,
+      "memberPrice": false,
       "kcal": 707,
       "kcalEstimated": false,
       "protein": 34.0,
@@ -1114,6 +1250,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 42.5,
       "origin": 55.0,
+      "memberPrice": false,
       "kcal": 696,
       "kcalEstimated": false,
       "protein": 32.0,
@@ -1134,6 +1271,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 34.5,
       "origin": 34.5,
+      "memberPrice": false,
       "kcal": 707,
       "kcalEstimated": false,
       "protein": 34.0,
@@ -1154,6 +1292,7 @@ window.MCD_REAL_DATA = {
       "cat": "安格斯MAX厚牛堡",
       "price": 31.5,
       "origin": 31.5,
+      "memberPrice": false,
       "kcal": 696,
       "kcalEstimated": false,
       "protein": 32.0,
@@ -1174,6 +1313,7 @@ window.MCD_REAL_DATA = {
       "cat": "炸鸡",
       "price": 15.5,
       "origin": 15.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1194,6 +1334,7 @@ window.MCD_REAL_DATA = {
       "cat": "炸鸡",
       "price": 25.0,
       "origin": 37.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1209,11 +1350,57 @@ window.MCD_REAL_DATA = {
       "scenes": []
     },
     {
+      "code": "1700",
+      "name": "麦辣鸡翅",
+      "cat": "炸鸡",
+      "price": 15.0,
+      "origin": 15.0,
+      "memberPrice": false,
+      "kcal": 224,
+      "kcalEstimated": false,
+      "protein": 13.0,
+      "fat": 15.0,
+      "carb": 9.0,
+      "sodium": 537,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20260325/product/MS_G1700_320.png",
+      "tags": [
+        "单品",
+        "黄金酥脆",
+        "鲜嫩多汁"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "520445",
+      "name": "薄皮焦香V翅",
+      "cat": "炸鸡",
+      "price": 16.0,
+      "origin": 16.0,
+      "memberPrice": false,
+      "kcal": 192,
+      "kcalEstimated": false,
+      "protein": 17.0,
+      "fat": 11.0,
+      "carb": 6.0,
+      "sodium": 594,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20241202/product/MS_520445_320.png",
+      "tags": [
+        "单品",
+        "人气"
+      ],
+      "discountType": null,
+      "scenes": [
+        "fitness"
+      ]
+    },
+    {
       "code": "1401",
       "name": "麦乐鸡",
       "cat": "炸鸡",
       "price": 14.0,
       "origin": 14.0,
+      "memberPrice": false,
       "kcal": 213,
       "kcalEstimated": false,
       "protein": 12.0,
@@ -1234,6 +1421,7 @@ window.MCD_REAL_DATA = {
       "cat": "炸鸡",
       "price": 14.0,
       "origin": 14.0,
+      "memberPrice": false,
       "kcal": 385,
       "kcalEstimated": false,
       "protein": 24.0,
@@ -1250,11 +1438,74 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
+      "code": "9900005432",
+      "name": "麦麦脆汁鸡1块",
+      "cat": "炸鸡",
+      "price": 15.0,
+      "origin": 15.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900005432_320.png",
+      "tags": [
+        "单品"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "9900015602",
+      "name": "大堡口福三件套",
+      "cat": "大堡口福单人餐",
+      "price": 22.9,
+      "origin": 47.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900015602_320.png",
+      "tags": [
+        "大口吃肉好快乐"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "521955",
+      "name": "麦当劳联名徽章",
+      "cat": "小食甜品/其他",
+      "price": 34.9,
+      "origin": 39.9,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521955_320.png",
+      "tags": [
+        "上新"
+      ],
+      "discountType": "随单购麦金卡优惠",
+      "scenes": [
+        "beauty"
+      ]
+    },
+    {
       "code": "521954",
       "name": "麦当劳联名复古棒球帽",
       "cat": "小食甜品/其他",
       "price": 34.9,
       "origin": 39.9,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1276,6 +1527,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 11.0,
       "origin": 15.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1299,6 +1551,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 14.5,
       "origin": 14.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1322,6 +1575,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 5.0,
       "origin": 5.0,
+      "memberPrice": false,
       "kcal": 93,
       "kcalEstimated": true,
       "protein": 2.0,
@@ -1345,6 +1599,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 14.9,
       "origin": 14.9,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1368,6 +1623,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 15.0,
       "origin": 15.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1391,6 +1647,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 9.5,
       "origin": 9.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1414,6 +1671,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 13.5,
       "origin": 13.5,
+      "memberPrice": false,
       "kcal": 289,
       "kcalEstimated": false,
       "protein": 4.0,
@@ -1436,6 +1694,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 13.0,
       "origin": 13.0,
+      "memberPrice": false,
       "kcal": 87,
       "kcalEstimated": false,
       "protein": 4.0,
@@ -1458,6 +1717,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 7.0,
       "origin": 7.0,
+      "memberPrice": false,
       "kcal": 32,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1480,6 +1740,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 15.5,
       "origin": 15.5,
+      "memberPrice": false,
       "kcal": 266,
       "kcalEstimated": true,
       "protein": 5.0,
@@ -1503,6 +1764,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 12.0,
       "origin": 12.0,
+      "memberPrice": false,
       "kcal": 282,
       "kcalEstimated": false,
       "protein": 5.0,
@@ -1526,6 +1788,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 5.0,
       "origin": 5.0,
+      "memberPrice": false,
       "kcal": 93,
       "kcalEstimated": false,
       "protein": 2.0,
@@ -1549,6 +1812,7 @@ window.MCD_REAL_DATA = {
       "cat": "小食甜品/其他",
       "price": 8.5,
       "origin": 8.5,
+      "memberPrice": false,
       "kcal": 232,
       "kcalEstimated": false,
       "protein": 2.0,
@@ -1567,11 +1831,58 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
+      "code": "9900005421",
+      "name": "鱼排堡开心乐园餐",
+      "cat": "开心乐园",
+      "price": 24.0,
+      "origin": 24.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20250430/product/MS_9900005421_320_1745810420363.png",
+      "tags": [
+        "开心乐园餐",
+        "童年童款"
+      ],
+      "discountType": null,
+      "scenes": [
+        "kids"
+      ]
+    },
+    {
+      "code": "9900005423",
+      "name": "麦乐鸡开心乐园餐",
+      "cat": "开心乐园",
+      "price": 25.0,
+      "origin": 25.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20240904/product/MS_9900005423_320.png",
+      "tags": [
+        "开心乐园餐",
+        "童年童款"
+      ],
+      "discountType": null,
+      "scenes": [
+        "kids"
+      ]
+    },
+    {
       "code": "9900016058",
       "name": "鱼排堡开心乐园餐",
       "cat": "开心乐园",
       "price": 24.0,
       "origin": 24.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1594,6 +1905,7 @@ window.MCD_REAL_DATA = {
       "cat": "开心乐园",
       "price": 25.0,
       "origin": 25.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1611,11 +1923,35 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
+      "code": "9900005439",
+      "name": "开心亲子双人餐",
+      "cat": "开心乐园",
+      "price": 59.5,
+      "origin": 59.5,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20240904/product/MS_9900005439_320.png",
+      "tags": [
+        "开心亲子餐",
+        "童年童款"
+      ],
+      "discountType": null,
+      "scenes": [
+        "kids"
+      ]
+    },
+    {
       "code": "9900016055",
       "name": "开心亲子双人餐",
       "cat": "开心乐园",
       "price": 59.5,
       "origin": 59.5,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1638,6 +1974,7 @@ window.MCD_REAL_DATA = {
       "cat": "开心乐园",
       "price": 12.0,
       "origin": 12.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1659,6 +1996,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 9.9,
       "origin": 23.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1683,6 +2021,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 9.9,
       "origin": 23.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1704,6 +2043,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 11.9,
       "origin": 19.0,
+      "memberPrice": false,
       "kcal": 13,
       "kcalEstimated": true,
       "protein": 1.0,
@@ -1725,6 +2065,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 13.9,
       "origin": 21.0,
+      "memberPrice": false,
       "kcal": 148,
       "kcalEstimated": true,
       "protein": 8.0,
@@ -1749,6 +2090,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 9.9,
       "origin": 23.0,
+      "memberPrice": false,
       "kcal": 132,
       "kcalEstimated": false,
       "protein": 3.0,
@@ -1770,6 +2112,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 21.0,
       "origin": 21.0,
+      "memberPrice": false,
       "kcal": 167,
       "kcalEstimated": false,
       "protein": 9.0,
@@ -1791,6 +2134,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 9.5,
       "origin": 9.5,
+      "memberPrice": false,
       "kcal": 13,
       "kcalEstimated": false,
       "protein": 1.0,
@@ -1808,32 +2152,12 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
-      "code": "507389",
-      "name": "浓缩咖啡",
-      "cat": "麦咖啡™",
-      "price": 15.0,
-      "origin": 15.0,
-      "kcal": 13,
-      "kcalEstimated": false,
-      "protein": 1.0,
-      "fat": 0.0,
-      "carb": 2.0,
-      "sodium": 0,
-      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20250324/product/MS_507389_320.png",
-      "tags": [
-        "麦咖啡™咖啡"
-      ],
-      "discountType": null,
-      "scenes": [
-        "office"
-      ]
-    },
-    {
       "code": "507394",
       "name": "牛奶",
       "cat": "麦咖啡™",
       "price": 19.0,
       "origin": 19.0,
+      "memberPrice": false,
       "kcal": 129,
       "kcalEstimated": false,
       "protein": 7.0,
@@ -1856,6 +2180,7 @@ window.MCD_REAL_DATA = {
       "cat": "麦咖啡™",
       "price": 21.0,
       "origin": 21.0,
+      "memberPrice": false,
       "kcal": 132,
       "kcalEstimated": false,
       "protein": 3.0,
@@ -1877,6 +2202,7 @@ window.MCD_REAL_DATA = {
       "cat": "500大卡套餐",
       "price": 36.0,
       "origin": 54.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1893,11 +2219,52 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
+      "code": "9900011126",
+      "name": "酥脆无双套餐",
+      "cat": "500大卡套餐",
+      "price": 20.0,
+      "origin": 20.0,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20260701/product/MS_9900011126_320.png",
+      "tags": [],
+      "discountType": null,
+      "scenes": [
+        "fitness"
+      ]
+    },
+    {
+      "code": "9900011123",
+      "name": "“辣”么快乐套餐",
+      "cat": "500大卡套餐",
+      "price": 24.0,
+      "origin": 36.5,
+      "memberPrice": false,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900011123_320.png",
+      "tags": [],
+      "discountType": null,
+      "scenes": [
+        "fitness"
+      ]
+    },
+    {
       "code": "9900009245",
       "name": "牛气满满套餐",
       "cat": "500大卡套餐",
       "price": 35.0,
       "origin": 47.5,
+      "memberPrice": false,
       "kcal": 495,
       "kcalEstimated": false,
       "protein": 26.0,
@@ -1917,6 +2284,7 @@ window.MCD_REAL_DATA = {
       "cat": "500大卡套餐",
       "price": 39.5,
       "origin": 53.5,
+      "memberPrice": false,
       "kcal": 476,
       "kcalEstimated": false,
       "protein": 25.0,
@@ -1931,31 +2299,12 @@ window.MCD_REAL_DATA = {
       ]
     },
     {
-      "code": "521817",
-      "name": "【美汁源】“多汁柠柠”",
-      "cat": "饮品",
-      "price": 12.0,
-      "origin": 12.0,
-      "kcal": 0,
-      "kcalEstimated": false,
-      "protein": 0.0,
-      "fat": 0.0,
-      "carb": 0.0,
-      "sodium": 0,
-      "image": "https://menu-img.mcd.cn/pcm/prod/menu/20260807/product/MS_521817_320.png",
-      "tags": [
-        "上新",
-        "清爽上新"
-      ],
-      "discountType": null,
-      "scenes": []
-    },
-    {
       "code": "9900008751",
       "name": "可乐",
       "cat": "饮品",
       "price": 9.5,
       "origin": 9.5,
+      "memberPrice": false,
       "kcal": 147,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1977,6 +2326,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 9.5,
       "origin": 9.5,
+      "memberPrice": false,
       "kcal": 105,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -1998,6 +2348,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 11.5,
       "origin": 11.5,
+      "memberPrice": false,
       "kcal": 110,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2017,6 +2368,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 13.0,
       "origin": 13.0,
+      "memberPrice": false,
       "kcal": 165,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2036,6 +2388,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 9.5,
       "origin": 9.5,
+      "memberPrice": false,
       "kcal": 117,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2057,6 +2410,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 13.0,
       "origin": 13.0,
+      "memberPrice": false,
       "kcal": 228,
       "kcalEstimated": true,
       "protein": 1.0,
@@ -2076,6 +2430,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 10.5,
       "origin": 10.5,
+      "memberPrice": false,
       "kcal": 129,
       "kcalEstimated": true,
       "protein": 7.0,
@@ -2097,6 +2452,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 11.5,
       "origin": 11.5,
+      "memberPrice": false,
       "kcal": 88,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2118,6 +2474,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 10.0,
       "origin": 10.0,
+      "memberPrice": false,
       "kcal": 0,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2137,6 +2494,7 @@ window.MCD_REAL_DATA = {
       "cat": "饮品",
       "price": 11.5,
       "origin": 11.5,
+      "memberPrice": false,
       "kcal": 2,
       "kcalEstimated": false,
       "protein": 0.0,
@@ -2146,6 +2504,75 @@ window.MCD_REAL_DATA = {
       "image": "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_3505_320.png",
       "tags": [
         "热饮"
+      ],
+      "discountType": null,
+      "scenes": [
+        "office",
+        "beauty"
+      ],
+      "sceneFallback": true
+    },
+    {
+      "code": "9900016534",
+      "name": "王牌炸鸡任选2",
+      "cat": "券专属商品",
+      "price": 23.8,
+      "origin": 23.8,
+      "memberPrice": false,
+      "couponOnly": true,
+      "kcal": 0,
+      "kcalEstimated": false,
+      "protein": 0.0,
+      "fat": 0.0,
+      "carb": 0.0,
+      "sodium": 0,
+      "image": "",
+      "tags": [
+        "券专属"
+      ],
+      "discountType": null,
+      "scenes": []
+    },
+    {
+      "code": "9900000119",
+      "name": "美式中杯",
+      "cat": "券专属商品",
+      "price": 19.0,
+      "origin": 19.0,
+      "memberPrice": false,
+      "couponOnly": true,
+      "kcal": 13,
+      "kcalEstimated": false,
+      "protein": 1.0,
+      "fat": 0.0,
+      "carb": 2.0,
+      "sodium": 0,
+      "image": "",
+      "tags": [
+        "券专属"
+      ],
+      "discountType": null,
+      "scenes": [
+        "office"
+      ]
+    },
+    {
+      "code": "9900000117",
+      "name": "奶铁中杯",
+      "cat": "券专属商品",
+      "price": 21.0,
+      "origin": 21.0,
+      "memberPrice": false,
+      "couponOnly": true,
+      "kcal": 148,
+      "kcalEstimated": false,
+      "protein": 8.0,
+      "fat": 7.0,
+      "carb": 13.0,
+      "sodium": 77,
+      "image": "",
+      "tags": [
+        "券专属"
       ],
       "discountType": null,
       "scenes": [
@@ -2160,8 +2587,20 @@ window.MCD_REAL_DATA = {
       "name": "19.9元王牌炸鸡任选2",
       "desc": "王牌炸鸡任选2",
       "applyTo": [],
+      "skus": [
+        {
+          "code": "9900016534",
+          "name": "王牌炸鸡任选2"
+        }
+      ],
+      "promotionId": "112479004",
       "valid": "2026-10-19 10:30:00-2026-10-23 23:59:59",
-      "codeMatched": false
+      "codeMatched": false,
+      "realOk": true,
+      "realDiscount": 3.9,
+      "realPay": 19.9,
+      "realOrig": 23.8,
+      "realMsg": ""
     },
     {
       "id": "A255280326E3328D179C362B7B8DDA65",
@@ -2171,8 +2610,20 @@ window.MCD_REAL_DATA = {
       "applyTo": [
         "1440"
       ],
+      "skus": [
+        {
+          "code": "1440",
+          "name": "麦辣鸡腿汉堡"
+        }
+      ],
+      "promotionId": "112479003",
       "valid": "2026-10-19 10:30:00-2026-10-23 23:59:59",
-      "codeMatched": true
+      "codeMatched": true,
+      "realOk": true,
+      "realDiscount": 10.6,
+      "realPay": 11.9,
+      "realOrig": 22.5,
+      "realMsg": ""
     },
     {
       "id": "264B97DBE02BE6CF996AA6914151C4A9",
@@ -2182,8 +2633,20 @@ window.MCD_REAL_DATA = {
       "applyTo": [
         "507411"
       ],
+      "skus": [
+        {
+          "code": "507411",
+          "name": "麦咖啡™冰美式中杯"
+        }
+      ],
+      "promotionId": "112023002",
       "valid": "2026-10-20 00:00:00-2026-10-26 23:59:59",
-      "codeMatched": true
+      "codeMatched": true,
+      "realOk": true,
+      "realDiscount": 9.1,
+      "realPay": 9.9,
+      "realOrig": 19.0,
+      "realMsg": ""
     },
     {
       "id": "365A627ABDC435D840984F03055DF097",
@@ -2193,8 +2656,20 @@ window.MCD_REAL_DATA = {
       "applyTo": [
         "507411"
       ],
+      "skus": [
+        {
+          "code": "9900000119",
+          "name": "美式中杯"
+        }
+      ],
+      "promotionId": "110961005",
       "valid": "2026-10-20 00:00:00-2026-11-18 23:59:59",
-      "codeMatched": false
+      "codeMatched": false,
+      "realOk": true,
+      "realDiscount": 5.7,
+      "realPay": 13.3,
+      "realOrig": 19.0,
+      "realMsg": ""
     },
     {
       "id": "54573C230294E24F154414A1EE2949CD",
@@ -2205,56 +2680,310 @@ window.MCD_REAL_DATA = {
         "507409",
         "510479"
       ],
+      "skus": [
+        {
+          "code": "9900000117",
+          "name": "奶铁中杯"
+        }
+      ],
+      "promotionId": "110961004",
       "valid": "2026-10-20 00:00:00-2026-11-18 23:59:59",
-      "codeMatched": false
+      "codeMatched": false,
+      "realOk": true,
+      "realDiscount": 6.3,
+      "realPay": 14.7,
+      "realOrig": 21.0,
+      "realMsg": ""
     }
   ],
   "myCoupons": [
     {
       "name": "11.9元麦辣鸡腿堡",
-      "valid": "2026-10-19 10:30-2026-10-23 23:59 周一、二、三、四、五 10:30-23:59"
+      "couponId": "A255280326E3328D179C362B7B8DDA65",
+      "couponCode": "MCD620649C201YR00901G",
+      "discountValue": 11.9,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-10-23",
+      "tradeStartDate": "2026-10-19",
+      "orderTypes": [
+        1,
+        2
+      ],
+      "beTypes": [
+        1,
+        2,
+        5
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 1,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "今日到期",
+        "到店专用",
+        "外送专用"
+      ],
+      "valid": "2026-10-19~2026-10-23",
+      "inMine": true,
+      "realOk": true,
+      "realDiscount": 10.6,
+      "realPay": 11.9,
+      "realOrig": 22.5,
+      "realMsg": "",
+      "skus": [
+        {
+          "code": "1440",
+          "name": "麦辣鸡腿汉堡"
+        }
+      ]
     },
     {
       "name": "19.9元王牌炸鸡任选2",
-      "valid": "2026-10-19 10:30-2026-10-23 23:59 周一、二、三、四、五 10:30-23:59"
+      "couponId": "44928824D2D4273FE5ECA617BBF75483",
+      "couponCode": "MCD6G91H900002110Y66R",
+      "discountValue": 19.9,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-10-23",
+      "tradeStartDate": "2026-10-19",
+      "orderTypes": [
+        1,
+        2
+      ],
+      "beTypes": [
+        1,
+        2,
+        5
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 0,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "今日到期",
+        "到店专用",
+        "外送专用"
+      ],
+      "valid": "2026-10-19~2026-10-23",
+      "inMine": true,
+      "realOk": true,
+      "realDiscount": 3.9,
+      "realPay": 19.9,
+      "realOrig": 23.8,
+      "realMsg": "",
+      "skus": [
+        {
+          "code": "9900016534",
+          "name": "王牌炸鸡任选2"
+        }
+      ]
     },
     {
       "name": "9.9元中杯冰美式",
-      "valid": "2026-10-20 00:00-2026-10-26 23:59"
+      "couponId": "264B97DBE02BE6CF996AA6914151C4A9",
+      "couponCode": "MCD6020G0G91Y104490R8",
+      "discountValue": 9.9,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-10-26",
+      "tradeStartDate": "2026-10-20",
+      "orderTypes": [
+        1,
+        2
+      ],
+      "beTypes": [
+        1,
+        2,
+        3,
+        5
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 1,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "到店专用",
+        "外送专用"
+      ],
+      "valid": "2026-10-20~2026-10-26",
+      "inMine": true,
+      "realOk": true,
+      "realDiscount": 9.1,
+      "realPay": 9.9,
+      "realOrig": 19.0,
+      "realMsg": "",
+      "skus": [
+        {
+          "code": "507411",
+          "name": "麦咖啡™冰美式中杯"
+        }
+      ]
     },
     {
       "name": "人气麦旋风买一送一",
-      "valid": "2026-10-19 00:00-2026-10-25 23:59 10:00-22:00"
+      "couponId": "9856FF6299069479D1AC037870375F1A",
+      "couponCode": "MCD6Y00919006R1F101G2",
+      "discountValue": 15.0,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-10-25",
+      "tradeStartDate": "2026-10-19",
+      "orderTypes": [
+        1
+      ],
+      "beTypes": [
+        4
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 0,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "到店专用"
+      ],
+      "valid": "2026-10-19~2026-10-25",
+      "inMine": true,
+      "realOk": null,
+      "realDiscount": null,
+      "realPay": null,
+      "realOrig": null,
+      "realMsg": "未能在门店券里找到适用商品，需在结算页核销",
+      "skus": []
     },
     {
       "name": "新人专享-中杯美式7折",
-      "valid": "2026-10-20 00:00-2026-11-18 23:59 05:00-23:59"
+      "couponId": "365A627ABDC435D840984F03055DF097",
+      "couponCode": "MCD6096R000H0A10918Y5",
+      "discountValue": 13.3,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-11-18",
+      "tradeStartDate": "2026-10-20",
+      "orderTypes": [
+        1
+      ],
+      "beTypes": [
+        1,
+        3,
+        5
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 0,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "到店专用"
+      ],
+      "valid": "2026-10-20~2026-11-18",
+      "inMine": true,
+      "realOk": true,
+      "realDiscount": 5.7,
+      "realPay": 13.3,
+      "realOrig": 19.0,
+      "realMsg": "",
+      "skus": [
+        {
+          "code": "9900000119",
+          "name": "美式中杯"
+        }
+      ]
     },
     {
       "name": "新人专享-中杯奶铁7折",
-      "valid": "2026-10-20 00:00-2026-11-18 23:59 05:00-23:59"
+      "couponId": "54573C230294E24F154414A1EE2949CD",
+      "couponCode": "MCD606941081A0H0Y50R1",
+      "discountValue": 14.7,
+      "discountDesc": "用券价格",
+      "discountTypeText": "¥",
+      "tradeEndDate": "2026-11-18",
+      "tradeStartDate": "2026-10-20",
+      "orderTypes": [
+        1
+      ],
+      "beTypes": [
+        1,
+        3,
+        5
+      ],
+      "ifFreeCoupon": false,
+      "appliedCategory": 0,
+      "totalCount": 1,
+      "totalAvailableCount": 1,
+      "tags": [
+        "到店专用"
+      ],
+      "valid": "2026-10-20~2026-11-18",
+      "inMine": true,
+      "realOk": true,
+      "realDiscount": 6.3,
+      "realPay": 14.7,
+      "realOrig": 21.0,
+      "realMsg": "",
+      "skus": [
+        {
+          "code": "9900000117",
+          "name": "奶铁中杯"
+        }
+      ]
     }
   ],
   "available": [
     {
-      "title": "19.9元王牌炸鸡任选2",
-      "claimed": true
+      "title": "11.9元麦辣鸡腿堡",
+      "claimed": true,
+      "status": "HAVING_RECEIVE",
+      "label": "已领取",
+      "image": "https://img.mcd.cn/cms/images/289fd13e1138b66b.png",
+      "codes": [
+        "1440"
+      ],
+      "codesApprox": false
     },
     {
-      "title": "11.9元麦辣鸡腿堡",
-      "claimed": true
+      "title": "19.9元王牌炸鸡任选2",
+      "claimed": true,
+      "status": "HAVING_RECEIVE",
+      "label": "已领取",
+      "image": "https://img.mcd.cn/cms/images/edc67c7e8284bc71.png",
+      "codes": [
+        "9900016534"
+      ],
+      "codesApprox": false
     },
     {
       "title": "免费脆薯饼",
-      "claimed": true
+      "claimed": true,
+      "status": "HAVING_RECEIVE",
+      "label": "已领取",
+      "image": "https://img.mcd.cn/cms/images/858839306b7cca66.png",
+      "codes": [
+        "9900016566",
+        "9900016082"
+      ],
+      "codesApprox": true
     },
     {
-      "title": "人气麦旋风买一送一",
-      "claimed": true
+      "title": "11.9元麦辣鸡腿堡",
+      "claimed": false,
+      "status": "CAN_GET",
+      "label": "可领取",
+      "image": "https://mcd-portal-prod-cos1-1300270282.cos.ap-shanghai.myqcloud.com/campaign/prod/campaign-offer/coupon/428e50a23a7243b497691f44f55df3a6/%E9%BA%A6%E8%BE%A3%E9%B8%A1%E8%85%BF%E5%A0%A1600x600.png?sign=q-sign-algorithm%3Dsha1%26q-ak%3DAKIDCD6mEcX25tVrjNxiPvEICas0uXyBKIBs%26q-sign-time%3D1792390870%3B1950070870%26q-key-time%3D1792390870%3B1950070870%26q-header-list%3D%26q-url-param-list%3D%26q-signature%3D9335556a091f7531c195c391c1c4a474ab561030",
+      "codes": [
+        "1440"
+      ],
+      "codesApprox": false
     },
     {
-      "title": "9.9元中杯冰美式",
-      "claimed": true
+      "title": "19.9元王牌炸鸡任选2",
+      "claimed": false,
+      "status": "CAN_GET",
+      "label": "可领取",
+      "image": "https://mcd-portal-prod-cos1-1300270282.cos.ap-shanghai.myqcloud.com/campaign/prod/campaign-offer/coupon/3d8aad332ed94030aca790068eb56054/%E7%8E%8B%E7%89%8C%E7%82%B8%E9%B8%A1%E4%BB%BB%E9%80%892%20600x600.png?sign=q-sign-algorithm%3Dsha1%26q-ak%3DAKIDCD6mEcX25tVrjNxiPvEICas0uXyBKIBs%26q-sign-time%3D1792390820%3B1950070820%26q-key-time%3D1792390820%3B1950070820%26q-header-list%3D%26q-url-param-list%3D%26q-signature%3D8071268ddd60571549998be5267e1c7b0b71284a",
+      "codes": [
+        "9900016534"
+      ],
+      "codesApprox": false
     }
   ],
   "account": {
@@ -2293,6 +3022,11 @@ window.MCD_REAL_DATA = {
       }
     },
     "prizes": [
+      {
+        "name": "大小寒暖毯",
+        "imageUrl": "https://img.mcd.cn/gallery/5d99f3c597bf9587.png",
+        "typeText": "实物奖"
+      },
       {
         "name": "下单立减3元券",
         "imageUrl": "https://img.mcd.cn/gallery/ce3b2ebc8f729b18.png",
@@ -2349,78 +3083,78 @@ window.MCD_REAL_DATA = {
   "orders": [],
   "campaigns": [
     {
-      "date": "2026年10月19日 往期回顾",
-      "title": "超值𝟗.𝟗元早餐两件套陪你开工啦😋",
-      "desc": ""
-    },
-    {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月20日 往期回顾",
       "title": "麦当劳 X PEACEMINUSONE",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月22日 往期回顾",
+      "title": "麦当劳「我就喜欢」限定丝巾正式开售🔥",
+      "desc": ""
+    },
+    {
+      "date": "2026年10月23日 今日",
       "title": "韩式风味蘸酱上新❤️就「酱」心有所「薯」",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "麦当劳联动G-DRAGON",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "🫐一口爆汁！蓝莓爆爆珠麦旋风上新",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "早餐爆款回归，快来pick你的厚松饼堡！📣",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "🍫麦咖啡13.9r浓浓黑巧来啦！",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "麦咖啡一早现磨🥳元气早餐震撼来袭！",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "🩶灰白撞色，灰焰圆筒酷爽登场",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "学生专属！49元150天麦金学期卡💳",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "过家家派对上线，快来一起解锁梦想职业",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "“韩”风刮到了四件套~龙焰鸡腿堡来袭！",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "乐享90分钟高质量亲子时间",
       "desc": ""
     },
     {
-      "date": "2026年10月20日 今日",
+      "date": "2026年10月23日 今日",
       "title": "快来一起参加麦麦派对吧！",
       "desc": ""
     },
     {
-      "date": "2026年10月22日",
-      "title": "第三周周边即将开售✨限定主题丝巾！",
+      "date": "2026年10月24日",
+      "title": "预约麦金喜抽奖，🉐[积分霸王餐]",
       "desc": ""
     }
   ],
@@ -2472,7 +3206,7 @@ window.MCD_REAL_DATA = {
       "desc": "三点钟的回血时刻 · 目标 ≤ 30 元",
       "kcalMax": 400,
       "priceMax": 30,
-      "count": 22,
+      "count": 23,
       "bundles": [
         {
           "items": [
@@ -2544,7 +3278,7 @@ window.MCD_REAL_DATA = {
       "desc": "小朋友的快乐 · 目标 ≤ 450 kcal",
       "kcalMax": 450,
       "priceMax": 40,
-      "count": 9,
+      "count": 12,
       "bundles": [
         {
           "items": [
@@ -2589,7 +3323,7 @@ window.MCD_REAL_DATA = {
         {
           "items": [
             {
-              "code": "9900016058",
+              "code": "9900005421",
               "name": "鱼排堡开心乐园餐",
               "price": 24.0,
               "kcal": 0
@@ -2616,7 +3350,7 @@ window.MCD_REAL_DATA = {
       "desc": "高蛋白控卡 · 蛋白 ≥ 15g",
       "kcalMax": 550,
       "proteinMin": 15,
-      "count": 23,
+      "count": 26,
       "bundles": [
         {
           "items": [
@@ -2688,28 +3422,8 @@ window.MCD_REAL_DATA = {
       "desc": "犒赏自己的小甜头 · 目标 ≤ 400 kcal",
       "kcalMax": 400,
       "priceMax": 35,
-      "count": 16,
+      "count": 18,
       "bundles": [
-        {
-          "items": [
-            {
-              "code": "521922",
-              "name": "奶香大米派",
-              "price": 9.5,
-              "kcal": 0
-            },
-            {
-              "code": "9900015561",
-              "name": "麦咖啡冰爽一夏",
-              "price": 9.9,
-              "kcal": 0
-            }
-          ],
-          "total": 19.4,
-          "kcal": 0,
-          "protein": 0.0,
-          "kcalKnown": false
-        },
         {
           "items": [
             {
@@ -2749,6 +3463,26 @@ window.MCD_REAL_DATA = {
           "kcal": 0,
           "protein": 0.0,
           "kcalKnown": false
+        },
+        {
+          "items": [
+            {
+              "code": "9900016082",
+              "name": "心形薯饼5块",
+              "price": 14.5,
+              "kcal": 0
+            },
+            {
+              "code": "3505",
+              "name": "锡兰红茶",
+              "price": 11.5,
+              "kcal": 2
+            }
+          ],
+          "total": 26.0,
+          "kcal": 2,
+          "protein": 0.0,
+          "kcalKnown": false
         }
       ],
       "fallback": false
@@ -2756,72 +3490,30 @@ window.MCD_REAL_DATA = {
   ],
   "reminders": [
     {
-      "level": "danger",
-      "icon": "🎟️",
-      "type": "券过期",
+      "level": "warn",
+      "icon": "🚨",
+      "type": "待领券",
       "title": "11.9元麦辣鸡腿堡",
-      "desc": "　剩余 3 天",
-      "deadline": "2026-10-23",
-      "days": 3,
+      "desc": "当前可领取，尚未领取 —— 别错过",
+      "deadline": "",
+      "days": 0,
       "codes": [
         "1440"
-      ]
-    },
-    {
-      "level": "danger",
-      "icon": "🎟️",
-      "type": "券过期",
-      "title": "19.9元王牌炸鸡任选2",
-      "desc": "　剩余 3 天",
-      "deadline": "2026-10-23",
-      "days": 3,
-      "codes": []
+      ],
+      "codesApprox": false
     },
     {
       "level": "warn",
       "icon": "🚨",
       "type": "待领券",
-      "title": "免费脆薯饼",
+      "title": "19.9元王牌炸鸡任选2",
       "desc": "当前可领取，尚未领取 —— 别错过",
       "deadline": "",
       "days": 0,
       "codes": [
-        "9900016082"
-      ]
-    },
-    {
-      "level": "warn",
-      "icon": "🎟️",
-      "type": "券过期",
-      "title": "人气麦旋风买一送一",
-      "desc": "　剩余 5 天",
-      "deadline": "2026-10-25",
-      "days": 5,
-      "codes": [
-        "521950",
-        "9900008754"
-      ]
-    },
-    {
-      "level": "warn",
-      "icon": "🎟️",
-      "type": "券过期",
-      "title": "9.9元中杯冰美式",
-      "desc": "　剩余 6 天",
-      "deadline": "2026-10-26",
-      "days": 6,
-      "codes": [
-        "507411"
-      ]
-    },
-    {
-      "level": "info",
-      "icon": "📅",
-      "type": "进行中活动",
-      "title": "超值𝟗.𝟗元早餐两件套陪你开工啦😋",
-      "desc": "",
-      "deadline": "2026年10月19日 往期回顾",
-      "days": 0
+        "9900016534"
+      ],
+      "codesApprox": false
     },
     {
       "level": "info",
@@ -2829,7 +3521,16 @@ window.MCD_REAL_DATA = {
       "type": "进行中活动",
       "title": "麦当劳 X PEACEMINUSONE",
       "desc": "",
-      "deadline": "2026年10月20日 今日",
+      "deadline": "2026年10月20日 往期回顾",
+      "days": 0
+    },
+    {
+      "level": "info",
+      "icon": "📅",
+      "type": "进行中活动",
+      "title": "麦当劳「我就喜欢」限定丝巾正式开售🔥",
+      "desc": "",
+      "deadline": "2026年10月22日 往期回顾",
       "days": 0
     },
     {
@@ -2838,7 +3539,7 @@ window.MCD_REAL_DATA = {
       "type": "进行中活动",
       "title": "韩式风味蘸酱上新❤️就「酱」心有所「薯」",
       "desc": "",
-      "deadline": "2026年10月20日 今日",
+      "deadline": "2026年10月23日 今日",
       "days": 0
     },
     {
@@ -2847,33 +3548,8 @@ window.MCD_REAL_DATA = {
       "type": "进行中活动",
       "title": "麦当劳联动G-DRAGON",
       "desc": "",
-      "deadline": "2026年10月20日 今日",
+      "deadline": "2026年10月23日 今日",
       "days": 0
-    },
-    {
-      "level": "info",
-      "icon": "🎟️",
-      "type": "券过期",
-      "title": "新人专享-中杯美式7折",
-      "desc": "　剩余 29 天",
-      "deadline": "2026-11-18",
-      "days": 29,
-      "codes": [
-        "507411"
-      ]
-    },
-    {
-      "level": "info",
-      "icon": "🎟️",
-      "type": "券过期",
-      "title": "新人专享-中杯奶铁7折",
-      "desc": "　剩余 29 天",
-      "deadline": "2026-11-18",
-      "days": 29,
-      "codes": [
-        "507409",
-        "510479"
-      ]
     },
     {
       "level": "info",
@@ -2882,13 +3558,11 @@ window.MCD_REAL_DATA = {
       "title": "麦麦积分抽奖",
       "desc": "积分不足｜本次将消耗 24 积分",
       "deadline": "2030-12-31",
-      "days": 1533
+      "days": 1530
     }
   ],
-  "scenesRebuiltAt": "2026-10-21 11:31:29",
-  "scenesRebuildNote": "离线重算：数据仍为原快照，仅按新规则重选组合",
   "savings": {
-    "generatedAt": "2026-10-21 12:06:28",
+    "generatedAt": "2026-10-23 15:34:22",
     "basis": "price/origin/kcal/protein 全部来自 MCP 快照；券面额由券 Title 解析，最终以 calculate-price 为准",
     "hero": {
       "items": [
@@ -2924,6 +3598,34 @@ window.MCD_REAL_DATA = {
           {
             "items": [
               {
+                "code": "9900016534",
+                "name": "王牌炸鸡任选2",
+                "price": 23.8,
+                "kcal": 0
+              },
+              {
+                "code": "520445",
+                "name": "薄皮焦香V翅",
+                "price": 16.0,
+                "kcal": 192
+              }
+            ],
+            "origin": 39.8,
+            "pay": 19.9,
+            "save": 19.9,
+            "kind": "combo",
+            "savePct": 50,
+            "kcal": 192,
+            "kcalKnown": false,
+            "protein": 17.0,
+            "perYuanKcal": 9.6,
+            "perYuanProtein": 0.85,
+            "coupon": "19.9元王牌炸鸡任选2",
+            "note": "19.9 元任选 2 件：王牌炸鸡任选2 + 薄皮焦香V翅"
+          },
+          {
+            "items": [
+              {
                 "code": "1440",
                 "name": "麦辣鸡腿汉堡",
                 "price": 22.5,
@@ -2942,34 +3644,6 @@ window.MCD_REAL_DATA = {
             "perYuanProtein": 2.02,
             "coupon": "11.9元麦辣鸡腿堡",
             "note": "用「11.9元麦辣鸡腿堡」券后 ¥11.90，省 10.6 元"
-          },
-          {
-            "items": [
-              {
-                "code": "521881",
-                "name": "马来咖喱风味薄皮肉骨鸡3块",
-                "price": 15.5,
-                "kcal": 0
-              },
-              {
-                "code": "1401",
-                "name": "麦乐鸡",
-                "price": 14.0,
-                "kcal": 213
-              }
-            ],
-            "origin": 29.5,
-            "pay": 19.9,
-            "save": 9.6,
-            "kind": "combo",
-            "savePct": 33,
-            "kcal": 213,
-            "kcalKnown": false,
-            "protein": 12.0,
-            "perYuanKcal": 10.7,
-            "perYuanProtein": 0.6,
-            "coupon": "19.9元王牌炸鸡任选2",
-            "note": "19.9 元任选 2 件：马来咖喱风味薄皮肉骨鸡3块 + 麦乐鸡"
           },
           {
             "items": [
@@ -3115,6 +3789,28 @@ window.MCD_REAL_DATA = {
           {
             "items": [
               {
+                "code": "9900016566",
+                "name": "心形薯饼8块",
+                "price": 9.9,
+                "kcal": 0
+              }
+            ],
+            "origin": 22.5,
+            "pay": 9.9,
+            "save": 12.6,
+            "kind": "single",
+            "savePct": 56,
+            "kcal": 0,
+            "kcalKnown": false,
+            "protein": 0,
+            "perYuanKcal": 0,
+            "perYuanProtein": 0,
+            "coupon": "",
+            "note": "官方直降 56%，省 12.6 元"
+          },
+          {
+            "items": [
+              {
                 "code": "9900004236",
                 "name": "人气超值四件套随心选",
                 "price": 28.0,
@@ -3155,28 +3851,6 @@ window.MCD_REAL_DATA = {
             "perYuanProtein": 0,
             "coupon": "",
             "note": "官方直降 51%，省 29.0 元"
-          },
-          {
-            "items": [
-              {
-                "code": "9900000890",
-                "name": "板烧鸡腿堡四件套",
-                "price": 28.0,
-                "kcal": 391
-              }
-            ],
-            "origin": 57.0,
-            "pay": 28.0,
-            "save": 29.0,
-            "kind": "single",
-            "savePct": 51,
-            "kcal": 391,
-            "kcalKnown": true,
-            "protein": 23.0,
-            "perYuanKcal": 14.0,
-            "perYuanProtein": 0.82,
-            "coupon": "",
-            "note": "官方直降 51%，省 29.0 元"
           }
         ]
       },
@@ -3187,6 +3861,34 @@ window.MCD_REAL_DATA = {
         "desc": "主食 + 饮品（可加小食）自动套最优券；可用预算筛选「20 块怎么吃」",
         "unit": "省",
         "rows": [
+          {
+            "items": [
+              {
+                "code": "9900016534",
+                "name": "王牌炸鸡任选2",
+                "price": 23.8,
+                "kcal": 0
+              },
+              {
+                "code": "520445",
+                "name": "薄皮焦香V翅",
+                "price": 16.0,
+                "kcal": 192
+              }
+            ],
+            "origin": 39.8,
+            "pay": 19.9,
+            "save": 19.9,
+            "kind": "combo",
+            "savePct": 50,
+            "kcal": 192,
+            "kcalKnown": false,
+            "protein": 17.0,
+            "perYuanKcal": 9.6,
+            "perYuanProtein": 0.85,
+            "coupon": "19.9元王牌炸鸡任选2",
+            "note": "19.9 元任选 2 件：王牌炸鸡任选2 + 薄皮焦香V翅"
+          },
           {
             "items": [
               {
@@ -3214,34 +3916,6 @@ window.MCD_REAL_DATA = {
             "perYuanProtein": 1.12,
             "coupon": "11.9元麦辣鸡腿堡",
             "note": "麦辣鸡腿汉堡 + 可乐，用「11.9元麦辣鸡腿堡」"
-          },
-          {
-            "items": [
-              {
-                "code": "521881",
-                "name": "马来咖喱风味薄皮肉骨鸡3块",
-                "price": 15.5,
-                "kcal": 0
-              },
-              {
-                "code": "1401",
-                "name": "麦乐鸡",
-                "price": 14.0,
-                "kcal": 213
-              }
-            ],
-            "origin": 29.5,
-            "pay": 19.9,
-            "save": 9.6,
-            "kind": "combo",
-            "savePct": 33,
-            "kcal": 213,
-            "kcalKnown": false,
-            "protein": 12.0,
-            "perYuanKcal": 10.7,
-            "perYuanProtein": 0.6,
-            "coupon": "19.9元王牌炸鸡任选2",
-            "note": "19.9 元任选 2 件：马来咖喱风味薄皮肉骨鸡3块 + 麦乐鸡"
           },
           {
             "items": [
