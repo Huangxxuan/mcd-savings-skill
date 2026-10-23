@@ -2262,6 +2262,10 @@ function rankRowHtml(r, i, boardId) {
   if (r.perYuanProtein > 0) meta.push(r.perYuanProtein + " g蛋白/元");
   if (r.coupon) meta.push("🎟️ " + r.coupon);
   else if (r.origin > r.pay) meta.push("划线价直降");
+  /* 麦金卡会员价：菜单价只有持卡才能拿到，非会员按划线价结算，必须写清楚 */
+  if (r.memberOnly) {
+    meta.push("🪪 麦金卡价" + (r.nonMemberPay ? " · 非会员 " + money(r.nonMemberPay) : ""));
+  }
   return '<div class="rank-row" data-rank="' + boardId + ":" + i + '" tabindex="0" role="button" title="点击按这个方案点单">' +
     '<span class="rank-idx">' + (i + 1) + '</span>' +
     '<div class="rank-main"><div class="rank-name">' + names + '</div>' +
