@@ -71,15 +71,34 @@
 
 ### 2.4 新增功能对应的工具链
 
-**拼单凑单分享**
+**外送到家（地址在对话内建档，不用去 App）**
+```
+delivery-query-addresses   → 先看账号有没有地址（新账号通常是空数组）
+delivery-create-address    → 没有就用用户给的 6 个字段建档，返回 addressId
+delivery-query-stores      → 按 addressId + beType=2 取可配送门店的 storeCode 与 beCode，
+                             顺便拿到真实配送费 / 起送门槛 / 免配送门槛
+calculate-price            → orderType=2、beType=2 核价（配送费以它返回为准）
+create-order               → orderType=2、beType=2，必须带 addressId 与 beCode
+```
+> 关键：`beCode` 只能来自 `delivery-query-stores`。`delivery-query-addresses` 只返回地址列表，
+> 从它取 beCode 会拿到空值，下单直接失败；到店与外送是两套门店编码体系，不能混用。
+
+**凑单补差**
 ```
 delivery-query-stores / query-nearby-stores  → 取起送价与配送费门槛
 query-meals                                   → 取可补差商品与价格
-calculate-price                               → 核价（合并多人的商品清单）
-→ 本地计算差额与人均金额，生成分享文本
+calculate-price                               → 核价
+→ 本地计算差额，给出「再买 X 元免配送」的候选
 ```
 
-**优惠不错过提醒（8 类规则，当前账号实测生成 12 条）**
+**麦麦摇摇乐**
+```
+query-meals   → 从真实菜单 SKU 里随机抽一份（不编造餐品）
+→ 展示名称 / 现价 / 热量 + 今日签，一键加入结算舱
+→ 最终金额仍由 calculate-price 决定
+```
+
+**优惠不错过提醒（8 类规则，本次快照生成 9 条，随账号实时变化）**
 ```
 query-my-coupons     → 券有效期 → 临期提醒（≤3天 danger / ≤7天 warn）
 available-coupons    → 接口自带「状态：已领取/未领取」→ 可领未领提醒（warn）
