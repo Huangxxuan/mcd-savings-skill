@@ -1571,22 +1571,57 @@ def main():
         tag = "兜底" if s.get("fallback") else "命中"
         print(f"      {s['icon']} {s['name']}: {s['count']} 品 / {len(s['bundles'])} 组合 [{tag}]")
 
-    # 外送是否可用：即便门店支持麦乐送，账号里没存收货地址也走不通
-    # （delivery-query-stores 需要 addressId）。页面据此提示用户先去 App 添加地址。
+    # 外送链路：delivery-query-stores 必须带 addressId，所以先看账号有没有收货地址。
+    # 没有地址 → deliveryStores=[]，页面提示「先填收货地址」；
+    # 有地址 → 把可配送门店连同 beCode / 配送费 / 起送门槛一起抓下来。
+    # 这一步以前完全没做，导致 data.js 里没有外送 beCode，页面只能永远写
+    # 「配送费以结算页为准」—— 不是接口不给，是我们从来没问。
     delivery_addr_count = 0
+    delivery_stores = []
     try:
         ad = mcp_call_obj("delivery-query-addresses", {}, token)
-        delivery_addr_count = len(((ad.get("data") or {}).get("addresses")) or [])
-    except Exception:
-        pass
-    print(f"[6c] 外送收货地址: {delivery_addr_count} 个"
-          + ("" if delivery_addr_count else "（外送链路不可用，页面默认到店自取）"))
+        addrs = ((ad.get("data") or {}).get("addresses")) or []
+        delivery_addr_count = len(addrs)
+        addr_id = (addrs[0].get("addressId") if addrs else None)
+        if addr_id:
+            ds = mcp_call_obj("delivery-query-stores", {"beType": 2, "addressId": addr_id}, token)
+            d = ds.get("data") or {}
+            raw_ds = (d.get("stores") or d.get("storeList")
+                      or d.get("storeInfos") or d.get("list") or [])
+            for st in raw_ds[:12]:
+                if not isinstance(st, dict):
+                    continue
+                sid = str(st.get("storeCode") or st.get("code") or st.get("storeId") or "")
+                if not sid:
+                    continue
+                dist = pick_num(st, ("distance", "dist", "distanceValue"))
+                if dist is not None and dist > 50:   # 接口单位可能是米
+                    dist = round(dist / 1000, 2)
+                delivery_stores.append({
+                    "id": sid,
+                    "name": st.get("storeName") or st.get("name") or "麦当劳外送门店",
+                    "addr": st.get("address") or st.get("storeAddress") or "",
+                    "dist": dist if dist is not None else 0,
+                    "hours": st.get("businessTime") or st.get("openTime") or "",
+                    "open": st.get("isOpen", True) is not False,
+                    "beCode": str(st.get("beCode") or ""),
+                    "fee": pick_num(st, ("deliveryFee", "shippingFee", "deliveryPrice", "fee")),
+                    "min": pick_num(st, ("minOrderPrice", "minOrder", "startPrice", "min")),
+                    "freeOver": pick_num(st, ("freeDeliveryPrice", "freeShippingPrice",
+                                              "freeFeeOver", "freeOver")),
+                })
+    except Exception as e:
+        print(f"[6c] 外送门店抓取跳过：{e}")
+    print(f"[6c] 外送地址 {delivery_addr_count} 个 / 可配送门店 {len(delivery_stores)} 家"
+          + ("" if delivery_addr_count
+             else "（没填地址：先在页面填收货地址，再重跑本脚本即可拉到外送门店与真实配送费）"))
 
     payload = {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "store": {"code": store_code, "name": store_name},
         "stores": stores_out,
         "deliveryAddressCount": delivery_addr_count,
+        "deliveryStores": delivery_stores,
         "menu": menu_out,
         "coupons": coupons_out,
         "myCoupons": my_coupons,
