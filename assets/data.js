@@ -2668,8 +2668,6 @@ window.MCD_REAL_DATA = {
   "myCoupons": [
     {
       "name": "11.9元麦辣鸡腿堡",
-      "couponId": "A255280326E3328D179C362B7B8DDA65",
-      "couponCode": "MCD620649C201YR00901G",
       "discountValue": 11.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2709,8 +2707,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "19.9元王牌炸鸡任选2",
-      "couponId": "44928824D2D4273FE5ECA617BBF75483",
-      "couponCode": "MCD6G91H900002110Y66R",
       "discountValue": 19.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2750,8 +2746,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "9.9元中杯冰美式",
-      "couponId": "264B97DBE02BE6CF996AA6914151C4A9",
-      "couponCode": "MCD6020G0G91Y104490R8",
       "discountValue": 9.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2791,8 +2785,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "9.9元中杯冰美式",
-      "couponId": "264B97DBE02BE6CF996AA6914151C4A9",
-      "couponCode": "MCD6148409QJ00X2008R0",
       "discountValue": 9.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2832,8 +2824,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "人气麦旋风买一送一",
-      "couponId": "9856FF6299069479D1AC037870375F1A",
-      "couponCode": "MCD6Y00919006R1F101G2",
       "discountValue": 15.0,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2863,8 +2853,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "1024“码”力翻倍",
-      "couponId": "5FBE3138F2B0B0026A2F163B2AE8211F",
-      "couponCode": "MCD600C19Z048002LQ51X",
       "discountValue": 20.48,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2900,8 +2888,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "新人专享-中杯美式7折",
-      "couponId": "365A627ABDC435D840984F03055DF097",
-      "couponCode": "MCD6096R000H0A10918Y5",
       "discountValue": 13.3,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2938,8 +2924,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "新人专享-中杯奶铁7折",
-      "couponId": "54573C230294E24F154414A1EE2949CD",
-      "couponCode": "MCD606941081A0H0Y50R1",
       "discountValue": 14.7,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -2976,8 +2960,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "11.9元麦辣鸡腿堡",
-      "couponId": "B34E5EC6710BEEECEC8B25C742D3F119",
-      "couponCode": "MCD60900Q9W1420J80XR3",
       "discountValue": 11.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -3016,8 +2998,6 @@ window.MCD_REAL_DATA = {
     },
     {
       "name": "19.9元王牌炸鸡任选2",
-      "couponId": "A03BC156F97B8937213963D7632F3338",
-      "couponCode": "MCD6425W0R1509J040Q0Y",
       "discountValue": 19.9,
       "discountDesc": "用券价格",
       "discountTypeText": "¥",
@@ -3115,7 +3095,7 @@ window.MCD_REAL_DATA = {
   ],
   "account": {
     "availablePoint": "0",
-    "accountId": "02006116953151573250124428352",
+    "accountId": "****8352",
     "accumulativePoint": "0",
     "currency": "麦享会积分",
     "currentMouthExpirePoint": "0",
@@ -3715,7 +3695,7 @@ window.MCD_REAL_DATA = {
     }
   ],
   "savings": {
-    "generatedAt": "2026-10-23 18:51:59",
+    "generatedAt": "2026-10-23 21:38:50",
     "basis": "price/origin/kcal/protein 全部来自 MCP 快照；券后金额一律取 calculate-price 的 realDiscount（券只作用在它核价吃下的 SKU 上），Title 仅用于展示",
     "hero": {
       "items": [
