@@ -121,6 +121,26 @@ def to_int(v, default=0):
         return default
 
 
+def pick_num(obj: dict, keys, default=None):
+    """从对象里按候选字段名取第一个数值；取不到返回 default。
+    用于门店的配送费 / 起送门槛 / 免配送门槛 —— 不同 MCP 版本命名不一致，
+    这里只做「有就读、没有就 None」，绝不生成兜底数字。"""
+    if not isinstance(obj, dict):
+        return default
+    for k in keys:
+        if k in obj:
+            v = obj[k]
+            if isinstance(v, (int, float)) and v == v:  # 排除 NaN
+                return float(v)
+            try:
+                s = str(v).replace("元", "").strip()
+                if s:
+                    return float(s)
+            except Exception:
+                continue
+    return default
+
+
 # =============================================================================
 # 营养数据解析（紧凑文本格式）
 # =============================================================================
@@ -718,11 +738,13 @@ def parse_dt(s: str):
 
 def build_reminders(coupons: list, available: list, account: dict,
                     lottery: dict, prizes: list, campaigns: list,
-                    claimed_titles: set = None, codes_map: dict = None) -> list:
+                    claimed_titles: set = None, codes_map: dict = None,
+                    approx_map: dict = None) -> list:
     rems = []
     now = datetime.now()
     claimed_titles = claimed_titles or set()
     codes_map = codes_map or {}
+    approx_map = approx_map or {}
 
     # 1) 卡包中的券 —— 临近过期
     for c in coupons:
@@ -746,18 +768,30 @@ def build_reminders(coupons: list, available: list, account: dict,
             "desc": (c.get("desc") or "") + f"　剩余 {days} 天",
             "deadline": end.strftime("%Y-%m-%d"), "days": days,
             "codes": codes_map.get(c.get("name", ""), []),
+            "codesApprox": bool(approx_map.get(c.get("name", ""))),
         })
 
     # 2) 可领取但尚未领取的券 —— 这是最容易错过的羊毛
+    #    领取状态**只认 available-coupons 自己返回的状态**（含回退推断）。
+    #    历史 bug：这里原来用「标题是否出现在卡包/门店券」判断，
+    #    导致 already-claimed 的「免费脆薯饼」仍被当成「待领券」推送，自相矛盾。
     for a in available:
         title = a.get("title") or a.get("name") or ""
-        if title and title not in claimed_titles:
-            rems.append({
-                "level": "warn", "icon": "🚨", "type": "待领券",
-                "title": title, "desc": "当前可领取，尚未领取 —— 别错过",
-                "deadline": "", "days": 0,
-                "codes": codes_map.get(title, []),
-            })
+        if not title:
+            continue
+        if a.get("claimed") is None:
+            if title in claimed_titles:
+                continue
+        elif a.get("claimed"):
+            continue
+        rems.append({
+            "level": "warn", "icon": "🚨", "type": "待领券",
+            "title": title, "desc": "当前可领取，尚未领取 —— 别错过",
+            "deadline": "", "days": 0,
+            "codes": a.get("codes") or codes_map.get(title, []),
+            "codesApprox": bool(a.get("codesApprox") if a.get("codesApprox") is not None
+                                else approx_map.get(title, False)),
+        })
 
     # 3) 积分账户
     if account:
@@ -871,27 +905,33 @@ def title_key(title: str) -> str:
     return TITLE_NOISE_RE.sub("", title or "").strip()
 
 
-def title_to_codes(title: str, menu_names: dict, direct_match) -> list:
-    """券标题（如「9.9元中杯冰美式」「免费脆薯饼」）→ 菜单编码列表，
-       供「不错过提醒」点击后联动菜单选品。三段式：
-       1) 清洗后直接匹配（互相包含）  2) 编码直配  3) 2-gram 相似度兜底"""
+def title_to_codes(title: str, menu_names: dict, direct_match) -> tuple:
+    """券标题（如「9.9元中杯冰美式」「免费脆薯饼」）→ (菜单编码列表, 是否近似匹配)。
+
+    三段式：
+      1) 清洗后直接匹配（互相包含）→ exact=True
+      2) 编码直配（menu_names 里的名字直接命中）
+      3) 2-gram 相似度兜底 → exact=False，**只能用于「在菜单里定位」，不可用于金额抵扣**
+         （历史 bug：「免费脆薯饼」被 2-gram 匹配到「心形薯饼5块」¥14.5，
+          用户以为免费，结果按 14.5 计入应付。所以近似匹配必须打标记。）
+    """
     key = title_key(title)
     if not key:
-        return []
+        return [], False
     out = direct_match(key)
     if out:
-        return out[:4]
+        return out[:4], False
     # 2-gram 滑窗兜底：「脆薯饼」→「心形薯饼5块」
     kb = {key[i:i + 2] for i in range(len(key) - 1)}
     if not kb:
-        return []
+        return [], False
     scored = []
     for code, name in menu_names.items():
         hit = sum(1 for g in kb if g in name)
         if hit:
             scored.append((hit / len(kb), code))
     scored.sort(reverse=True)
-    return [c for s, c in scored if s >= 0.3][:4]
+    return [c for s, c in scored if s >= 0.3][:4], True
 
 
 def parse_campaigns(raw: str) -> list:
@@ -1034,7 +1074,7 @@ def main():
                        token)
         data = ((extract_json(raw) or {}).get("data")) or []
         for st in data:
-            stores_out.append({
+            row = {
                 "id": str(st.get("storeCode", "")),
                 "name": st.get("storeName", ""),
                 "addr": st.get("address", ""),
@@ -1043,10 +1083,26 @@ def main():
                 "open": bool(st.get("businessStatus")),
                 "lat": st.get("latitude") or 0,
                 "lng": st.get("longitude") or 0,
-            })
+            }
+            # 配送费 / 起送门槛 / 免配送门槛：门店接口若返回就带上，不返回就不写。
+            # 前端只认这些真实字段，缺字段时不计配送费（并在界面标注「以结算页为准」），
+            # 绝不硬编码一个「6 元」让用户误以为那就是最终要付的钱。
+            fee = pick_num(st, ("deliveryFee", "shippingFee", "deliveryPrice", "freight"))
+            mino = pick_num(st, ("minOrderPrice", "minPrice", "startPrice", "minOrder"))
+            freeo = pick_num(st, ("freeDeliveryPrice", "freeShippingPrice", "freeFeeOver"))
+            if fee is not None and fee > 0:
+                row["fee"] = fee
+            if mino is not None and mino > 0:
+                row["min"] = mino
+            if freeo is not None and freeo > 0:
+                row["freeOver"] = freeo
+            stores_out.append(row)
         if not stores_out:
             raise SystemExit("未查询到附近门店，请更换城市或关键词")
         store_code, store_name = stores_out[0]["id"], stores_out[0]["name"]
+        n_fee = sum(1 for s in stores_out if "fee" in s)
+        print(f"[1/6] 门店配送字段: {n_fee}/{len(stores_out)} 家返回了配送费"
+              f"（未返回的按「以结算页为准」处理，不臆造）")
     else:
         stores_out.append({"id": store_code, "name": store_name or store_code, "addr": "",
                            "dist": 0, "hours": "", "open": True, "lat": 0, "lng": 0})
@@ -1146,13 +1202,25 @@ def main():
             a["claimed"] = (a.get("title") or "") in known_titles
         claimed_cnt += bool(a["claimed"])
 
-    # 提醒点击 → 菜单选品映射（券标题 → 菜单编码）
-    codes_map = {}
+    # 提醒点击 → 菜单选品映射（券标题 → 菜单编码）。
+    # 同时记录「是否近似匹配」：近似匹配只允许用来在菜单里定位，
+    # **绝不允许**用来算钱（否则会出现「免费券按另一个商品价格计入应付」）。
+    codes_map, approx_map = {}, {}
     for a in available:
         t = a.get("title") or ""
-        codes_map[t] = title_to_codes(t, menu_names, match_menu_codes)
+        c, approx = title_to_codes(t, menu_names, match_menu_codes)
+        codes_map[t] = c
+        approx_map[t] = approx
+        a["codes"] = c
+        a["codesApprox"] = approx
     for c in coupons_out:
-        codes_map[c["name"]] = c.get("applyTo") or title_to_codes(c["name"], menu_names, match_menu_codes)
+        if c.get("applyTo"):
+            codes_map[c["name"]] = c["applyTo"]
+            approx_map[c["name"]] = False
+        else:
+            cc, approx = title_to_codes(c["name"], menu_names, match_menu_codes)
+            codes_map[c["name"]] = cc
+            approx_map[c["name"]] = approx
 
     # ---- 4b. 麦麦商城订单（mall-order-list + 前 10 单详情）----
     orders_out = []
@@ -1253,7 +1321,8 @@ def main():
         "campaigns": campaigns,
         "scenes": scenes_out,
         "reminders": build_reminders(my_coupons, available, account, lottery, prizes, campaigns,
-                                     claimed_titles=known_titles, codes_map=codes_map),
+                                     claimed_titles=known_titles, codes_map=codes_map,
+                                     approx_map=approx_map),
     }
 
     out = os.path.join(ROOT, "assets", "data.js")
