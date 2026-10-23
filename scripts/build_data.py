@@ -1229,7 +1229,43 @@ def _load_cache() -> dict:
     return json.loads(body)
 
 
+# =============================================================================
+# 对外脱敏：本仓库是公开仓库，快照里不允许留下任何「属于本机账号」的凭证
+# =============================================================================
+MASK = "****"
+
+
+def _mask_tail(s, keep: int = 4) -> str:
+    s = str(s or "")
+    return (MASK + s[-keep:]) if len(s) > keep else MASK
+
+
+def sanitize_snapshot(payload: dict) -> dict:
+    """把公开快照里的个人凭证抹掉，其余字段（价格 / 券规则 / 核价结果）原样保留。
+
+    - `account.accountId`：麦享会会员号 → 只留后 4 位（页面只展示积分，不依赖完整号）
+    - `myCoupons[].couponId` / `couponCode`：卡包券的核销凭证 → 直接删除
+      券名、面额、有效期、realOk / realDiscount / realPay 全部保留，
+      页面展示与省钱榜单计算均不受影响（前端从不读取这两个字段）。
+    - `coupons[].id` / `code`：门店公开券，任何持 Token 的用户查同一家店都会拿到同一份，
+      不构成个人泄漏，保留以便使用者核价。
+
+    幂等：重复调用不会继续截断已脱敏的值。
+    """
+    acc = payload.get("account")
+    if isinstance(acc, dict):
+        aid = acc.get("accountId")
+        if aid and not str(aid).startswith(MASK):
+            acc["accountId"] = _mask_tail(aid, 4)
+    for c in (payload.get("myCoupons") or []):
+        if isinstance(c, dict):
+            c.pop("couponId", None)
+            c.pop("couponCode", None)
+    return payload
+
+
 def _write_cache(payload: dict):
+    sanitize_snapshot(payload)
     path = os.path.join(ROOT, "assets", "data.js")
     with open(path, "w", encoding="utf-8") as f:
         f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
@@ -1768,12 +1804,7 @@ def main():
                                      approx_map=approx_map),
     }
 
-    out = os.path.join(ROOT, "assets", "data.js")
-    with open(out, "w", encoding="utf-8") as f:
-        f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
-        f.write("window.MCD_REAL_DATA = ")
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-        f.write(";\n")
+    out = _write_cache(payload)
     print(f"已写入: {out}")
 
 
