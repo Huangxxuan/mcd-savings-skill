@@ -213,10 +213,10 @@ mcd-savings-skill/
 ├── LICENSE                      # MIT
 ├── .gitignore                   # 排除 .env / *.token / __pycache__ 等
 ├── assets/
-│   ├── order-assistant.html     # 可视化交互点单页（券开关/热量条/DIY勾选/门店导航）
-│   └── data.js                  # MCP 真实数据快照（由 build_data.py 生成）
+│   ├── order-assistant.html     # 可视化点单页（省钱榜单/场景搭配/券开关/热量条/结算舱/摇摇乐/外送地址）
+│   └── data.js                  # MCP 真实数据快照（由 build_data.py 生成，含 deliveryStores）
 └── scripts/
-    ├── build_data.py            # MCP 数据管道（门店/菜单/券/营养/活动/订单）
+    ├── build_data.py            # MCP 数据管道（门店/外送门店/菜单/券/营养/活动/订单/榜单）
     ├── mcp_call.sh              # 命令行调任意 MCP Tool
     └── push_to_github.sh        # 一键推送（含密钥扫描）
 ```
