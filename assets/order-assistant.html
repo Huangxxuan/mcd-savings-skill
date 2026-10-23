@@ -384,10 +384,21 @@ body {
 .dsrc {
   font-family: var(--num); font-size: 10.5px; line-height: 1.7; color: var(--muted);
   border: 1px solid var(--line); border-left: 2px solid var(--hud);
-  border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 4px;
+  border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 10px;
   background: rgba(0,229,255,.05);
 }
 .dsrc b { color: var(--text); font-weight: 700; }
+.dsrc-top { display: flex; align-items: center; gap: 8px; }
+.dsrc-top > span { flex: 1; min-width: 0; }
+.dsrc-top .mini-btn { flex-shrink: 0; }
+.dsrc summary {
+  cursor: pointer; margin-top: 5px; color: var(--hud); font-weight: 700;
+  list-style: none; font-size: 10px;
+}
+.dsrc summary::-webkit-details-marker { display: none; }
+.dsrc summary::before { content: "▸ "; }
+.dsrc details[open] summary::before { content: "▾ "; }
+.dsrc-body { margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--line); }
 .dsrc code {
   font-family: var(--mono); font-size: 10px; color: var(--acc);
   background: rgba(255,199,44,.12); padding: 1px 4px; border-radius: 3px;
@@ -1343,18 +1354,23 @@ function couponUsable(c, subtotal) {
   return true;
 }
 
-/* 数据来源说明条：解决「别人装上看到的是我的券」这种信息断裂 */
+/* 数据来源说明条：解决「别人装上看到的是我的券」这种信息断裂。
+   默认只占一行（快照时间 + 这是谁的券），细节折叠，避免把券列表挤下去。 */
 function dataSourceNote() {
   var at = D.generatedAt || "未知时间";
   return '<div class="dsrc">' +
-    '<b>数据来源</b> · 麦当劳 MCP 真实返回，快照时间 <b>' + at + '</b>。' +
-    '券、门店、账户余额都是<b>生成这份 data.js 的那个 Token 账号</b>的数据。' +
-    '<br>想让页面显示<b>你自己的券</b>：让 Agent 用你的 Token 重跑 ' +
-    '<code>python scripts/build_data.py</code>（加 <code>--claim</code> 会先调 auto-bind-coupons 领券），' +
-    'data.js 一换，本页所有金额与券自动跟着变，不需要改代码。' +
-    '<div style="margin-top:6px"><button class="mini-btn" data-own="1" ' +
-    'title="复制命令：用你自己的 Token 重跑 build_data.py --claim">📋 复制「换成我自己的券」命令</button></div>' +
-    '</div>';
+    '<div class="dsrc-top"><span>📅 快照 <b>' + at + '</b> · 券/门店/余额来自生成 data.js 的那个账号</span>' +
+    '<button class="mini-btn" data-own="1" title="复制命令：用自己的 Token 重跑 build_data.py --claim">📋 换成我的券</button>' +
+    '</div>' +
+    '<details><summary>换成我自己的券 / 为什么应付和商品金额不一样</summary>' +
+    '<div class="dsrc-body">' +
+    '<b>换券</b>：让 Agent 用<b>你自己的 Token</b> 重跑 ' +
+    '<code>python scripts/build_data.py --claim</code>（会先调 auto-bind-coupons 领券，再抓券/菜单/营养/余额）。' +
+    'data.js 一换，本页所有金额、券、省钱榜单自动跟着变，<b>不用改一行代码</b>。' +
+    '<br><b>应付</b> = 商品实付 + 配送费。页面<b>不写死配送费</b>：门店没返回就按 0，' +
+    '并标注「以结算页为准」；切「🍽 到店自取」则配送费与起送门槛都归零。' +
+    '<br><b>立省</b> = 划线原价 − 商品实付，<b>不含配送费</b>（配送费不是商品，算进去会虚高）。' +
+    '</div></details></div>';
 }
 
 function couponRow(c, subtotal) {
