@@ -248,6 +248,10 @@ python3 scripts/build_data.py --rank
 
 - ❌ 绝不编造菜单、价格、热量、优惠、门店信息——一切以 MCP 返回为准；
 - ❌ 绝不把用户的 MCP Token 写入任何文件、日志或输出；配置文件只用 `${MCD_MCP_TOKEN}` 占位符；
+- ❌ **公开仓库里的快照必须脱敏**：`account.accountId`（麦享会会员号）只留后 4 位，
+  `myCoupons[].couponId` / `couponCode`（卡包券核销凭证）一律不写入。
+  `scripts/build_data.py` 的 `sanitize_snapshot()` 已自动处理，**不要绕过它手写 data.js**。
+  门店券 `coupons[].code` 属公开促销码（任何持 Token 用户查同店都能拿到），可保留。
 - ❌ **绝不把用户推去麦当劳 App 填地址**。`delivery-create-address` 是我们自己能调的接口，
   地址由对话里问齐、由我们建档。只有用户坚持要用 App 时才提 App。
 - ❌ **外送绝不沿用门店的到店 `storeCode`**。必须 `delivery-query-stores(addressId, beType=2)`
