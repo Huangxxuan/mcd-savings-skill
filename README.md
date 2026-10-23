@@ -28,7 +28,7 @@
 > ⚠️ **不要直接在 GitHub 网页上点 `order-assistant.html`**——GitHub 只会显示源代码，不会渲染页面。请用 ① 的在线地址或 ② 的方式打开。
 >
 > 📦 页面数据来自 `assets/data.js` 快照（**2026-10-23 16:53 抓取**，含 112 个餐品 / 5 家门店 / 券与营养数据），
-> 页面自身**不发起任何网络请求**，所以断网也能完整演示；想看实时价格请走 ②。
+> 页面自身**不发起任何网络请求**，所以断网也能完整演示；想看实时价格请走 ③（需要你自己的 MCP Token）。
 
 ---
 
@@ -273,6 +273,7 @@ HUD 直接写「不含配送费（以结算页为准）」。想看含配送费�
 
 **Q8：别人装上这个 Skill，看到的是我的券吗？怎么换成自己的？**
 你看到的是**生成 `assets/data.js` 那个 Token 账号**的券（页面顶部有数据来源说明条，写着快照时间）。
+快照里只有券名、面额、有效期与核价结果，**不含券码与会员号**（见上方 [🔐 安全与密钥说明](#-安全与密钥说明公开仓库必读)）。
 换成自己的只需一条命令——用**你自己的 Token** 重跑：
 ```bash
 MCD_MCP_TOKEN=你的Token python3 scripts/build_data.py --claim
@@ -302,6 +303,39 @@ create-order             → 带 addressId + beCode 下单，返回支付链接
 > 注意：外送门店要「按地址」查，所以页面在拿到外送门店前**不会**用附近门店顶替
 > （到店与外送是两套门店编码，混用会下单失败）。建档后重跑一次
 > `python3 scripts/build_data.py`，真实配送费与起送门槛就会写进 `data.js`。
+
+---
+
+## 🔐 安全与密钥说明（公开仓库，必读）
+
+**本仓库里没有任何 Token、密钥或账号凭证。** 你 clone 下来看到的所有内容都是公开可见的，
+拿到它的人**必须自己去申请一个 Token** 才能调用麦当劳 MCP（见上方[第 1 步](#第-1-步申请-mcp-token)）。
+
+| 项目 | 说明 |
+|---|---|
+| Token / 密钥 | 仓库内 **0 处**。配置文件 `mcp-config.example.json` 只有 `${MCD_MCP_TOKEN}` 占位符，真实值走环境变量或 MCP Client 的本地配置 |
+| 个人信息 | 快照已脱敏：`account.accountId`（麦享会会员号）只留后 4 位；`myCoupons[].couponId` / `couponCode`（卡包券核销凭证）**不写入** |
+| 收货地址 | 只存在你自己浏览器的 `localStorage` 里，**不上传、不进仓库** |
+| 防误提交 | `.gitignore` 已排除 `.env` / `.env.*` / `*.token` / `*.key` |
+
+**你自己用的时候：**
+
+```bash
+# 1) 申请 Token：https://open.mcd.cn/mcp  → 控制台 → 激活 → 复制
+export MCD_MCP_TOKEN='你的Token'      # 只放环境变量，不要写进任何文件
+
+# 2) 拉你自己的数据（会先领券再抓快照）
+python3 scripts/build_data.py --claim
+```
+
+> ⚠️ **Fork 后请不要把带个人信息的 `data.js` 推回公开仓库。**
+> 脚本已内置 `sanitize_snapshot()` 自动脱敏，但如果你手工改过 `data.js`，
+> 提交前请自己再确认一遍：`grep -E 'github_pat_|Bearer [A-Za-z0-9]|accountId' assets/data.js`
+
+**万一真的泄漏了怎么办：**
+1. 立刻去 <https://open.mcd.cn/mcp> 重置 Token（旧的立即失效）；
+2. 若密钥已进入 git 历史，仅删除当前文件是不够的——历史里仍能翻到，
+   需要用 `git filter-repo` / BFG 重写历史后强推，或直接删仓库重建。
 
 ---
 
