@@ -731,7 +731,7 @@ body {
 <div class="hud">
   <div class="wrap">
     <div class="snum">原价<b id="sOrigin">¥0</b></div>
-    <div class="snum save">立省<b id="sSave">¥0</b></div>
+    <div class="snum save">立省<b id="sSave">¥0</b><span class="snote" id="sSaveNote">商品</span></div>
     <div class="snum pay">应付<b id="sPay">¥0</b><span class="snote" id="sFee"></span></div>
     <div class="snum">热量<b id="sKcal">0 kcal</b></div>
     <div class="spacer"></div>
@@ -1468,11 +1468,14 @@ function render() {
   $("#sSave").textContent = money(r.save);
   $("#sPay").textContent = money(r.pay);
   // 未达起送时，应付会大于原价，这里直接标出原因，避免误读
+  // 口径：应付 = 商品实付 + 配送费；立省只算商品（不含配送费），所以两个数不相等
   var feeEl = $("#sFee");
   feeEl.textContent = r.fee > 0
-    ? "含配送费 " + money(r.fee) + (r.gap > 0 ? " · 未达起送" : "")
+    ? "商品 " + money(r.subtotal - r.discount) + " + 配送 " + money(r.fee) + (r.gap > 0 ? " · 未达起送" : "")
     : "";
   feeEl.style.color = r.gap > 0 ? "var(--warn)" : "";
+  var saveNote = $("#sSaveNote");
+  if (saveNote) saveNote.textContent = r.fee > 0 ? "商品(不含配送)" : "商品";
   $("#sKcal").textContent = r.kcal > 0
     ? r.kcal + " kcal"
     : (r.lines.length ? "部分待核" : "0 kcal");
@@ -1489,6 +1492,18 @@ function render() {
 
   $("#btnBless").disabled = r.lines.length === 0;
   $("#btnCopy").disabled = r.lines.length === 0;
+
+  /* 指令框必须跟随购物车：否则改完商品后框里还留着上一次的旧指令，
+     用户会以为下错了单（真实反馈过的 bug）。购物车清空则直接关闭。 */
+  var cmdOut = $("#cmdOut");
+  if (cmdOut && cmdOut.style.display !== "none") {
+    if (!r.lines.length) {
+      hideCmd();
+    } else {
+      var ta = $("#cmdText");
+      if (ta) ta.value = buildOrderCmd(r);
+    }
+  }
 }
 
 /* ---------- 选中后：把菜单切到对应分类并高亮，保证「组合名 ↔ 菜单项」一致 ---------- */
@@ -1941,13 +1956,18 @@ function hideCmd() {
   if (out) out.style.display = "none";
 }
 
-$("#btnCopy").addEventListener("click", function () {
-  var r = compute();
-  if (!r.lines.length) { toast("先选几个产品再复制指令"); return; }
-  var txt = "帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、") +
+/* 点单指令由购物车实时生成，复制与自动刷新共用同一份逻辑，避免两处文案漂移 */
+function buildOrderCmd(r) {
+  return "帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、") +
     (r.store ? "，门店：" + r.store.name : "") +
     (r.discountLabel ? "，使用优惠券：" + r.discountLabel : "") +
     "。请先 calculate-price 核价，再用 create-order 下单。";
+}
+
+$("#btnCopy").addEventListener("click", function () {
+  var r = compute();
+  if (!r.lines.length) { toast("先选几个产品再复制指令"); return; }
+  var txt = buildOrderCmd(r);
   copyText(txt).then(function (how) {
     if (how === "manual") {
       showCmd(txt, "当前环境无法自动写入剪贴板（浏览器限制），已自动全选，按 ⌘/Ctrl + C 即可复制。");
