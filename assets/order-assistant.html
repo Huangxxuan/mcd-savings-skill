@@ -1352,6 +1352,8 @@ function dataSourceNote() {
     '<br>想让页面显示<b>你自己的券</b>：让 Agent 用你的 Token 重跑 ' +
     '<code>python scripts/build_data.py</code>（加 <code>--claim</code> 会先调 auto-bind-coupons 领券），' +
     'data.js 一换，本页所有金额与券自动跟着变，不需要改代码。' +
+    '<div style="margin-top:6px"><button class="mini-btn" data-own="1" ' +
+    'title="复制命令：用你自己的 Token 重跑 build_data.py --claim">📋 复制「换成我自己的券」命令</button></div>' +
     '</div>';
 }
 
@@ -2244,6 +2246,17 @@ document.addEventListener("click", function (e) {
       toast("已切换为手动用券");
     }
     render();
+    return;
+  }
+
+  /* 把「换成我自己的券」做成可执行动作，而不是只写一段说明 */
+  var own = e.target.closest("[data-own]");
+  if (own) {
+    var cmd = "MCD_MCP_TOKEN=你的Token python3 scripts/build_data.py --claim";
+    copyText(cmd).then(function (how) {
+      if (how === "manual") { showCmd(cmd, "浏览器限制无法自动复制，已全选，按 ⌘/Ctrl + C。"); return; }
+      toast("已复制 · 用你自己的 Token 跑一遍，页面就换成你的券了");
+    });
     return;
   }
 
