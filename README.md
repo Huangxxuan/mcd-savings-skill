@@ -14,6 +14,20 @@
 <img width="1343" height="699" alt="麦麦省钱点单助手 · 菜单自选与购物车" src="https://github.com/user-attachments/assets/189208f6-24ac-4e40-b413-1b4403f9fc3c" />
 
 
+## ⚡ 30 秒看到效果（无需 Token、无需配置、不用联网）
+
+| 方式 | 怎么做 | 需要准备 |
+|---|---|---|
+| **① 离线打开（立刻可用）** | 下载本仓库（`Code` → `Download ZIP`）→ 解压 → **双击 `assets/order-assistant.html`** | 只要一个浏览器 |
+| **② 实时数据** | 按下方「安装与使用」配好 MCP，让 Agent 用当前价格重新生成页面 | MCP Token |
+
+> ⚠️ **不要直接在 GitHub 网页上点 `order-assistant.html`**——GitHub 只会显示源代码，不会渲染页面。请下载后本地打开。
+>
+> 📦 页面数据来自 `assets/data.js` 快照（**2026-10-20 21:37 抓取**，含 100 个餐品 / 5 家门店 / 券与营养数据），
+> 页面自身**不发起任何网络请求**，所以断网也能完整演示；想看实时价格请走 ②。
+
+---
+
 ## ✨ 核心能力
 
 | 能力               | 说明                                                                       | 依赖 MCP Tool                                                                                                |
@@ -147,6 +161,7 @@ mcd-savings-skill/
 ├── MCP_INTEGRATION.md           # MCP 集成说明（Server / Tools / 流程 / 价值）
 ├── mcp-config.example.json      # 脱敏 MCP 配置示例（仅环境变量占位符）
 ├── workbuddy.md                 # WorkBuddy 开发对话上下文（专项奖必需）
+├── index.html                   # 入口页（GitHub Pages 短链跳转到点单页）
 ├── .gitignore                   # 排除 .env / *.token / __pycache__ 等
 ├── assets/
 │   ├── order-assistant.html     # 可视化交互点单页（券开关/热量条/DIY勾选/门店导航）
