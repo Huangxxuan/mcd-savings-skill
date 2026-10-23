@@ -527,13 +527,27 @@ def build_scene_bundles(menu: list) -> list:
 DRINK_CATS = ("饮品", "麦咖啡™")
 MAIN_RE = re.compile(r"堡|卷|饭|满分|粥|鸡排|麦乐鸡|套餐|四件套|三件套|随心选|随心配|拼")
 NON_FOOD_RE = re.compile(r"徽章|周边|玩具|卡片|马克杯|杯垫|袋子")
+# 「四件套 / 随心选」这一族在菜单里给的是麦金卡会员价（实测：龙焰美味四件套菜单 29，
+# calculate-price 无券核价 57、discount 0；人气超值四件套随心选 28 → 57 同理）。
+# query-meals 的麦金卡标签并不总打全（9900016311 就没打），所以这里用名字兜一层。
+MEMBER_NAME_RE = re.compile(r"四件套|随心选")
 PICK_RE = re.compile(r"(\d+(?:\.\d+)?)\s*元\s*(.{1,8}?)任选\s*(\d+)")
 
 
 def parse_coupon_rule(c: dict) -> dict:
-    """把券标题解析成可计算的规则（与前端 parseCoupon 保持同一套口径）"""
+    """把券标题解析成可计算的规则（仅作「没有核价结果时」的兜底估算）。
+
+    ⚠️ 关键：券的可用 SKU 有两个来源 —— `applyTo`（券适用商品，可能是品类 or 旧 SKU）
+    与 `skus`（calculate-price 真正吃下的那个 SKU）。两者常常不一致，实测：
+    「9.9元中杯冰美式」applyTo=[507411]、skus=[9900000119]；
+    「新人专享-中杯美式7折」applyTo=[507411]、skus=[9900000119]；
+    「新人专享-中杯奶铁7折」applyTo=[507409,510479]、skus=[9900000117]。
+    真实的那个是 `skus`，所以这里把两边并起来，宁可多算一次核价，也不漏掉可用 SKU。
+    """
     t = (c.get("name") or c.get("title") or "").strip()
     applies = [x for x in (c.get("applyTo") or []) if x]
+    applies += [s.get("code") for s in (c.get("skus") or []) if s and s.get("code")]
+    applies = list(dict.fromkeys(applies))  # 去重且保持顺序
     m = re.search(r"满\s*(\d+(?:\.\d+)?)\s*减\s*(\d+(?:\.\d+)?)", t)
     if m:
         return {"type": "threshold", "min": float(m.group(1)), "value": float(m.group(2)), "label": t}
@@ -579,10 +593,15 @@ def coupon_discount(rule: dict, items: list) -> float:
                 d = max(d, i["price"] - rule["value"])
         return max(0.0, d)
     if t == "pick":
-        hits = [i for i in items if rule["kw"] in i["name"]]
-        if len(hits) < rule["n"]:
+        # 「N 元任选 M 件」只能从**这张券允许的 SKU**里挑，不能按名字关键字捞。
+        # 老逻辑用 kw 匹配全菜单，把不在券范围内的商品也算进「任选」，
+        # 实测「19.9元王牌炸鸡任选2」被凑成 王牌炸鸡(23.8)+薄皮焦香V翅(16)=39.8，
+        # 页面报 39.8→19.9 省 19.9，而接口真实只把 23.8 打成 19.9，实付 35.9、省 3.9 —— 虚报 16 元。
+        elig = set(rule.get("applies") or [])
+        pool = [i for i in items if (not elig or i["code"] in elig)]
+        if len(pool) < rule["n"]:
             return 0.0
-        top = sorted(hits, key=lambda x: -x["price"])[:rule["n"]]
+        top = sorted(pool, key=lambda x: -x["price"])[:rule["n"]]
         return max(0.0, sum(i["price"] for i in top) - rule["price"])
     if t == "free":
         if not rule["applies"]:
@@ -602,12 +621,89 @@ def best_coupon(rules: list, items: list):
     return round(best, 2), name
 
 
+# =============================================================================
+# 券后最省：只认 calculate-price 的真实核价结果
+#
+# 设计原因（实测踩过的坑）：
+#   ① 券 Title 解析不出面额 → 「1024"码"力翻倍」真实省 13.52（34→20.48）却被当成 unknown 丢掉，
+#      榜单里最省的一张券直接消失；
+#   ② 券 Title 能解析、但适用 SKU 猜错 → 「19.9元王牌炸鸡任选2」被凑成 39.8 的篮子，
+#      报「省 19.9」，接口真实只把 23.8 打成 19.9，实付 35.9、省 3.9，虚报 16 元；
+#   ③ 「7 折」对错了商品 → 奶铁 13.9 算 4.17 折扣，接口返回 600012 促销规则不支持该商品。
+# 所以这里改成：券的抵扣额一律取 calculate-price 返回的 realDiscount，
+# 券只作用在它核价时真正吃下的 SKU 上（skus[].code），Title 仅用于展示文案。
+# 没有核价结果的券，宁可不进榜，也不猜。
+# =============================================================================
+
+def verified_coupon_rules(coupons: list, by_code: dict) -> list:
+    """把已核价成功的券转成「按 SKU 生效的固定抵扣」规则列表。"""
+    out = []
+    for c in coupons or []:
+        if not c.get("realOk"):
+            continue
+        pay = to_float(c.get("realPay"))
+        orig = to_float(c.get("realOrig"))
+        disc = to_float(c.get("realDiscount"))
+        if pay <= 0 or orig <= 0 or disc <= 0.009:
+            continue
+        codes = [s.get("code") for s in (c.get("skus") or []) if s and s.get("code")]
+        codes = [x for x in codes if x in by_code]
+        if not codes:
+            continue
+        # 核价原价必须和菜单对得上（现价或划线价任一），否则说明快照漂移，宁可不上榜。
+        # 例：麦咖啡™美式 现价 11.9 / 划线 19，9.9 券的 realOrig 是 19 —— 属于划线价口径。
+        base_now = sum(by_code[x]["price"] for x in codes)
+        base_ori = sum((by_code[x].get("origin") or by_code[x]["price"]) for x in codes)
+        if min(abs(base_now - orig), abs(base_ori - orig)) > 0.02:
+            continue
+        out.append({
+            "codes": set(codes),
+            "discount": round(disc, 2),
+            "pay": round(pay, 2),
+            "orig": round(orig, 2),
+            "name": (c.get("name") or "").strip(),
+        })
+    # 同一张券可能同时出现在「我的卡包 / 门店券 / 可领券」三个来源，按 (SKU, 券名, 到手价) 去重
+    uniq, seen = [], set()
+    for r in sorted(out, key=lambda x: -x["discount"]):
+        k = (tuple(sorted(r["codes"])), r["name"], r["pay"])
+        if k in seen:
+            continue
+        seen.add(k)
+        uniq.append(r)
+    return uniq
+
+
+def best_verified_coupon(vrules: list, items: list):
+    """返回 (抵扣金额, 券名)。
+
+    抵扣额必须按**当前篮子里的现价**算，不能直接用券的 realDiscount ——
+    realDiscount 是相对「原价（可能含划线价）」的优惠，而组合行的 origin 是现价之和，
+    直接相减会把官方直降重复算一遍（实测：美式现价 11.9 / 划线 19，
+    9.9 券 realDiscount=9.1，套到 11.9 的篮子上会多算 7.1 元）。
+    正确口径：抵扣 = Σ(券管的那个 SKU 现价) − 券后价。
+    """
+    best, name = 0.0, ""
+    for r in vrules:
+        hits = [i for i in items if i["code"] in r["codes"]]
+        if not hits:
+            continue
+        d = sum(i["price"] for i in hits) - r["pay"]
+        if d > best + 1e-9:
+            best, name = d, r["name"]
+    return round(max(0.0, best), 2), name
+
+
 def _row(items: list, origin: float, save: float, coupon: str, note: str = "", kind: str = "single"):
     pay = max(0.0, origin - save)
     kcal = sum(i.get("kcal") or 0 for i in items)
     protein = sum(i.get("protein") or 0 for i in items)
     known = all((i.get("kcal") or 0) > 0 for i in items)
-    return {
+    # 麦金卡商品：菜单价是会员价，没有该权益的账号按划线价结算（实测 28→57、62.9→122.5）。
+    # 榜单必须能一眼看出「这个价需要麦金卡」，否则非会员会以为 29 元真的能省下来。
+    member_gap = sum(max(0.0, (i.get("origin") or i["price"]) - i["price"])
+                     for i in items if i.get("member"))
+    row = {
         "items": [{"code": i["code"], "name": i["name"], "price": i["price"],
                    "kcal": i.get("kcal") or 0} for i in items],
         "origin": round(origin, 2), "pay": round(pay, 2), "save": round(save, 2), "kind": kind,
@@ -617,37 +713,65 @@ def _row(items: list, origin: float, save: float, coupon: str, note: str = "", k
         "perYuanProtein": round(protein / pay, 2) if pay > 0 and protein > 0 else 0,
         "coupon": coupon, "note": note,
     }
+    if member_gap > 0.009:
+        row["memberOnly"] = True
+        row["nonMemberPay"] = round(pay + member_gap, 2)
+    return row
 
 
 def _item(m: dict) -> dict:
     """把菜单项压缩成算价需要的字段（protein 必须带上，否则蛋白榜会全部算成 0）"""
+    origin = m.get("origin") or m["price"]
+    member = bool(m.get("memberPrice") and origin > m["price"])
+    if not member and origin > m["price"] * 1.2 and MEMBER_NAME_RE.search(m["name"]):
+        # 四件套 / 随心选一族：菜单价是会员价，标签可能缺失，名字兜一层
+        member = True
     return {"code": m["code"], "name": m["name"], "price": m["price"],
-            "kcal": m.get("kcal") or 0, "protein": m.get("protein") or 0}
+            "kcal": m.get("kcal") or 0, "protein": m.get("protein") or 0,
+            "origin": origin, "member": member}
 
 
 def build_savings(menu: list, coupons: list) -> dict:
     """生成省钱榜单：券后最省 / 官方直降 / 每元管饱 / 每元蛋白 / 套餐最优"""
     rules = [parse_coupon_rule(c) for c in coupons]
+    by_code = {m["code"]: m for m in menu}
+    vrules = verified_coupon_rules(coupons, by_code)
     food = [m for m in menu if not NON_FOOD_RE.search(m["name"]) and (m["price"] or 0) > 0]
 
-    # ---------- 单项：券后最省 ----------
+    # ---------- 券后最省 ----------
+    # 有核价结果时：一条券一条，金额全部来自 calculate-price，绝不用 Title 猜。
+    # 没有核价结果时（例如别人只拿走了 data.js 没有 coupons 明细）：退回 Title 估算，并在 note 里标明。
     coupon_rows = []
-    for m in food:
-        items = [_item(m)]
-        save, cname = best_coupon(rules, items)
-        if save > 0:
-            coupon_rows.append(_row(items, m["price"], save, cname,
-                                    f"用「{cname}」券后 ¥{max(0, m['price'] - save):.2f}，省 {save:.1f} 元"))
+    if vrules:
+        for r in vrules:
+            items = [_item(by_code[c]) for c in sorted(r["codes"]) if c in by_code]
+            if not items:
+                continue
+            note = (f"「{r['name']}」券后 ¥{r['pay']:.2f}，省 {r['discount']:.2f} 元"
+                    f"（calculate-price 已核价）")
+            coupon_rows.append(_row(items, r["orig"], r["discount"], r["name"], note, "coupon"))
+    else:
+        for m in food:
+            items = [_item(m)]
+            save, cname = best_coupon(rules, items)
+            if save > 0:
+                coupon_rows.append(_row(items, m["price"], save, cname,
+                                        f"用「{cname}」券后 ¥{max(0, m['price'] - save):.2f}，省 {save:.1f} 元（按券名估算）"))
     coupon_rows.sort(key=lambda r: (-r["save"], -r["savePct"]))
 
     # ---------- 单项：官方直降（划线价） ----------
+    # 麦金卡商品的「划线价 → 菜单价」不是官方直降，是会员价；非会员结算仍是划线价。
+    # 所以这类行标 memberOnly + nonMemberPay，并排在真正的公开直降之后。
     drop_rows = []
     for m in food:
         origin = m.get("origin") or 0
         if origin > m["price"] > 0:
-            drop_rows.append(_row([_item(m)], origin, origin - m["price"], "",
-                                  f"官方直降 {round((origin - m['price']) / origin * 100)}%，省 {origin - m['price']:.1f} 元"))
-    drop_rows.sort(key=lambda r: (-r["savePct"], -r["save"]))
+            it = _item(m)
+            is_member = it["member"]
+            note = (f"麦金卡会员价 ¥{m['price']}（非会员 ¥{origin}）" if is_member
+                    else f"官方直降 {round((origin - m['price']) / origin * 100)}%，省 {origin - m['price']:.1f} 元")
+            drop_rows.append(_row([it], origin, origin - m["price"], "", note))
+    drop_rows.sort(key=lambda r: (r.get("memberOnly", False), -r["savePct"], -r["save"]))
 
     # ---------- 单项：每元管饱 / 每元蛋白 ----------
     kcal_rows = sorted([_row([_item(m)], m["price"], 0, "",
@@ -665,13 +789,20 @@ def build_savings(menu: list, coupons: list) -> dict:
     sides = [m for m in food if m["cat"] not in DRINK_CATS and not MAIN_RE.search(m["name"])
              and m["price"] <= 15]
     combo_rows = []
+
+    def combo_coupon(items):
+        """组合里能用的券：优先用核价过的券（抵扣额真实），没有核价结果才退回 Title 估算。"""
+        if vrules:
+            return best_verified_coupon(vrules, items)
+        return best_coupon(rules, items)
+
     for a in mains:
         for b in drinks:
             items = [_item(a), _item(b)]
             origin = a["price"] + b["price"]
             if origin > 50:
                 continue
-            save, cname = best_coupon(rules, items)
+            save, cname = combo_coupon(items)
             note = f"{a['name']} + {b['name']}" + (f"，用「{cname}」" if cname else "，无需用券")
             combo_rows.append(_row(items, origin, save, cname, note, "combo"))
         for b in drinks:
@@ -680,32 +811,18 @@ def build_savings(menu: list, coupons: list) -> dict:
                 origin = a["price"] + b["price"] + c["price"]
                 if origin > 55:
                     continue
-                save, cname = best_coupon(rules, items)
+                save, cname = combo_coupon(items)
                 note = f"{a['name']} + {b['name']} + {c['name']}" + (f"，用「{cname}」" if cname else "")
                 combo_rows.append(_row(items, origin, save, cname, note, "combo"))
 
-    # ---------- 「N 元任选 M 件」类券：直接按券凑一单 ----------
-    for r in rules:
-        if r["type"] != "pick":
-            continue
-        kw = r["kw"][-2:]
-        cand = [m for m in food
-                if (kw in m["name"] or kw in m["cat"])
-                and not re.search(r"套餐|四件套|三件套", m["name"]) and m["price"] <= 30]
-        if len(cand) < r["n"]:
-            continue
-        top = sorted(cand, key=lambda x: -x["price"])[: r["n"]]
-        items = [_item(x) for x in top]
-        origin = sum(x["price"] for x in top)
-        save = max(0.0, origin - r["price"])
-        note = f"{r['price']} 元任选 {r['n']} 件：{' + '.join(x['name'] for x in top)}"
-        row = _row(items, origin, save, r["label"], note, "combo")
-        combo_rows.append(row)
-        coupon_rows.append(row)
+    # 注意：这里原本有一段「N 元任选 M 件 → 直接按券凑一单」的逻辑，已删除。
+    # 它按券名关键字从全菜单捞商品凑数，把券不管辖的商品也算进「任选」（虚报 16 元），
+    # 现在这类券统一由 verified_coupon_rules() 按核价 SKU 出榜。
 
     # 完整套餐优先（必须有主食 + 饮品），按「省得多 + 每元热量高」排；过贵的不进榜
     combo_rows = [r for r in combo_rows if r["kcal"] > 0 and r["pay"] <= 45]
-    combo_rows.sort(key=lambda r: (-r["save"], -r["perYuanKcal"]))
+    # 麦金卡当主食的组合排后面：对非会员来说那些「省」并不成立
+    combo_rows.sort(key=lambda r: (r.get("memberOnly", False), -r["save"], -r["perYuanKcal"]))
     # 同一主食只保留最优的一条，避免整屏都是同一个堡
     uniq, seen = [], set()
     for r in combo_rows:
@@ -721,27 +838,39 @@ def build_savings(menu: list, coupons: list) -> dict:
     coupon_rows.sort(key=lambda r: (-r["save"], -r["savePct"]))
 
     # ---------- 今日最优解：省得多、还得是一顿完整的饭 ----------
-    full_meal = [r for r in combo_rows if r["save"] > 0]
-    full_meal += [r for r in drop_rows
-                  if re.search(r"套餐|四件套|三件套|随心选", r["items"][0]["name"])]
+    # 只从「人人可用」的行里选：麦金卡会员价对非会员不成立，不能当今日最优解。
+    public = [r for r in combo_rows if r["save"] > 0 and not r.get("memberOnly")]
+    public += [r for r in drop_rows
+               if not r.get("memberOnly")
+               and re.search(r"套餐|四件套|三件套|随心选", r["items"][0]["name"])]
     hero = None
-    if full_meal:
-        hero = max(full_meal, key=lambda r: (r["save"], r["savePct"]))
+    if public:
+        hero = max(public, key=lambda r: (r["save"], r["savePct"]))
     elif combo_rows:
         hero = combo_rows[0]
     if hero:
         hero = dict(hero)
         hero["tip"] = (f"同样的东西原价 ¥{hero['origin']:.2f}，实付 ¥{hero['pay']:.2f}，"
                        f"省 {hero['save']:.2f} 元（{hero['savePct']}%）")
+        if hero.get("memberOnly"):
+            hero["tip"] += f"；这是麦金卡会员价，非会员实付 ¥{hero['nonMemberPay']:.2f}"
 
+    coupon_basis = ("每张券都用 calculate-price 真实核价，按实际省下的钱排序；"
+                    "核价不通过的券不上榜") if vrules else \
+                   ("暂无核价结果，按券名估算（仅供排序参考，实付请以 calculate-price 为准）")
+
+    # 官方直降：先给真正的公开直降，末尾最多补 2 条麦金卡会员价（带 🪪 标记），
+    # 既不误导非会员，也不把「四件套 57→28」这种招牌价藏起来。
+    drop_public = [r for r in drop_rows if not r.get("memberOnly")][:6]
+    drop_member = [r for r in drop_rows if r.get("memberOnly")][:2]
 
     boards = [
         {"id": "coupon", "name": "券后最省", "icon": "🎟️",
-         "desc": "把卡包里的券用到极致，按省下的钱排序（面额由券 Title 解析，最终以 calculate-price 为准）",
+         "desc": coupon_basis,
          "unit": "省", "rows": coupon_rows[:6]},
         {"id": "drop", "name": "官方直降", "icon": "🏷️",
-         "desc": "MCP 返回的划线价对比，不用券也比原价便宜", "unit": "降",
-         "rows": drop_rows[:6]},
+         "desc": "MCP 返回的划线价对比，不用券也比原价便宜（末位标🪪的是麦金卡会员价，非会员按划线价结算）", "unit": "降",
+         "rows": drop_public + drop_member},
         {"id": "combo", "name": "套餐最优", "icon": "🍱",
          "desc": "主食 + 饮品（可加小食）自动套最优券；可用预算筛选「20 块怎么吃」", "unit": "省",
          "rows": combo_rows[:24]},
@@ -755,7 +884,9 @@ def build_savings(menu: list, coupons: list) -> dict:
 
     return {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "basis": "price/origin/kcal/protein 全部来自 MCP 快照；券面额由券 Title 解析，最终以 calculate-price 为准",
+        "basis": ("price/origin/kcal/protein 全部来自 MCP 快照；"
+                  "券后金额一律取 calculate-price 的 realDiscount（券只作用在它核价吃下的 SKU 上），"
+                  "Title 仅用于展示"),
         "hero": hero,
         "boards": boards,
     }
