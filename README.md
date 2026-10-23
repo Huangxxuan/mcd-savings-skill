@@ -7,6 +7,9 @@
 
 [![Powered by McDonald's MCP](https://img.shields.io/badge/Powered%20by-McDonald's%20MCP-DA291C)](https://open.mcd.cn/mcp)
 [![Built with WorkBuddy](https://img.shields.io/badge/Built%20with-WorkBuddy-0052D9)](https://www.workbuddy.cn)
+[![Live Demo](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-Live%20Demo-FFC72C)](https://huangxxuan.github.io/mcd-savings-skill/)
+
+> 👉 **不用下载、不用配置，直接点开就能用**：<https://huangxxuan.github.io/mcd-savings-skill/>
 
 ---
 
@@ -18,10 +21,11 @@
 
 | 方式 | 怎么做 | 需要准备 |
 |---|---|---|
-| **① 离线打开（立刻可用）** | 下载本仓库（`Code` → `Download ZIP`）→ 解压 → **双击 `assets/order-assistant.html`** | 只要一个浏览器 |
-| **② 实时数据** | 按下方「安装与使用」配好 MCP，让 Agent 用当前价格重新生成页面 | MCP Token |
+| **① 在线打开（最快）** | 直接访问 <https://huangxxuan.github.io/mcd-savings-skill/> | 只要一个浏览器 |
+| **② 离线打开（断网也能用）** | 下载本仓库（`Code` → `Download ZIP`）→ 解压 → **双击 `assets/order-assistant.html`** | 只要一个浏览器 |
+| **③ 实时数据** | 按下方「安装与使用」配好 MCP，让 Agent 用当前价格重新生成页面 | MCP Token |
 
-> ⚠️ **不要直接在 GitHub 网页上点 `order-assistant.html`**——GitHub 只会显示源代码，不会渲染页面。请下载后本地打开。
+> ⚠️ **不要直接在 GitHub 网页上点 `order-assistant.html`**——GitHub 只会显示源代码，不会渲染页面。请用 ① 的在线地址或 ② 的方式打开。
 >
 > 📦 页面数据来自 `assets/data.js` 快照（**2026-10-20 21:37 抓取**，含 100 个餐品 / 5 家门店 / 券与营养数据），
 > 页面自身**不发起任何网络请求**，所以断网也能完整演示；想看实时价格请走 ②。
