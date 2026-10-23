@@ -361,11 +361,56 @@ body {
 }
 .coupon.on { border-style: solid; border-color: var(--acc); background: linear-gradient(140deg, rgba(255,199,44,.14), rgba(255,199,44,.03)); }
 .coupon.disabled { opacity: .38; cursor: not-allowed; }
+/* 本地算不了的券：不淡出，改成虚线灰边 + 可点击给出原因，避免"点了没反应" */
+.coupon.notry { border-color: rgba(124,141,163,.5); background: rgba(124,141,163,.06); }
+.coupon.notry .amt { color: var(--muted); }
 .coupon .amt { font-family: var(--num); font-size: 15px; font-weight: 700; color: var(--acc); min-width: 52px; }
 .coupon .cname { font-size: 12px; font-weight: 700; }
+.coupon .ctag {
+  font-style: normal; font-family: var(--num); font-size: 9px; font-weight: 700;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 3px;
+  padding: 0 4px; margin-left: 4px; vertical-align: 1px;
+}
 .coupon .cdesc { font-family: var(--num); font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+/* 券分组标题 */
+.cp-sec {
+  display: flex; align-items: baseline; gap: 7px; margin: 14px 0 8px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--text);
+  letter-spacing: .02em;
+}
+.cp-sec::before { content: ""; width: 3px; height: 11px; background: var(--acc); border-radius: 2px; }
+.cp-sec span { font-family: var(--num); font-size: 10px; font-weight: 400; color: var(--muted); }
+/* 数据来源说明：解决「看到的是别人的券」这种信息断裂 */
+.dsrc {
+  font-family: var(--num); font-size: 10.5px; line-height: 1.7; color: var(--muted);
+  border: 1px solid var(--line); border-left: 2px solid var(--hud);
+  border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 4px;
+  background: rgba(0,229,255,.05);
+}
+.dsrc b { color: var(--text); font-weight: 700; }
+.dsrc code {
+  font-family: var(--mono); font-size: 10px; color: var(--acc);
+  background: rgba(255,199,44,.12); padding: 1px 4px; border-radius: 3px;
+}
 
 /* ---------- 门店 ---------- */
+/* 履约方式切换：直接决定有无配送费/起送门槛，放在门店列表最上方 */
+.fulfill { display: flex; gap: 6px; margin-bottom: 6px; }
+.fulfill .fv {
+  flex: 1; padding: 8px 6px; cursor: pointer; font-family: var(--mono); font-size: 11px;
+  font-weight: 700; color: var(--muted); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  transition: all var(--dur-1) ease;
+}
+.fulfill .fv:hover { border-color: var(--line-strong); color: var(--text); }
+.fulfill .fv.on {
+  color: var(--bg); background: var(--acc); border-color: var(--acc);
+}
+.fhint {
+  font-family: var(--num); font-size: 10px; color: var(--muted);
+  line-height: 1.55; margin-bottom: 9px;
+}
+.store .sfee { color: var(--acc); font-weight: 700; }
 .store {
   border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px;
   margin-bottom: 8px; cursor: pointer; background: var(--surface-2);
@@ -420,6 +465,21 @@ body {
   font-family: var(--num); font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* 不可定位/无需操作的提醒：降低存在感但仍可点（点了给原因） */
+.rem.dim { cursor: help; }
+.rem.dim .rt { color: var(--muted); }
+.rem.dim:hover { transform: none; }
+.rem .rtag {
+  font-style: normal; font-size: 9px; font-weight: 700; color: var(--warn);
+  border: 1px solid rgba(255,166,61,.45); border-radius: 3px;
+  padding: 0 3px; margin-left: 3px; vertical-align: 1px;
+}
+/* 板块用途说明：一句话讲清「不错过」到底在提示什么 */
+.remnote {
+  font-family: var(--num); font-size: 10px; line-height: 1.6; color: var(--muted);
+  margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed var(--line);
+}
+.remnote b { color: var(--warn); }
 
 /* ---------- 热量条 ---------- */
 .bar {
@@ -697,6 +757,8 @@ body {
     <aside>
       <section class="panel reveal d1">
         <h2>🔔 不错过 <span class="tag" id="remCount">// 0</span></h2>
+        <div class="remnote">只提示三件事：<b>快过期的券</b>、<b>能领还没领的券</b>、<b>今日活动与积分</b>。
+          券类提醒点一下会在菜单里定位对应商品；定位不到的会写明「需在结算页核销」。</div>
         <div class="remlist" id="reminders"></div>
       </section>
 
@@ -865,7 +927,23 @@ var D = window.MCD_REAL_DATA || window.MCD_DATA;
 });
 
 /* 起送 / 配送费门槛：优先用门店数据，缺省用示例值（页面会标注以 calculate-price 为准） */
-var THRESHOLDS = { minOrder: 20, deliveryFee: 6 };
+/* 起送门槛 / 配送费 / 免配送门槛：一律以「门店真实字段」为准。
+   MCP 的门店接口不一定返回这三项（本项目 data.js 里的 stores 就没有），
+   缺字段时按 0 处理并在界面上标注「以 calculate-price 为准」。
+   ⚠️ 绝不硬编码「配送费 6 元」——那是臆造的：用户会以为这就是最终要付的钱，
+      而实际门店可能免配送、或配送费 9 元，两种都会算错账。 */
+var THRESHOLDS = { minOrder: 0, deliveryFee: 0, freeOver: 0 };
+
+/* 从门店对象里读一个数字字段；读不到返回 null（区分「0 元」与「没这个字段」） */
+function storeNum(store, keys) {
+  if (!store) return null;
+  for (var i = 0; i < keys.length; i++) {
+    var v = store[keys[i]];
+    if (typeof v === "number" && isFinite(v)) return v;
+    if (typeof v === "string" && v !== "" && !isNaN(Number(v))) return Number(v);
+  }
+  return null;
+}
 
 var state = {
   scene: "all",
@@ -875,6 +953,7 @@ var state = {
   couponsOn: {},
   autoCoupon: true,   // 选品后自动启用最优可用券
   storeId: null,
+  fulfill: "delivery", // delivery = 外送（含配送费）｜pickup = 到店自取（免配送、无起送）
   members: [{ id: "me", name: "我", items: {} }],
   activeMember: "me",
   flash: {},          // 选中闪烁提示
@@ -991,23 +1070,23 @@ function discountOf(c, subtotal, lines) {
 
 function calcDiscount(subtotal, lines) {
   var best = { amount: 0, label: "" };
-  D.coupons.forEach(function (c) {
-    if (!state.couponsOn[c.id]) return;
+  moneyCoupons().forEach(function (c) {
+    if (!state.couponsOn[c.key]) return;
     var d = discountOf(c, subtotal, lines);
     if (d > best.amount) best = { amount: d, label: c.name };
   });
   return best;
 }
 
-/* 自动用券：在所有可用券里试算，自动启用优惠最大的一张。
+/* 自动用券：在所有「可试算」的券里试算，自动启用优惠最大的一张。
    用户手动开关券时会退出自动模式。 */
 function autoApplyCoupons(subtotal, lines) {
   if (!state.autoCoupon) return;
   var bestId = null, bestVal = 0;
-  D.coupons.forEach(function (c) {
+  moneyCoupons().forEach(function (c) {
     if (!couponUsable(c, subtotal)) return;
     var v = discountOf(c, subtotal, lines);
-    if (v > bestVal) { bestVal = v; bestId = c.id; }
+    if (v > bestVal) { bestVal = v; bestId = c.key; }
   });
   state.couponsOn = {};
   if (bestId) state.couponsOn[bestId] = true;
@@ -1034,13 +1113,30 @@ function compute() {
   });
   var store = null;
   D.stores.forEach(function (s) { if (s.id === state.storeId) store = s; });
-  var minOrder = (store && store.min) ? store.min : THRESHOLDS.minOrder;
-  var fee = (store && store.fee) ? store.fee : THRESHOLDS.deliveryFee;
-  if (listTotal <= 0) fee = 0;
+  var pickup = state.fulfill === "pickup";
+  /* 配送口径（重要）：
+     - 到店自取（pickup）：免配送费、无起送门槛；
+     - 外送到家（delivery）：只认门店真实字段 fee / min / freeOver，
+       缺字段一律按 0，并置 feeEstimated=true 让界面标注「以 calculate-price 为准」。
+     三个字段的可能别名都读，因为不同 MCP 版本命名不同（deliveryFee / shippingFee…）。 */
+  var realFee = storeNum(store, ["fee", "deliveryFee", "shippingFee", "deliveryPrice"]);
+  var realMin = storeNum(store, ["min", "minOrder", "minOrderPrice", "startPrice"]);
+  var realFree = storeNum(store, ["freeOver", "freeDeliveryPrice", "freeShippingPrice", "freeFeeOver"]);
+  var minOrder = pickup ? 0 : (realMin === null ? THRESHOLDS.minOrder : realMin);
+  var feeBase = pickup ? 0 : (realFee === null ? THRESHOLDS.deliveryFee : realFee);
+  var feeEstimated = !pickup && realFee === null;   // 配送费不是门店给的 → 预估值
+  var freeOver = (!pickup && realFree !== null) ? realFree : 0;
+  if (listTotal <= 0) feeBase = 0;
   /* 券一律按「现价合计」计算门槛与折扣，不能用划线原价，否则满减券会被虚高 */
   autoApplyCoupons(listTotal, lines);
   var disc = calcDiscount(listTotal, lines);
-  var pay = Math.max(0, listTotal - disc.amount) + fee;
+  var goodsPay = Math.max(0, listTotal - disc.amount);
+  /* 免配送：达到 freeOver 门槛（若门店有该字段）则配送费归零。
+     没有 freeOver 字段的门店，不臆造免配送规则，仍按 feeBase 收，并标注「预估」。 */
+  var feeFree = freeOver > 0 && listTotal >= freeOver;
+  var fee = (listTotal <= 0 || feeFree) ? 0 : feeBase;
+  var feeToFree = (freeOver > 0 && listTotal > 0 && !feeFree) ? (freeOver - listTotal) : 0;
+  var pay = goodsPay + fee;
   return {
     lines: lines,
     origin: originTotal,          // 划线原价合计（用于展示「原价」）
@@ -1048,12 +1144,22 @@ function compute() {
     discount: disc.amount, discountLabel: disc.label,
     kcal: kcal, protein: Math.round(p * 10) / 10, fat: Math.round(f * 10) / 10,
     carb: Math.round(cb * 10) / 10, sodium: sodium,
+    goodsPay: goodsPay,
     fee: fee, pay: pay,
-    /* 立省 = 划线原价 − 实付商品金额（既含官方直降，也含券） */
-    save: Math.max(0, originTotal - (listTotal - disc.amount)),
+    pickup: pickup,
+    feeEstimated: feeEstimated,              // 配送费是否来自预估值（门店未提供）
+    feeFree: feeFree,                        // 是否已触发免配送
+    freeOver: freeOver,                      // 免配送门槛（0 = 门店未提供）
+    feeToFree: feeToFree,                    // 距免配送还差多少
+    /* 立省 = 划线原价 − 实付商品金额（既含官方直降，也含券）
+       注意：配送费不属于「商品」，不计入立省 */
+    save: Math.max(0, originTotal - goodsPay),
     couponSave: disc.amount,
     store: store,
-    minOrder: minOrder, gap: Math.max(0, minOrder - listTotal)
+    fulfill: pickup ? "pickup" : "delivery",
+    minOrder: minOrder, gap: Math.max(0, minOrder - listTotal),
+    minKnown: realMin !== null,      // 起送门槛是否来自门店真实字段
+    feeKnown: realFee !== null       // 配送费是否来自门店真实字段
   };
 }
 
@@ -1155,6 +1261,76 @@ function renderItems() {
   }).join("");
 }
 
+/* ================= 券（三个数据源合并成一份，任何人装上都是自己的券） =================
+   数据源（全部来自 MCP，由 build_data.py 用「你自己的 Token」抓取）：
+     D.myCoupons  query-my-coupons      → 我的卡包，只有名字 + 有效期
+     D.coupons    query-store-coupons   → 门店/活动券，带 applyTo 才能试算金额
+     D.available  available-coupons     → 可领券，只有标题与领取状态
+   合并规则：同名合并，结构化字段（applyTo/code/valid）优先，来源标记叠加。
+   这样即使某个账号只有 myCoupons、没有门店券，也能在面板里看到并切换。 */
+function ckey(t) { return String(t || "").replace(/[\s　]/g, ""); }
+
+function couponList() {
+  var out = [], byKey = {};
+  function add(c) {
+    var k = ckey(c.name);
+    if (!k) return;
+    var hit = byKey[k];
+    if (hit) {
+      if ((!hit.applyTo || !hit.applyTo.length) && c.applyTo && c.applyTo.length) hit.applyTo = c.applyTo;
+      if (!hit.code && c.code) hit.code = c.code;
+      if (!hit.valid && c.valid) hit.valid = c.valid;
+      hit.inMine = hit.inMine || c.inMine;
+      hit.inStore = hit.inStore || c.inStore;
+      if (c.claimed) hit.claimed = true;
+      return;
+    }
+    byKey[k] = c;
+    out.push(c);
+  }
+  (D.myCoupons || []).forEach(function (m, i) {
+    add({ key: "mine-" + i, name: m.name, valid: m.valid || "", desc: "我的卡包",
+      applyTo: [], inMine: true });
+  });
+  (D.coupons || []).forEach(function (c, i) {
+    add({ key: c.id || ("store-" + i), name: c.name || c.title || "", valid: c.valid || "",
+      desc: c.desc || "门店/活动券", applyTo: c.applyTo || [], code: c.code || "",
+      codeMatched: !!c.codeMatched, inStore: true });
+  });
+  (D.available || []).forEach(function (a, i) {
+    add({ key: "av-" + i, name: a.title || a.name || "", valid: "",
+      desc: "可领券", applyTo: a.codes || [], claimed: !!a.claimed, claimable: true,
+      codesApprox: !!a.codesApprox });
+  });
+  return out;
+}
+
+/* 这张券能不能参与「本地金额试算」——不能算就明说，不让用户以为它省了钱 */
+function couponCalcState(c) {
+  var p = parseCoupon(c);
+  var scoped = c.applyTo && c.applyTo.length;
+  if (p.type === "unknown") return { ok: false, why: "买一送一/组合类券，本地无法估算，需在结算页核销" };
+  if ((p.type === "fixed" || p.type === "free") && !scoped)
+    return { ok: false, why: "券面没有对应单品，本地无法估算，需在结算页选择商品核销" };
+  if (p.type === "percent" && !scoped && subtotalSafe() <= 0)
+    return { ok: false, why: "全场折扣券，选品后自动试算" };
+  return { ok: true, why: "" };
+}
+/* 当前购物车现价合计（供券模块判断，不触发 compute 递归） */
+function subtotalSafe() {
+  var t = 0, merged = allItems();
+  Object.keys(merged).forEach(function (c) {
+    var it = itemByCode(c);
+    if (it) t += it.price * merged[c];
+  });
+  return t;
+}
+
+/* 参与金额计算 / 自动用券的券池：只包含「能算」的，避免出现「勾了却没省」 */
+function moneyCoupons() {
+  return couponList().filter(function (c) { return couponCalcState(c).ok; });
+}
+
 function couponUsable(c, subtotal) {
   var p = parseCoupon(c);
   if (p.type === "threshold" && subtotal < p.min) return false;
@@ -1167,28 +1343,71 @@ function couponUsable(c, subtotal) {
   return true;
 }
 
-function renderCoupons() {
-  var subtotal = compute().subtotal;
-  var list = D.coupons.length ? D.coupons : D.myCoupons;
-  if (!list.length) {
-    $("#coupons").innerHTML = '<div class="empty">[ 暂无可用券 · 说「帮我领券」 ]</div>';
-    return;
-  }
-  $("#coupons").innerHTML = list.map(function (c, idx) {
-    var cid = c.id || ("c" + idx);
-    var on = !!state.couponsOn[cid];
-    var usable = couponUsable(c, subtotal);
-    return '<div class="coupon' + (on ? " on" : "") + (usable ? "" : " disabled") +
-      '" data-cid="' + cid + '" tabindex="0" role="switch" aria-checked="' + (on ? "true" : "false") + '">' +
-      '<span class="amt">' + parseCoupon(c).label + '</span>' +
-      '<span style="flex:1;min-width:0"><span class="cname">' + (c.name || c.title || "") + '</span>' +
-      '<span class="cdesc">' + (c.desc || "") + (c.valid ? "　·　" + c.valid : "") + '</span></span>' +
-      '<span class="sw"></span></div>';
-  }).join("") + claimSection();
+/* 数据来源说明条：解决「别人装上看到的是我的券」这种信息断裂 */
+function dataSourceNote() {
+  var at = D.generatedAt || "未知时间";
+  return '<div class="dsrc">' +
+    '<b>数据来源</b> · 麦当劳 MCP 真实返回，快照时间 <b>' + at + '</b>。' +
+    '券、门店、账户余额都是<b>生成这份 data.js 的那个 Token 账号</b>的数据。' +
+    '<br>想让页面显示<b>你自己的券</b>：让 Agent 用你的 Token 重跑 ' +
+    '<code>python scripts/build_data.py</code>（加 <code>--claim</code> 会先调 auto-bind-coupons 领券），' +
+    'data.js 一换，本页所有金额与券自动跟着变，不需要改代码。' +
+    '</div>';
 }
 
-/* 可领券：MCP available-coupons 返回，claimed 状态由 build_data.py
-   依据「标题出现在 query-my-coupons / query-store-coupons」真实判定 */
+function couponRow(c, subtotal) {
+  var st = couponCalcState(c);
+  var on = !!state.couponsOn[c.key];
+  var usable = st.ok && couponUsable(c, subtotal);
+  var cls = "coupon" + (on ? " on" : "") + (usable ? "" : (st.ok ? " disabled" : " notry"));
+  var tags = [];
+  if (c.inMine) tags.push("我的卡包");
+  if (c.inStore) tags.push("门店券");
+  if (c.claimed && (c.inMine || c.inStore)) tags.push("已领取");
+  if (c.claimed && !c.inMine && !c.inStore) tags.push("接口标记已领 · 卡包未列出");
+  if (c.codesApprox) tags.push("商品为近似匹配");
+  var desc = (c.desc || "") + (c.valid ? "　·　" + c.valid : "");
+  if (!st.ok) desc += "　·　⚠️ " + st.why;
+  return '<div class="' + cls + '" data-cid="' + c.key + '" tabindex="0" role="switch" ' +
+    'aria-checked="' + (on ? "true" : "false") + '" title="' + (st.ok ? "点击启用/停用此券" : st.why) + '">' +
+    '<span class="amt">' + parseCoupon(c).label + '</span>' +
+    '<span style="flex:1;min-width:0"><span class="cname">' + c.name +
+    (tags.length ? ' <i class="ctag">' + tags.join("/") + '</i>' : "") + '</span>' +
+    '<span class="cdesc">' + desc + '</span></span>' +
+    '<span class="sw"></span></div>';
+}
+
+function renderCoupons() {
+  var subtotal = subtotalSafe();
+  var list = couponList();
+  var html = dataSourceNote();
+  if (!list.length) {
+    $("#coupons").innerHTML = html + '<div class="empty">[ 没读到任何券 · 说「帮我领券」让 Agent 调 auto-bind-coupons ]</div>';
+    return;
+  }
+  /* 先按「我的卡包」排，其次门店券，最后纯可领券 —— 用户最关心自己有什么 */
+  function rank(c) { return (c.inMine ? 0 : (c.inStore ? 1 : 2)); }
+  list = list.slice().sort(function (a, b) { return rank(a) - rank(b); });
+  var mine = list.filter(function (c) { return rank(c) === 0; });
+  var store = list.filter(function (c) { return rank(c) === 1; });
+  var only = list.filter(function (c) { return rank(c) === 2; });
+  if (mine.length) {
+    html += '<div class="cp-sec">我的卡包 <span>' + mine.length + ' 张</span></div>' +
+      mine.map(function (c) { return couponRow(c, subtotal); }).join("");
+  }
+  if (store.length) {
+    html += '<div class="cp-sec">门店 / 活动券 <span>' + store.length + ' 张</span></div>' +
+      store.map(function (c) { return couponRow(c, subtotal); }).join("");
+  }
+  if (only.length) {
+    html += '<div class="cp-sec">可领券（未并入门店券） <span>' + only.length + ' 张</span></div>' +
+      only.map(function (c) { return couponRow(c, subtotal); }).join("");
+  }
+  $("#coupons").innerHTML = html + claimSection();
+}
+
+/* 可领券：MCP available-coupons 返回。claimed 直接取接口给的状态
+   （旧版这里用「标题是否出现在卡包」推断，会把已领取的券误报成待领，已修正） */
 function claimSection() {
   var av = (D.available || []).filter(function (a) { return a && (a.title || a.name); });
   if (!av.length) return "";
@@ -1198,26 +1417,43 @@ function claimSection() {
   html += av.map(function (a) {
     var done = !!a.claimed;
     return '<span class="claim-chip' + (done ? " done" : "") + '" data-claim="1" tabindex="0" role="button" ' +
-      'title="' + (done ? "已在卡包（MCP 查询确认）" : "点「一键领券」由 Agent 调用 auto-bind-coupons") + '">' +
+      'title="' + (done ? "已在卡包（available-coupons 返回已领取）" : "点「一键领券」由 Agent 调用 auto-bind-coupons") + '">' +
       (done ? "✓ 已领取 · " : "＋ 未领取 · ") + (a.title || a.name) + '</span>';
   }).join("");
-  html += '</div><div class="claim-note">已领取状态来自 MCP 实时查询。未领取的券：点「⚡ 一键领券」复制指令给 AI 执行 auto-bind-coupons，' +
-    '或重跑 build_data.py --claim 领取并自动刷新状态。</div></div>';
+  html += '</div><div class="claim-note">状态来自 MCP。未领取的点「⚡ 一键领券」复制指令给 AI 执行 auto-bind-coupons；' +
+    '领完重跑 <code>build_data.py</code> 即刷新。</div></div>';
   return html;
 }
 
 function renderStores() {
-  $("#stores").innerHTML = D.stores.map(function (s) {
+  var pickup = state.fulfill === "pickup";
+  /* 履约方式放在最上面：这一项直接决定有没有配送费、有没有起送门槛，
+     比选哪家店更影响最终金额，不放到最显眼的位置用户就会算错账。 */
+  var head = '<div class="fulfill" role="radiogroup" aria-label="就餐方式">' +
+    '<button class="fv' + (pickup ? "" : " on") + '" data-fulfill="delivery" role="radio" aria-checked="' + (!pickup) + '">🛵 外送到家</button>' +
+    '<button class="fv' + (pickup ? " on" : "") + '" data-fulfill="pickup" role="radio" aria-checked="' + pickup + '">🍽 到店自取</button>' +
+    '</div>' +
+    '<div class="fhint">' + (pickup
+      ? "自取：免配送费、无起送门槛，合计就是商品金额。"
+      : "外送：配送费与起送门槛以门店/结算页为准，本页不臆造，只算商品金额。") + '</div>';
+  $("#stores").innerHTML = head + D.stores.map(function (s) {
     var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || ""));
     var status = s.open === false
       ? '<b style="color:var(--danger)">休息中</b>'
       : (s.open ? '<b style="color:var(--ok)">营业中</b>' : "");
+    var fee = storeNum(s, ["fee", "deliveryFee", "shippingFee", "deliveryPrice"]);
+    var min = storeNum(s, ["min", "minOrder", "minOrderPrice", "startPrice"]);
+    var free = storeNum(s, ["freeOver", "freeDeliveryPrice", "freeShippingPrice", "freeFeeOver"]);
+    var dline = pickup ? "自取免配送"
+      : (fee === null ? "配送费以结算页为准"
+        : "配送费 " + money(fee) + (free !== null ? " · 满 " + money(free) + " 免配送" : "") +
+          (min !== null ? " · 起送 " + money(min) : ""));
     return '<div class="store' + (s.id === state.storeId ? " on" : "") +
       '" data-sid="' + s.id + '" tabindex="0" role="radio" aria-checked="' +
       (s.id === state.storeId ? "true" : "false") + '">' +
       '<div class="sname">' + s.name + '</div>' +
       '<div class="smeta">' + s.dist + ' km · ' + (s.hours || "") + " " + status +
-      '<br>' + (s.addr || "") + '</div>' +
+      '<br>' + (s.addr || "") + '<br><span class="sfee">' + dline + '</span></div>' +
       '<a class="nav-btn" href="' + url + '" target="_blank" rel="noopener">🧭 导航到店</a></div>';
   }).join("");
 }
@@ -1258,13 +1494,29 @@ function gapCandidates(r) {
 
 function renderGap(r) {
   var box = $("#gapbox");
+  if (!box) return;
   if (!r.lines.length) { box.innerHTML = ""; return; }
-  if (r.gap <= 0) {
+  /* 自取：没有起送门槛也没有配送费，这块直接说明白，避免"还差 X 起送"的假提示 */
+  if (r.pickup) {
     box.innerHTML = '<div class="gapbox" style="border-color:rgba(37,208,122,.5);' +
       'background:rgba(37,208,122,.08)">' +
-      '<div class="gt" style="color:var(--ok)">✅ 已达起送 ' + money(r.minOrder) + '</div>' +
-      '<div style="font-family:var(--num);font-size:10px;color:var(--muted)">配送费 ' +
-      money(r.fee) + '　·　以 calculate-price 为准</div></div>';
+      '<div class="gt" style="color:var(--ok)">🍽 到店自取：无起送门槛、无配送费</div>' +
+      '<div style="font-family:var(--num);font-size:10px;color:var(--muted)">' +
+      '应付 = 商品实付 ' + money(r.subtotal - r.discount) + '　·　到店出示取餐码</div></div>';
+    return;
+  }
+  if (r.gap <= 0) {
+    var feeLine = r.feeKnown
+      ? "配送费 " + money(r.fee) + (r.feeFree ? "（已达免配送）" : "")
+      : "配送费与起送门槛以门店结算页为准";
+    if (!r.minKnown && !r.feeKnown) {
+      feeLine = "门店未返回起送/配送费，以 calculate-price 为准";
+    }
+    box.innerHTML = '<div class="gapbox" style="border-color:rgba(37,208,122,.5);' +
+      'background:rgba(37,208,122,.08)">' +
+      '<div class="gt" style="color:var(--ok)">✅ 商品金额已可下单</div>' +
+      '<div style="font-family:var(--num);font-size:10px;color:var(--muted)">' +
+      feeLine + '</div></div>';
     return;
   }
   var cands = gapCandidates(r);
@@ -1282,25 +1534,155 @@ function renderGap(r) {
   box.innerHTML = inner + '</div>';
 }
 
+/* ================= 不错过（提醒） =================
+   这个板块只回答一个问题：「有什么东西正在过期/没领，错过就没了」。
+   三类内容：① 快过期的券 ② 可领未领的券 ③ 今日活动 / 积分 / 抽奖。
+   可点性规则（明确、可解释）：
+     - 券类提醒若能在菜单里定位到对应商品 → 可点，点了在菜单高亮（近似匹配会标注）；
+     - 待领券 → 可点，跳到券面板；
+     - 定位不到商品 → 不可点，直接说明「该券无对应单品，需在结算页核销」，
+       绝不让用户以为点了就会自动变免费。 */
+function guessCodesByTitle(title) {
+  var key = String(title || "")
+    .replace(/^[\d.]+\s*元/, "")
+    .replace(/任选\d*|买一送一|第二份半价|免费|新人专享-|超值|人气|专享/g, "")
+    .trim();
+  if (key.length < 2) return { codes: [], approx: true };
+  var exact = D.menu.filter(function (m) {
+    return m.name.indexOf(key) >= 0 || key.indexOf(m.name) >= 0;
+  });
+  if (exact.length) {
+    return { codes: exact.slice(0, 3).map(function (m) { return m.code; }), approx: false };
+  }
+  /* 2-gram 兜底：只用于「在菜单里找得到」，不参与任何金额抵扣 */
+  var grams = [];
+  for (var i = 0; i < key.length - 1; i++) grams.push(key.substr(i, 2));
+  var scored = [];
+  D.menu.forEach(function (m) {
+    var hit = grams.filter(function (g) { return m.name.indexOf(g) >= 0; }).length;
+    if (hit) scored.push({ c: m.code, s: hit / grams.length });
+  });
+  scored.sort(function (a, b) { return b.s - a.s; });
+  return {
+    codes: scored.filter(function (x) { return x.s >= 0.3; }).slice(0, 3).map(function (x) { return x.c; }),
+    approx: true
+  };
+}
+
+/* 提醒列表：以 D.reminders 为底，用 D.available 校正「是否已领取」，
+   消除旧数据里「available 说已领、reminders 说待领」的自相矛盾。 */
+function remindersView() {
+  var out = [];
+  var claimed = {};
+  (D.available || []).forEach(function (a) { claimed[ckey(a.title || a.name)] = !!a.claimed; });
+  (D.reminders || []).forEach(function (r) {
+    if (r.type === "待领券" && claimed[ckey(r.title)] === true) return;  // 已领就别再喊"待领"
+    out.push(r);
+  });
+  (D.available || []).forEach(function (a) {
+    if (a.claimed) return;
+    var t = ckey(a.title || a.name);
+    var dup = out.some(function (r) { return ckey(r.title) === t; });
+    if (!dup) {
+      out.unshift({
+        level: "warn", icon: "🚨", type: "待领券", title: a.title || a.name,
+        desc: "当前可领取，尚未领取 —— 别错过", deadline: "", days: 0,
+        codes: a.codes || [], codesApprox: !!a.codesApprox
+      });
+    }
+  });
+  return out;
+}
+
+/* 券标题 → 核心商品词（去掉价格前缀与促销后缀），用于判断匹配是否可信 */
+function titleKey(t) {
+  return String(t || "")
+    .replace(/^[\d.]+\s*元/, "")
+    .replace(/任选\d*|买一送一|第二份半价|免费|新人专享-|超值|人气|专享/g, "")
+    .trim();
+}
+
+/* 复核一条「券 → 商品」映射是否只是近似：
+   只要所有命中商品的名字与核心词互不包含，就说明是模糊匹配出来的，
+   这种映射只能用来在菜单里定位，不能用来判断「这个商品免费/特价」。
+   （真实 bug：免费脆薯饼被模糊匹配到「心形薯饼5块」¥14.5，
+     用户以为免费，实际按 14.5 计入应付。） */
+function isApproxMatch(title, codes) {
+  var key = titleKey(title);
+  if (!key || !codes || !codes.length) return true;
+  var grams = [];
+  for (var i = 0; i < key.length - 1; i++) grams.push(key.substr(i, 2));
+  if (!grams.length) grams = [key];
+  return codes.every(function (c) {
+    var m = itemByCode(c);
+    if (!m) return true;
+    if (m.name.indexOf(key) >= 0 || key.indexOf(m.name) >= 0) return false;  // 互相包含 = 可信
+    /* 中文常有「麦辣鸡腿堡 / 麦辣鸡腿汉堡」这种一字之差，
+       用 2-gram 覆盖率判定：≥60% 视为可信，低于才算近似 */
+    var hit = grams.filter(function (g) { return m.name.indexOf(g) >= 0; }).length;
+    return (hit / grams.length) < 0.6;
+  });
+}
+
+function remAction(r) {
+  var codes = (r.codes || []).filter(function (c) { return itemByCode(c); });
+  var approx = !!r.codesApprox;
+  if (!codes.length) {
+    var g = guessCodesByTitle(r.title);
+    codes = g.codes; approx = g.approx;
+  } else if (r.codesApprox === undefined) {
+    /* 旧快照没有置信度字段：只对「免费 / 0 元」这类会导致「以为不要钱」的券复核，
+       其余（applyTo 来自 MCP 券面商品清单）直接信任，避免误伤。 */
+    if (/免费|0\s*元/.test(r.title || "")) approx = isApproxMatch(r.title, codes);
+  }
+  if (r.type === "待领券") {
+    return { act: "claim", codes: [], approx: false,
+      label: "👆 去券面板领取", note: "" };
+  }
+  /* 活动 / 积分类：没有"商品"可定位，如实说明去哪儿办，不套用券的文案 */
+  if (r.type === "进行中活动") {
+    return { act: "", codes: [], approx: true, label: "",
+      note: "活动信息 · 详情在麦麦 App 或 campaign-calendar" };
+  }
+  if (r.type === "抽奖活动") {
+    return { act: "", codes: [], approx: true, label: "",
+      note: "让 Agent 调 draw-lottery 抽奖，或到 App 内参与" };
+  }
+  if (r.type === "积分过期" || r.type === "积分余额") {
+    return { act: "", codes: [], approx: true, label: "",
+      note: "积分可用于麦麦商城兑换 / 抽奖" };
+  }
+  if (codes.length) {
+    return {
+      act: "pick", codes: codes, approx: approx,
+      label: "👆 在菜单定位",
+      note: approx ? "（近似匹配 · 请核对券面适用商品）" : ""
+    };
+  }
+  return { act: "", codes: [], approx: true, label: "", note: "该券无对应单品，需在结算页核销" };
+}
+
 function renderReminders() {
-  $("#remCount").textContent = "// " + D.reminders.length;
-  if (!D.reminders.length) {
+  var list = remindersView();
+  $("#remCount").textContent = "// " + list.length;
+  if (!list.length) {
     $("#reminders").innerHTML = '<div class="empty">[ 暂无待处理提醒 ]</div>';
     return;
   }
-  /* 可交互提醒：券类提醒点击 → 菜单联动选品（syncMenuToSelection 高亮对应产品）；
-     其他提醒点击 → 跳到券面板。不再只是「展示型」的功能提醒 */
-  $("#reminders").innerHTML = D.reminders.map(function (r, i) {
-    var codes = (r.codes || []).filter(function (c) { return itemByCode(c); });
-    var act = codes.length ? "pick" : (r.type === "待领券" ? "claim" : "");
-    var tip = act === "pick" ? "点击在菜单中定位对应产品"
-      : (act === "claim" ? "点击去领券" : r.title || "");
-    return '<div class="rem ' + r.level + (act ? " act" : "") + '" data-ridx="' + i +
-      '" data-act="' + act + '" data-codes="' + codes.join(",") +
+  $("#reminders").innerHTML = list.map(function (r, i) {
+    var a = remAction(r);
+    var tip = a.act === "pick"
+      ? "点击在菜单中定位对应产品" + a.note
+      : (a.act === "claim" ? "点击去券面板领取" : a.note);
+    return '<div class="rem ' + r.level + (a.act ? " act" : " dim") +
+      '" data-ridx="' + i + '" data-act="' + a.act + '" data-codes="' + a.codes.join(",") +
+      '" data-approx="' + (a.approx ? "1" : "") + '" data-note="' + (a.note || r.desc || "") +
       '" tabindex="0" role="button" title="' + tip + '">' +
       '<span class="ri">' + (r.icon || "🔔") + '</span>' +
-      '<span class="rbody"><span class="rt">' + (r.title || "") + '</span>' +
-      '<span class="rd">' + (act === "pick" ? "👆 " : "") + (r.desc || "") + '</span></span></div>';
+      '<span class="rbody"><span class="rt">' + (r.title || "") +
+      (a.approx && a.act === "pick" ? ' <i class="rtag">近似</i>' : "") + '</span>' +
+      '<span class="rd">' + a.label + (a.note ? " " + a.note : "") +
+      (!a.act ? "" : " ") + (r.desc || "") + '</span></span></div>';
   }).join("");
 }
 
@@ -1375,7 +1757,7 @@ function renderRank() {
     return;
   }
   $("#rankTag").textContent = "// 基于 " + (D.menu.length) + " 个餐品真实价格 + " +
-    ((D.coupons || []).length) + " 张券测算";
+    ((typeof couponList === "function" ? couponList() : (D.coupons || [])).length) + " 张券测算";
   var html = "";
   var h = sv.hero;
   if (h) {
@@ -1469,10 +1851,24 @@ function render() {
   $("#sPay").textContent = money(r.pay);
   // 未达起送时，应付会大于原价，这里直接标出原因，避免误读
   // 口径：应付 = 商品实付 + 配送费；立省只算商品（不含配送费），所以两个数不相等
+  /* HUD 副文案的唯一职责：让「应付」这个数字永远能被验算。
+     应付 = 商品实付 + 配送费；配送费未知时明说未知，绝不悄悄加一个臆造的数字。 */
   var feeEl = $("#sFee");
-  feeEl.textContent = r.fee > 0
-    ? "商品 " + money(r.subtotal - r.discount) + " + 配送 " + money(r.fee) + (r.gap > 0 ? " · 未达起送" : "")
-    : "";
+  var goodsPay = r.subtotal - r.discount;
+  var feeTxt;
+  if (r.pickup) {
+    feeTxt = r.lines.length ? "到店自取 · 免配送" : "";
+  } else if (r.feeFree) {
+    feeTxt = "商品 " + money(goodsPay) + " · 已免配送";
+  } else if (r.fee > 0) {
+    feeTxt = "商品 " + money(goodsPay) + " + 配送 " + money(r.fee) +
+      (r.feeEstimated ? "(预估)" : "") + (r.gap > 0 ? " · 未达起送" : "");
+  } else if (r.lines.length && r.feeEstimated) {
+    feeTxt = "商品 " + money(goodsPay) + " · 不含配送费（以结算页为准）";
+  } else {
+    feeTxt = "";
+  }
+  feeEl.textContent = feeTxt;
   feeEl.style.color = r.gap > 0 ? "var(--warn)" : "";
   var saveNote = $("#sSaveNote");
   if (saveNote) saveNote.textContent = r.fee > 0 ? "商品(不含配送)" : "商品";
@@ -1803,25 +2199,44 @@ document.addEventListener("click", function (e) {
   var od = e.target.closest(".order");
   if (od) { od.classList.toggle("open"); return; }
 
-  /* 提醒点击：券类提醒 → 菜单定位选品 / 待领券 → 券面板 */
-  var rm = e.target.closest(".rem.act");
+  /* 提醒点击：券类提醒 → 菜单定位选品 / 待领券 → 券面板 / 定位不到 → 说明原因 */
+  var rm = e.target.closest(".rem");
   if (rm) {
     var codes = (rm.dataset.codes || "").split(",").filter(Boolean);
+    var approx = rm.dataset.approx === "1";
     if (rm.dataset.act === "pick" && codes.length) {
       syncMenuToSelection(codes);
-      toast("已在菜单中高亮「" + (itemByCode(codes[0]) || {}).name + "」等 " + codes.length + " 个产品，点卡片加购");
-    } else {
+      var nm = (itemByCode(codes[0]) || {}).name || "";
+      toast(approx
+        ? "近似匹配「" + nm + "」等 " + codes.length + " 个，请核对券面适用商品再决定是否加购"
+        : "已在菜单中高亮「" + nm + "」等 " + codes.length + " 个产品，点卡片加购");
+    } else if (rm.dataset.act === "claim") {
       var cpEl = $("#coupons");
       if (cpEl && cpEl.scrollIntoView) cpEl.scrollIntoView({ behavior: "smooth", block: "center" });
       toast("已定位到优惠券面板，点「⚡ 一键领券」领取");
+    } else {
+      /* 不可定位的提醒：把原因说清楚，不让用户点了个寂寞 */
+      toast(rm.dataset.note || "这条提醒没有可定位的商品，请到麦麦 App/结算页处理");
     }
     return;
   }
 
   var cp = e.target.closest(".coupon");
-  if (cp && !cp.classList.contains("disabled")) {
-    var cid = cp.dataset.cid;
-    state.couponsOn[cid] = !state.couponsOn[cid];
+  if (cp) {
+    var cidz = cp.dataset.cid;
+    var cobj = null;
+    couponList().forEach(function (x) { if (x.key === cidz) cobj = x; });
+    /* 不可试算的券：给出明确原因，而不是点了没反应（"信息与功能断裂"的典型症状） */
+    var stz = cobj ? couponCalcState(cobj) : { ok: false, why: "券数据缺失" };
+    if (!stz.ok) { toast("这张券本地算不了：" + stz.why); return; }
+    if (cp.classList.contains("disabled")) {
+      var pp = parseCoupon(cobj);
+      toast(pp.type === "threshold"
+        ? "还差 " + money(pp.min - subtotalSafe()) + " 才够「满" + pp.min + "」门槛"
+        : "当前购物车里没有这张券适用的商品，加购后自动可用");
+      return;
+    }
+    state.couponsOn[cidz] = !state.couponsOn[cidz];
     // 手动干预即退出自动用券，尊重用户选择
     if (state.autoCoupon) {
       state.autoCoupon = false;
@@ -1829,6 +2244,17 @@ document.addEventListener("click", function (e) {
       toast("已切换为手动用券");
     }
     render();
+    return;
+  }
+
+  /* 履约方式切换：改完立即重算全部金额（含 HUD、起送、分享文案） */
+  var fv = e.target.closest("[data-fulfill]");
+  if (fv) {
+    var mode = fv.dataset.fulfill;
+    if (mode === state.fulfill) return;
+    state.fulfill = mode;
+    render();
+    toast(mode === "pickup" ? "已切到店自取：免配送费、无起送门槛" : "已切外送到家：配送费以结算页为准");
     return;
   }
 
@@ -1898,9 +2324,12 @@ $("#btnShare").addEventListener("click", function () {
       if (it) txt += "  · " + it.name + " ×" + m.items[c] + " " + money(it.price * m.items[c]) + "\n";
     });
   });
-  txt += "\n合计 " + money(r.pay) + "（含配送费 " + money(r.fee) + "）｜立省 " +
-         money(r.save) + "｜总热量 " + r.kcal + " kcal\n";
-  txt += r.gap > 0 ? "⚠️ 距起送还差 " + money(r.gap) + "\n" : "✅ 已达起送门槛\n";
+  txt += "\n合计 " + money(r.pay) + "（" +
+         (r.fulfill === "pickup" ? "到店自取，无配送费"
+           : (r.fee > 0 ? "含配送费 " + money(r.fee) : "商品金额，配送费以结算页为准")) +
+         "）｜立省 " + money(r.save) + "｜总热量 " + r.kcal + " kcal\n";
+  txt += r.gap > 0 ? "⚠️ 距起送还差 " + money(r.gap) + "\n"
+                   : (r.fulfill === "pickup" ? "🍽 到店自取\n" : "✅ 可下单\n");
   txt += "\n👉 回复「加入拼单」并把商品发给我，就能一起凑单啦";
   navigator.clipboard.writeText(txt).then(function () {
     toast("分享文案已复制");
@@ -1960,8 +2389,9 @@ function hideCmd() {
 function buildOrderCmd(r) {
   return "帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、") +
     (r.store ? "，门店：" + r.store.name : "") +
+    "，就餐方式：" + (r.fulfill === "pickup" ? "到店自取" : "外送到家") +
     (r.discountLabel ? "，使用优惠券：" + r.discountLabel : "") +
-    "。请先 calculate-price 核价，再用 create-order 下单。";
+    "。请先 calculate-price 核价（含配送费与起送门槛以接口返回为准），再用 create-order 下单。";
 }
 
 $("#btnCopy").addEventListener("click", function () {
