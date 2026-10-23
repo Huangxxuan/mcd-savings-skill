@@ -688,6 +688,7 @@ body {
   margin-top: 8px; padding-top: 9px; border-top: 1px dashed var(--line);
 }
 .dmtotal em { font-style: normal; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+.dmtotal em i { font-style: normal; margin-left: 5px; font-size: 9px; letter-spacing: 0; color: var(--warn); }
 .dmtotal b { font-family: var(--num); font-size: 21px; color: var(--acc); letter-spacing: -.02em; }
 .dact { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
 .dact .btn { width: 100%; }
@@ -713,7 +714,7 @@ body {
 .btn.ghost:hover { background: rgba(255,199,44,.10); box-shadow: none; }
 .btn:disabled { background: transparent; color: var(--muted); border-color: var(--line); cursor: not-allowed; transform: none; box-shadow: none; }
 .btn:focus-visible, .chip:focus-visible, .item:focus-visible, .scene:focus-visible,
-.coupon:focus-visible, .store:focus-visible, .member:focus-visible, .gapitem:focus-visible {
+.coupon:focus-visible, .store:focus-visible, .gapitem:focus-visible {
   outline: 2px solid var(--acc); outline-offset: 2px;
 }
 
@@ -1995,33 +1996,8 @@ function submitAddr() {
   }, 120);
 }
 
-function memberSubtotal(m) {
-  var t = 0;
-  Object.keys(m.items).forEach(function (c) {
-    var it = itemByCode(c);
-    if (it) t += it.price * m.items[c];
-  });
-  return t;
-}
-function renderMembers() {
-  /* 拼单面板已被「麦麦摇摇乐」替换，容器不再存在。
-     这里保留 state.members 的分人记账能力（结算舱按点单人分组），
-     但没有容器时必须安静退出，否则 render() 每次都会抛错。 */
-  var box = $("#members");
-  if (!box) return;
-  box.innerHTML = state.members.map(function (m) {
-    var names = Object.keys(m.items).map(function (c) {
-      var it = itemByCode(c);
-      return it ? it.name + "×" + m.items[c] : "";
-    }).filter(Boolean).join("、");
-    return '<div class="member' + (m.id === state.activeMember ? " on" : "") +
-      '" data-mid="' + m.id + '" tabindex="0" role="radio" aria-checked="' +
-      (m.id === state.activeMember ? "true" : "false") + '">' +
-      '<div class="mh"><span class="mn">' + m.name + '</span>' +
-      '<span class="ms">' + money(memberSubtotal(m)) + '</span></div>' +
-      '<div class="mi">' + (names || "尚未选择") + '</div></div>';
-  }).join("");
-}
+/* 说明：拼单面板已被「麦麦摇摇乐」替换，相关渲染函数一并删除。
+   state.members 仍保留（购物车按点单人记账的底层结构），但只有 "me" 一个成员。 */
 
 /* 凑单神器：算差额并给出价格刚好补差、热量最低的候选 */
 function gapCandidates(r) {
@@ -2399,8 +2375,13 @@ function renderCart(r) {
     el.innerHTML = rows || "尚未选择";
     el.innerHTML += '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0 0;' +
       'margin-top:5px;border-top:1px dashed var(--line)">' +
-      '<span style="color:var(--muted)">应付</span>' +
-      '<span style="color:var(--acc);font-size:13px">' + money(r.pay) + '</span></div>';
+      '<span style="color:var(--muted)">应付' + (r.memberCount > 0 ? '（含麦金卡价）' : '') + '</span>' +
+      '<span style="color:var(--acc);font-size:13px">' + money(r.pay) + '</span></div>' +
+      (r.memberCount > 0
+        ? '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0 0">' +
+          '<span style="color:var(--warn)">非会员实际</span>' +
+          '<span style="color:var(--warn);font-size:12px">' + money(r.pay + r.memberDelta) + '</span></div>'
+        : '');
   }
   renderDock(r);
 }
@@ -2490,9 +2471,10 @@ function renderDock(r) {
     (r.feeToFree > 0
       ? '<div class="dmrow"><span>再买免配送</span><b>还差 ' + money(r.feeToFree) + '</b></div>' : '') +
     (r.memberCount > 0
-      ? '<div class="dmrow warn"><span>麦金卡 ' + r.memberCount + ' 件</span><b>非会员多付 ' + money(r.memberDelta) + '</b></div>'
+      ? '<div class="dmrow warn"><span>麦金卡 ' + r.memberCount + ' 件 · 按会员价算</span><b>非会员需多付 ' + money(r.memberDelta) + '</b></div>' +
+        '<div class="dmrow"><span>若非会员，实际为</span><b>' + money(r.pay + r.memberDelta) + '</b></div>'
       : '') +
-    '<div class="dmtotal"><em>应付</em><b>' + money(r.pay) + '</b></div>' +
+    '<div class="dmtotal"><em>应付' + (r.memberCount > 0 ? '<i>含麦金卡价</i>' : '') + '</em><b>' + money(r.pay) + '</b></div>' +
     '</div>' +
     '<div class="dact">' +
     '<button class="btn" id="dockCopy"' + (cnt ? '' : ' disabled') + '>复制点单指令</button>' +
@@ -2536,7 +2518,7 @@ function render() {
   renderScenes(); renderReminders(); renderBundles();
   renderRank();
   renderCats(); renderItems(); renderCoupons();
-  renderStores(); renderMembers(); renderGap(r); renderCart(r); renderOrders();
+  renderStores(); renderGap(r); renderCart(r); renderOrders();
 
   $("#sOrigin").textContent = money(r.origin);
   $("#sSave").textContent = money(r.save);
@@ -2692,7 +2674,7 @@ function openSceneModal(sceneId) {
 }
 
 /* ---------- 祝福文案库 ----------
- * 文案按「场景 + 热量 + 省钱 + 拼单」四个维度动态拼装，
+ * 文案按「场景 + 热量 + 省钱 + 祝福」四个维度动态拼装，
  * 全部基于用户真实选择生成，不含任何虚构的营养或优惠结论。
  */
 var BLESSINGS = {
@@ -3002,7 +2984,7 @@ document.addEventListener("click", function (e) {
   var mb = e.target.closest(".member");
   if (mb) {
     state.activeMember = mb.dataset.mid;
-    renderMembers(); renderItems(); renderGap(compute()); renderCart(compute());
+    renderItems(); renderGap(compute()); renderCart(compute());
     toast("当前点单人：" + mb.querySelector(".mn").textContent);
     return;
   }
