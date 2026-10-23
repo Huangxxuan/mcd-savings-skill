@@ -352,6 +352,12 @@ body {
   display: inline-block; font-size: 9.5px; font-weight: 700; color: var(--bg);
   background: var(--muted); border-radius: var(--r-sm); padding: 1px 5px; margin-top: 4px;
 }
+.item .flag.coupon-only { background: var(--hud); }
+/* 麦金卡价：菜单价是会员价，非会员按划线价结算，两个价必须同时可见 */
+.item .memtag {
+  display: block; font-family: var(--num); font-size: 9px; font-weight: 700;
+  color: var(--warn); margin-top: 1px; line-height: 1.4;
+}
 
 /* ---------- 券 ---------- */
 .coupon {
@@ -964,7 +970,13 @@ var state = {
   couponsOn: {},
   autoCoupon: true,   // 选品后自动启用最优可用券
   storeId: null,
-  fulfill: "delivery", // delivery = 外送（含配送费）｜pickup = 到店自取（免配送、无起送）
+  /* 默认「到店自取」，理由有三：
+     ① 外送必须先在麦当劳 App 里存配送地址（delivery-query-addresses 为空时
+        整条链路走不通，calculate-price 也无法核价）；
+     ② 到店无配送费、无起送门槛，页面显示的应付金额可以和 calculate-price
+        逐分对账；
+     ③ 实测这批券的 beTypes 大多含 1（到店），切到外送会有券直接用不了。 */
+  fulfill: "pickup", // delivery = 外送（含配送费）｜pickup = 到店自取（免配送、无起送）
   members: [{ id: "me", name: "我", items: {} }],
   activeMember: "me",
   flash: {},          // 选中闪烁提示
@@ -1012,11 +1024,26 @@ function thumbHtml(it) {
   if (it.image) return '<img src="' + it.image + '" alt="' + it.name + '" loading="lazy" />';
   return it.emoji || emojiFor(it.name, it.cat);
 }
-/* 从券标题解析真实优惠力度（数据源：MCP 返回的 title）
-   支持：满减 / 折扣 / 直减 / 特价（「9.9元中杯冰美式」）/ 免费换购（「免费脆薯饼」）
-   注意：特价与免费类必须 applyTo 非空才计折扣，避免误当全场优惠 */
+/* 解析券的优惠力度。
+   权威来源是 MCP `query-my-coupons` 的 discountInfo：
+     discountValue = 「用券后的价格（元）」  ← 不是减免额！
+     discountDesc  = "用券价格"
+   实测校验：11.9 元麦辣券 → 菜单价 22.5，calculate-price 返回 discount=10.60、
+   price=11.90，与「22.5 − 11.9」完全一致；7 折券 discountValue=13.3 是折后价
+   （而美式现价 11.9，用这张券反而贵 1.4 元）。
+   只有拿不到 discountValue 时才回退到标题解析。 */
 function parseCoupon(c) {
   var t = c.name || c.title || "";
+  var dv = parseFloat(c.discountValue);
+  var hasDv = !isNaN(dv) && dv > 0 && c.discountDesc === "用券价格";
+
+  /* 买一送一：付一份钱得两份，discountValue 是「那一份的价格」 */
+  if (/买一送一|第二份半价|1送1/.test(t)) {
+    return { type: "bogo", value: hasDv ? dv : 0, label: "买一送一", payPrice: hasDv ? dv : 0 };
+  }
+  if (hasDv) {
+    return { type: "payPrice", value: dv, label: "¥" + dv + " 购", payPrice: dv };
+  }
   var m = t.match(/满\s*(\d+(?:\.\d+)?)\s*减\s*(\d+(?:\.\d+)?)/);
   if (m) return { type: "threshold", min: parseFloat(m[1]), value: parseFloat(m[2]), label: "满" + m[1] + "减" + m[2] };
   m = t.match(/(\d+(?:\.\d+)?)\s*折/);
@@ -1026,7 +1053,7 @@ function parseCoupon(c) {
   m = t.match(/(?:免费|0元)/);
   if (m) return { type: "free", value: 0, label: "免费" };
   m = t.match(/^\s*(\d+(?:\.\d+)?)\s*元/);
-  if (m) return { type: "fixed", value: parseFloat(m[1]), label: m[1] + "元购" };
+  if (m) return { type: "payPrice", value: parseFloat(m[1]), label: m[1] + "元购", payPrice: parseFloat(m[1]) };
   return { type: "unknown", value: 0, label: "可用券" };
 }
 function fmtKcal(it) {
@@ -1037,46 +1064,58 @@ function fmtKcal(it) {
 }
 
 /* ---------- 计价 ---------- */
-/* 单张券的预估优惠额（金额来自券标题解析；精确值以 calculate-price 为准） */
+/* 单张券的预估优惠额（券后价来自 discountInfo，精确值以 calculate-price 为准）
+   关键约束（均为真实接口实测）：
+   1) 一张券只对「1 件」生效：quantity=2 带券核价时，calculate-price 返回的
+      productList 里 quantity 会被截成 1，第二件根本不参与计算 —— 所以这里
+      绝不能写 `* l.qty`，否则页面会虚报优惠。
+   2) 适用范围只认「券自带 SKU > 门店券 applyTo」，都不认标题猜测。
+   3) 券后价 ≥ 商品现价时，省 0（用这张券反而更贵，如 7 折券 13.3 vs 美式 11.9）。 */
 function discountOf(c, subtotal, lines) {
   var p = parseCoupon(c);
+  var scoped = couponScopeLines(c, lines);
   var d = 0;
-  var scoped = c.applyTo && c.applyTo.length;
-  if (p.type === "percent") {
-    if (scoped) {
-      lines.forEach(function (l) {
-        if (c.applyTo.indexOf(l.item.code) >= 0) d += l.item.price * l.qty * (1 - p.value);
-      });
+  /* 券后价有两种来源：
+     ① calculate-price 真实核价得到的 realPay（权威）
+     ② 从 discountInfo.discountValue 解析的 payPrice（离线兜底）
+     注意**不能用 realDiscount**：它是「券前价 − 券后价」，而券前价往往虚高
+     （9.9 元美式券券前价 19、核价 discount=9.1，但菜单现价其实是 11.9，
+     真实只省 2 元）。用 realPay 反推才不会虚报。 */
+  var realPay = (c.realOk === true && typeof c.realPay === "number" && c.realPay > 0)
+    ? c.realPay : null;
+  var payPrice = realPay !== null ? realPay : p.payPrice;
+
+  if (p.type === "payPrice" || (realPay !== null && (p.type === "percent" || p.type === "unknown"))) {
+    if (!scoped.length || payPrice === undefined || payPrice === null) return 0;
+    // 选适用商品里最贵的一件（省得最多），且只算 1 件
+    var best = scoped.reduce(function (a, b) { return b.item.price > a.item.price ? b : a; });
+    d = Math.max(0, best.item.price - payPrice);
+  } else if (p.type === "bogo") {
+    // 买一送一：付 payPrice 得 2 件，省 = 1 件的价（购物车至少 2 件才成立）
+    if (!scoped.length) return 0;
+    var bestQty = scoped.reduce(function (a, b) { return b.qty > a.qty ? b : a; });
+    if (bestQty.qty >= 2) d = bestQty.item.price;
+  } else if (p.type === "percent") {
+    if (scoped.length) {
+      var b2 = scoped.reduce(function (a, b) { return b.item.price > a.item.price ? b : a; });
+      d = b2.item.price * (1 - p.value);
     } else {
       d = subtotal * (1 - p.value);
     }
   } else if (p.type === "threshold") {
     if (subtotal >= p.min) d = p.value;
   } else if (p.type === "amount") {
-    var ok = scoped
-      ? lines.some(function (l) { return c.applyTo.indexOf(l.item.code) >= 0; })
+    var ok = scoped.length
+      ? scoped.some(function (l) { return l.item.price >= p.value; })
       : (subtotal >= (c.minSpend || 0));
     if (ok) d = p.value;
-  } else if (p.type === "fixed") {
-    /* 特价券（如「11.9元麦辣鸡腿堡」）：仅对适用商品按「原价 − 券价」计，
-       必须已匹配到菜单商品，否则按 0 处理（待 calculate-price 核价） */
-    if (scoped) {
-      lines.forEach(function (l) {
-        if (c.applyTo.indexOf(l.item.code) >= 0)
-          d += Math.max(0, l.item.price - p.value) * l.qty;
-      });
-    }
   } else if (p.type === "free") {
-    /* 免费换购券：抵扣适用商品中最便宜的一份 */
-    if (scoped) {
-      var lo = Infinity;
-      lines.forEach(function (l) {
-        if (c.applyTo.indexOf(l.item.code) >= 0 && l.item.price < lo) lo = l.item.price;
-      });
-      if (lo < Infinity) d = lo;
+    if (scoped.length) {
+      var lo = Math.min.apply(null, scoped.map(function (l) { return l.item.price; }));
+      if (isFinite(lo)) d = lo;
     }
   }
-  return d;
+  return Math.max(0, d);
 }
 
 function calcDiscount(subtotal, lines) {
@@ -1107,6 +1146,7 @@ function compute() {
   var merged = allItems();
   var lines = [];
   var listTotal = 0, originTotal = 0, kcal = 0, p = 0, f = 0, cb = 0, sodium = 0;
+  var memberCount = 0, memberDelta = 0, couponOnlyCount = 0;
   Object.keys(merged).forEach(function (code) {
     var qty = merged[code];
     if (!qty) return;
@@ -1116,6 +1156,14 @@ function compute() {
     listTotal += it.price * qty;
     /* 划线原价：MCP 的 origin 字段（高于现价时才算原价） */
     originTotal += ((it.origin && it.origin > it.price) ? it.origin : it.price) * qty;
+    /* 麦金卡商品：菜单价是会员价，没有该权益的账号核价会按 origin 收
+       （实测四件套 28 → 57、BFF 62.9 → 122.5）。这里累计「非会员要多付多少」，
+       用于在 HUD 明确提示，而不是让用户以为 28 元就能结账。 */
+    if (it.memberPrice && it.origin > it.price) {
+      memberCount += qty;
+      memberDelta += (it.origin - it.price) * qty;
+    }
+    if (it.couponOnly) couponOnlyCount += qty;
     kcal += (it.kcal || 0) * qty;
     p += (it.protein || 0) * qty;
     f += (it.fat || 0) * qty;
@@ -1163,14 +1211,22 @@ function compute() {
     freeOver: freeOver,                      // 免配送门槛（0 = 门店未提供）
     feeToFree: feeToFree,                    // 距免配送还差多少
     /* 立省 = 划线原价 − 实付商品金额（既含官方直降，也含券）
-       注意：配送费不属于「商品」，不计入立省 */
+       注意：配送费不属于「商品」，不计入立省。
+       口径说明：这里的「原价」是**菜单参考划线价**。实测 calculate-price 对
+       套餐类商品返回的 productOriginalPrice 往往就等于现价、discount=0
+       （如麦香鸡套餐 40.5/28 → 核价原价 28、优惠 0），所以这个「立省」是
+       「比菜单参考价省」，不等于结算页的优惠金额，界面必须标注清楚。 */
     save: Math.max(0, originTotal - goodsPay),
     couponSave: disc.amount,
     store: store,
     fulfill: pickup ? "pickup" : "delivery",
     minOrder: minOrder, gap: Math.max(0, minOrder - listTotal),
     minKnown: realMin !== null,      // 起送门槛是否来自门店真实字段
-    feeKnown: realFee !== null       // 配送费是否来自门店真实字段
+    feeKnown: realFee !== null,      // 配送费是否来自门店真实字段
+    /* 麦金卡 / 券专属商品的风险提示数据 */
+    memberCount: memberCount,        // 购物车里含几件「麦金卡会员价」商品
+    memberDelta: Math.round(memberDelta * 100) / 100,  // 非会员要多付多少
+    couponOnlyCount: couponOnlyCount // 含几件「券专属 SKU」（菜单里原本没有）
   };
 }
 
@@ -1261,13 +1317,20 @@ function renderItems() {
   $("#items").innerHTML = pool.map(function (it) {
     var on = (activeMember().items[it.code] || 0) > 0;
     var over = state.kcalBudget > 0 && (it.kcal || 0) > state.kcalBudget;
+    /* 麦金卡商品的菜单价是会员价，非会员结算按 origin（实测 28 → 57）。
+       卡片上必须同时露出两个价，否则用户以为 28 就能买。 */
+    var priceHtml = it.memberPrice && it.origin > it.price
+      ? '<span class="price">' + money(it.price) + '</span>' +
+        '<span class="memtag" title="麦金卡会员价，非会员按划线价结算">麦金卡 · 非会员 ' + money(it.origin) + '</span>'
+      : '<span class="price">' + money(it.price) + '</span>';
+    var flag = it.couponOnly ? '<span class="flag coupon-only">券专属</span>'
+      : (it.tags && it.tags.length ? '<span class="flag">' + it.tags[0] + '</span>' : '');
     return '<div class="item' + (on ? " on" : "") + (state.flash[it.code] ? " flash" : "") +
       (over ? " dim" : "") +
       '" data-code="' + it.code + '" tabindex="0" role="checkbox" aria-checked="' + (on ? "true" : "false") + '">' +
       '<div class="thumb">' + thumbHtml(it) + '</div>' +
-      '<div class="name">' + it.name + '</div>' + fmtKcal(it) +
-      (it.tags && it.tags.length ? '<span class="flag">' + it.tags[0] + '</span>' : '') +
-      '<div class="meta"><span class="price">' + money(it.price) + '</span>' +
+      '<div class="name">' + it.name + '</div>' + fmtKcal(it) + flag +
+      '<div class="meta">' + priceHtml +
       '<span class="macro">蛋白 ' + (it.protein || 0) + 'g</span></div></div>';
   }).join("");
 }
@@ -1283,14 +1346,22 @@ function ckey(t) { return String(t || "").replace(/[\s　]/g, ""); }
 
 function couponList() {
   var out = [], byKey = {};
+  // 需要跨来源合并的字段：能决定「能不能用、能省多少」的全部带上
+  var MERGE = ["applyTo", "skus", "code", "valid", "discountValue", "discountDesc",
+    "beTypes", "orderTypes", "tradeEndDate", "couponId", "totalAvailableCount",
+    "realOk", "realDiscount", "realPay", "realOrig", "realMsg"];
   function add(c) {
     var k = ckey(c.name);
     if (!k) return;
     var hit = byKey[k];
     if (hit) {
+      MERGE.forEach(function (f) {
+        var hv = hit[f], cv = c[f];
+        var emptyH = hv === undefined || hv === null || hv === "" ||
+          (Array.isArray(hv) && !hv.length);
+        if (emptyH && cv !== undefined && cv !== null && cv !== "") hit[f] = cv;
+      });
       if ((!hit.applyTo || !hit.applyTo.length) && c.applyTo && c.applyTo.length) hit.applyTo = c.applyTo;
-      if (!hit.code && c.code) hit.code = c.code;
-      if (!hit.valid && c.valid) hit.valid = c.valid;
       hit.inMine = hit.inMine || c.inMine;
       hit.inStore = hit.inStore || c.inStore;
       if (c.claimed) hit.claimed = true;
@@ -1300,31 +1371,88 @@ function couponList() {
     out.push(c);
   }
   (D.myCoupons || []).forEach(function (m, i) {
-    add({ key: "mine-" + i, name: m.name, valid: m.valid || "", desc: "我的卡包",
-      applyTo: [], inMine: true });
+    add({
+      key: "mine-" + i, name: m.name, valid: m.valid || "", desc: "我的卡包",
+      applyTo: [], inMine: true,
+      couponId: m.couponId || "", code: m.couponCode || "",
+      discountValue: m.discountValue, discountDesc: m.discountDesc || "",
+      beTypes: m.beTypes || [], orderTypes: m.orderTypes || [],
+      tradeEndDate: m.tradeEndDate || "",
+      totalAvailableCount: m.totalAvailableCount,
+      ifFreeCoupon: !!m.ifFreeCoupon, tags: m.tags || [],
+      skus: m.skus || [],
+      realOk: m.realOk, realDiscount: m.realDiscount, realPay: m.realPay,
+      realOrig: m.realOrig, realMsg: m.realMsg || "",
+    });
   });
   (D.coupons || []).forEach(function (c, i) {
-    add({ key: c.id || ("store-" + i), name: c.name || c.title || "", valid: c.valid || "",
-      desc: c.desc || "门店/活动券", applyTo: c.applyTo || [], code: c.code || "",
-      codeMatched: !!c.codeMatched, inStore: true });
+    add({
+      key: c.id || ("store-" + i), name: c.name || c.title || "", valid: c.valid || "",
+      desc: c.desc || "门店/活动券", applyTo: c.applyTo || [], skus: c.skus || [],
+      code: c.code || "", couponId: c.id || "",
+      codeMatched: !!c.codeMatched, inStore: true,
+      realOk: c.realOk, realDiscount: c.realDiscount, realPay: c.realPay,
+      realOrig: c.realOrig, realMsg: c.realMsg || "",
+    });
   });
   (D.available || []).forEach(function (a, i) {
-    add({ key: "av-" + i, name: a.title || a.name || "", valid: "",
+    add({
+      key: "av-" + i, name: a.title || a.name || "", valid: "",
       desc: "可领券", applyTo: a.codes || [], claimed: !!a.claimed, claimable: true,
-      codesApprox: !!a.codesApprox });
+      codesApprox: !!a.codesApprox,
+    });
   });
   return out;
+}
+
+/* 这张券在当前履约方式下能不能用。
+   beTypes：1 到店 / 2 麦乐送 / 3 ? / 4 其他渠道 / 5 得来速
+   实测「人气麦旋风买一送一」beTypes=[4]、到店(1)核价直接报
+   600012「当前优惠券不可用」；「新人 7 折」beTypes=[1,3,5] 不含外送。 */
+function couponSceneOk(c) {
+  var bt = c.beTypes || [];
+  if (!bt.length) return { ok: true };
+  var cur = state.fulfill === "pickup" ? 1 : 2;
+  if (bt.indexOf(cur) < 0) {
+    var name = cur === 1 ? "到店" : "外送";
+    return { ok: false, why: "该券不适用于「" + name + "」（券面限定 beTypes=" + bt.join("/") + "）" };
+  }
+  return { ok: true };
+}
+
+/* 券适用的购物车行：优先券自带 SKU（权威），其次门店券 applyTo。
+   两者都没有时返回空 —— 不允许用标题猜出来的商品参与计价。 */
+function couponScopeLines(c, lines) {
+  var codes = (c.skus && c.skus.length)
+    ? c.skus.map(function (s) { return s.code || s; })
+    : (c.applyTo || []);
+  if (!codes.length) return [];
+  return (lines || []).filter(function (l) { return codes.indexOf(l.item.code) >= 0; });
 }
 
 /* 这张券能不能参与「本地金额试算」——不能算就明说，不让用户以为它省了钱 */
 function couponCalcState(c) {
   var p = parseCoupon(c);
-  var scoped = c.applyTo && c.applyTo.length;
-  if (p.type === "unknown") return { ok: false, why: "买一送一/组合类券，本地无法估算，需在结算页核销" };
-  if ((p.type === "fixed" || p.type === "free") && !scoped)
+  /* 第一优先级：build_data.py 用 calculate-price 跑出来的真实结论。
+     实测「人气麦旋风买一送一」beTypes=[4]、到店核价直接 600012「当前优惠券
+     不可用」；「新人 7 折」对菜单里的美式也报「促销规则不支持该商品」。
+     这些靠标题永远猜不出来，只能信核价。 */
+  if (c.realOk === false) {
+    return { ok: false, why: "核价不可用：" + (c.realMsg || "促销规则不支持") };
+  }
+  if (c.realOk === null || c.realOk === undefined) {
+    if (c.inMine || c.inStore) {
+      return { ok: false, why: c.realMsg || "未能在门店券里找到适用商品，需在结算页核销" };
+    }
+  }
+  var sc = couponSceneOk(c);
+  if (!sc.ok) return { ok: false, why: sc.why };
+  if (!c.couponId && !c.inStore) {
+    return { ok: false, why: "该券没有券码（未在卡包查到），只能到结算页核销" };
+  }
+  if (p.type === "unknown") return { ok: false, why: "组合类券，本地无法估算，需在结算页核销" };
+  if (p.type === "payPrice" && !((c.skus || []).length || (c.applyTo || []).length))
     return { ok: false, why: "券面没有对应单品，本地无法估算，需在结算页选择商品核销" };
-  if (p.type === "percent" && !scoped && subtotalSafe() <= 0)
-    return { ok: false, why: "全场折扣券，选品后自动试算" };
   return { ok: true, why: "" };
 }
 /* 当前购物车现价合计（供券模块判断，不触发 compute 递归） */
@@ -1343,12 +1471,17 @@ function moneyCoupons() {
 }
 
 function couponUsable(c, subtotal) {
+  if (!couponSceneOk(c).ok) return false;
   var p = parseCoupon(c);
   if (p.type === "threshold" && subtotal < p.min) return false;
-  if (c.applyTo && c.applyTo.length) {
+  // 有明确适用范围（SKU / applyTo）时，购物车里必须真的有对应商品
+  var codes = (c.skus && c.skus.length)
+    ? c.skus.map(function (s) { return s.code || s; })
+    : (c.applyTo || []);
+  if (codes.length) {
     var merged = allItems();
     return Object.keys(merged).some(function (k) {
-      return merged[k] > 0 && c.applyTo.indexOf(k) >= 0;
+      return merged[k] > 0 && codes.indexOf(k) >= 0;
     });
   }
   return true;
@@ -1447,13 +1580,16 @@ function renderStores() {
   var pickup = state.fulfill === "pickup";
   /* 履约方式放在最上面：这一项直接决定有没有配送费、有没有起送门槛，
      比选哪家店更影响最终金额，不放到最显眼的位置用户就会算错账。 */
+  var addrCount = typeof D.deliveryAddressCount === "number" ? D.deliveryAddressCount : null;
   var head = '<div class="fulfill" role="radiogroup" aria-label="就餐方式">' +
     '<button class="fv' + (pickup ? "" : " on") + '" data-fulfill="delivery" role="radio" aria-checked="' + (!pickup) + '">🛵 外送到家</button>' +
     '<button class="fv' + (pickup ? " on" : "") + '" data-fulfill="pickup" role="radio" aria-checked="' + pickup + '">🍽 到店自取</button>' +
     '</div>' +
     '<div class="fhint">' + (pickup
       ? "自取：免配送费、无起送门槛，合计就是商品金额。"
-      : "外送：配送费与起送门槛以门店/结算页为准，本页不臆造，只算商品金额。") + '</div>';
+      : (addrCount === 0
+        ? "⚠️ 这个账号还没有外送收货地址（delivery-query-addresses 返回空），外送无法核价下单。请先在麦当劳 App 添加地址，或切回「到店自取」。"
+        : "外送：配送费与起送门槛以门店/结算页为准，本页不臆造，只算商品金额。")) + '</div>';
   $("#stores").innerHTML = head + D.stores.map(function (s) {
     var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || ""));
     var status = s.open === false
@@ -1592,9 +1728,26 @@ function guessCodesByTitle(title) {
 function remindersView() {
   var out = [];
   var claimed = {};
-  (D.available || []).forEach(function (a) { claimed[ckey(a.title || a.name)] = !!a.claimed; });
+  /* 同一标题在 available 里可能出现两条（一张已领、一张可领，属不同批次）。
+     用「任一已领即视为已领」，否则后写入的 false 会把 true 覆盖掉，
+     导致已领的券仍被当成「待领券」重复提醒。 */
+  (D.available || []).forEach(function (a) {
+    var k = ckey(a.title || a.name);
+    claimed[k] = claimed[k] || !!a.claimed;
+  });
   (D.reminders || []).forEach(function (r) {
-    if (r.type === "待领券" && claimed[ckey(r.title)] === true) return;  // 已领就别再喊"待领"
+    if (r.type === "待领券" && claimed[ckey(r.title)] === true) {
+      /* 已经领取的券不该再喊「待领」，但也不该直接消失：
+         券有有效期，提醒的价值在于「别放过期 / 顺手用掉」。
+         这里转成「用券」提醒，点一下就在菜单里定位对应商品。 */
+      out.push({
+        level: "ok", icon: "🎟️", type: "用券",
+        title: r.title, desc: "已领取，点一下在菜单定位对应商品",
+        deadline: r.deadline || "", days: r.days || 0,
+        codes: r.codes || [], codesApprox: r.codesApprox
+      });
+      return;
+    }
     out.push(r);
   });
   (D.available || []).forEach(function (a) {
@@ -1886,10 +2039,20 @@ function render() {
   } else {
     feeTxt = "";
   }
+  /* 麦金卡商品风险：菜单价是会员价，非会员结算会按标准价收（实测 28→57）。
+     这个提示必须压在应付旁边，否则用户会以为 28 元能结账。 */
+  if (r.lines.length && r.memberCount > 0) {
+    feeTxt = (feeTxt ? feeTxt + " · " : "") +
+      "含 " + r.memberCount + " 件麦金卡价，非会员需多付 " + money(r.memberDelta);
+  }
   feeEl.textContent = feeTxt;
-  feeEl.style.color = r.gap > 0 ? "var(--warn)" : "";
+  feeEl.style.color = (r.gap > 0 || r.memberCount > 0) ? "var(--warn)" : "";
   var saveNote = $("#sSaveNote");
-  if (saveNote) saveNote.textContent = r.fee > 0 ? "商品(不含配送)" : "商品";
+  if (saveNote) {
+    saveNote.textContent = r.memberCount > 0
+      ? "参考划线价"
+      : (r.fee > 0 ? "商品(不含配送)" : "商品");
+  }
   $("#sKcal").textContent = r.kcal > 0
     ? r.kcal + " kcal"
     : (r.lines.length ? "部分待核" : "0 kcal");
@@ -2414,13 +2577,31 @@ function hideCmd() {
   if (out) out.style.display = "none";
 }
 
-/* 点单指令由购物车实时生成，复制与自动刷新共用同一份逻辑，避免两处文案漂移 */
+/* 下单指令。
+   真实 create-order 的必填项（实测 schema）：storeCode / orderType / beType，
+   到店场景还必须带 takeWayCode（值来自 calculate-price 返回的 takeWayList，
+   本店为 eat-in 堂食 / locker-out 外带）。少这个参数下单会直接失败，
+   所以指令里必须显式写出来，让 Agent 知道该传什么。 */
 function buildOrderCmd(r) {
-  return "帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、") +
-    (r.store ? "，门店：" + r.store.name : "") +
-    "，就餐方式：" + (r.fulfill === "pickup" ? "到店自取" : "外送到家") +
-    (r.discountLabel ? "，使用优惠券：" + r.discountLabel : "") +
-    "。请先 calculate-price 核价（含配送费与起送门槛以接口返回为准），再用 create-order 下单。";
+  var storeCode = r.store ? (r.store.id || r.store.code || "") : "";
+  var beType = r.fulfill === "pickup" ? 1 : 2;
+  var orderType = r.fulfill === "pickup" ? 1 : 2;
+  var parts = [];
+  parts.push("帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、"));
+  if (r.store) parts.push("门店：" + r.store.name + "（storeCode=" + storeCode + "）");
+  parts.push("就餐方式：" + (r.fulfill === "pickup" ? "到店自取" : "外送到家") +
+    "（orderType=" + orderType + "，beType=" + beType + "）");
+  if (r.fulfill === "pickup") {
+    parts.push("取餐方式 takeWayCode 用 calculate-price 返回的 takeWayList（本店为 eat-in 堂食 / locker-out 外带）");
+  }
+  if (r.discountLabel) {
+    var on = couponList().filter(function (c) { return state.couponsOn[c.key]; })[0];
+    parts.push("使用优惠券：" + r.discountLabel +
+      (on && on.couponId ? "（couponId=" + on.couponId + (on.code ? "，couponCode=" + on.code : "") + "）" : ""));
+    parts.push("注意：一张券只对 1 件生效，多件请拆成多行分别核价");
+  }
+  var cmd = parts.join("，") + "。请先 calculate-price 核价（含配送费与起送门槛以接口返回为准），再用 create-order 下单。";
+  return cmd;
 }
 
 $("#btnCopy").addEventListener("click", function () {
