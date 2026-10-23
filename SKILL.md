@@ -317,6 +317,52 @@ python3 scripts/build_data.py --rank
     定位不到 → **写明「该券无对应单品，需在结算页核销」**，点了给 toast 解释，不能静默。
     免费券尤其危险：`免费脆薯饼` 曾被 2-gram 模糊匹配到「心形薯饼5块 ¥14.5」，
     用户以为免费，实际按 14.5 计入应付。→ 近似匹配必须打「近似」标记，且**只用于定位，不参与金额抵扣**。
+21. **菜单 `currentPrice` 不一定等于结算价：麦金卡商品会翻倍**（真实 bug，实测）
+    菜单里带 `麦金卡` 标签的商品（14 个，全是「四件套 / 随心选 / BFF 双人餐」），
+    `currentPrice` 是**会员价**；没有麦金卡权益的账号，`calculate-price` 会按
+    `originalPrice` 收：
+
+    | 商品 | 菜单价 | 真实核价 | 差 |
+    |---|---|---|---|
+    | 板烧鸡腿堡四件套 | ¥28 | **¥57** | +29 |
+    | 人气超值四件套 | ¥28 | **¥57** | +29 |
+    | BFF 四宫格双人餐 | ¥62.9 | **¥122.5** | +59.6 |
+
+    → `build_data.py` 必须写 `memberPrice: true`；页面必须**同时露出两个价**
+      （「¥28 / 麦金卡 · 非会员 ¥57」），并在 HUD 明确写「含 N 件麦金卡价，非会员需多付 ¥X」。
+      只显示 ¥28 等于骗用户，他到结算页会发现要付两倍。
+22. **菜单「划线价」不是结算优惠，discount 常常是 0**
+    `query-meals` 的 `originalPrice`（如麦香鸡套餐 40.5）是营销参考价；
+    而 `calculate-price` 的 `productOriginalPrice` 往往就等于现价、`discount: 0`。
+    → 页面上的「立省」必须标注为「参考划线价」，不能宣称是结算优惠；
+      只有 `calculate-price` 返回的 `discount` 才是真实优惠金额。
+23. **券的优惠必须来自 `calculate-price`，不能从标题猜**（真实 bug）
+    实测三张券的真实行为，靠标题全都猜错：
+    - `新人专享-中杯美式7折`（discountValue 13.3）对菜单里的美式返回
+      **600012「促销规则不支持该商品」**；它真正能用的是自带的券专属 SKU `9900000119`。
+    - `人气麦旋风买一送一` `beTypes=[4]`，到店核价直接 **600012「当前优惠券不可用」**。
+    - `19.9元王牌炸鸡任选2` 的真实 SKU 是 `9900016534`（不在 `query-meals` 里），
+      核价 23.8 → 19.9，**真实只省 ¥3.9**，远小于标题暗示的 9.6。
+    → `build_data.py` 必须逐张调 `calculate-price`，把 `realOk / realDiscount / realPay`
+      写进数据；页面只信核价结果，`realOk=false` 的券直接标「核价不可用：<原因>」。
+24. **`discountInfo.discountValue` 是「券后价」，不是减免额**
+    「7 折」券的 `discountValue` 是 13.3（折后价）、「买一送一」是 15（那一份的价）。
+    → 算钱要用 **`realPay`（券后真实支付价）减去商品现价**，
+      **不要用 `realDiscount`**：它是相对虚高券前价的差额
+      （9.9 元美式券券前价 19、`discount=9.1`，但菜单现价其实 11.9，真实只省 2 元）。
+25. **一张券只对 1 件生效**（实测）
+    `quantity: 2` 带券核价时，返回的 `productList[].quantity` 会被截成 **1**，
+    第二件直接被丢弃（原价也只算 1 件）。→ 前端抵扣**绝不能写 `* qty`**；
+    页面文案要提示「多件请拆成多行分别核价」。
+26. **`create-order` 到店场景必须带 `takeWayCode`**
+    值来自 `calculate-price` 返回的 `takeWayList[].code`（本店为 `eat-in` 堂食 /
+    `locker-out` 外带）。少了这个参数下单直接失败。
+    → 下单指令里必须显式写出 `storeCode` / `orderType` / `beType` / `takeWayCode`，
+      以及用券时的 `couponId` / `couponCode`。
+27. **外送链路依赖账号里的收货地址**
+    `delivery-query-stores` 需要 `addressId`，而 `delivery-query-addresses` 返回空时
+    整条外送链路走不通（也无法核价）。→ `build_data.py` 记录 `deliveryAddressCount`，
+    页面在外送模式下若为 0，直接提示「先去 App 添加地址」，并默认用「到店自取」。
 
 ## 后续计划
 
