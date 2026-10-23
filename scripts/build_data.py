@@ -63,6 +63,52 @@ def mcp_call(tool: str, arguments: dict, token: str) -> str:
     return content[0].get("text", "") if content else ""
 
 
+def mcp_call_obj(tool: str, arguments: dict, token: str) -> dict:
+    """返回 MCP 的 structuredContent（真正的结构化结果）。
+       注意：mcp_call() 只取 content[0].text，而部分工具（query-my-coupons /
+       available-coupons）的 text 是 markdown 列表、structuredContent 才是 JSON。
+       早期版本用正则去 markdown 里抓券名，把 couponId / discountInfo /
+       beTypes / tradeEndDate 这些决定「能不能用、能省多少」的字段全丢了 ——
+       这就是「券信息与功能断裂」的根因。"""
+    payload = {
+        "jsonrpc": "2.0", "id": 1,
+        "method": "tools/call",
+        "params": {"name": tool, "arguments": arguments},
+    }
+    req = urllib.request.Request(
+        MCP_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        print(f"[MCP] {tool} HTTP {e.code}，已跳过")
+        return {}
+    if "error" in body:
+        print(f"[MCP] {tool} 调用失败：{str(body['error'])[:200]}")
+        return {}
+    res = body.get("result", {}) or {}
+    sc = res.get("structuredContent")
+    if isinstance(sc, dict) and sc:
+        return sc
+    # 回退：从 text 里抠 JSON
+    content = res.get("content", []) or []
+    if content:
+        try:
+            out = extract_json(content[0].get("text", ""))
+            return out if isinstance(out, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
 def extract_json(raw: str):
     """MCP 返回是「说明文字 + 原始 JSON」，这里把最外层完整的 JSON 抠出来"""
     raw = raw.strip()
@@ -861,10 +907,35 @@ def build_reminders(coupons: list, available: list, account: dict,
 
 
 def parse_available(raw: str) -> list:
-    """解析 available-coupons 的文本列表。
-       接口自带「状态：已领取/未领取」字段，优先采用；
-       接口未给状态时回退为 None，由 main() 用卡包/门店券交叉判定。"""
+    """解析 available-coupons。
+       优先用结构化 JSON（含权威状态 couponStatus），文本仅作兜底。
+       couponStatus: HAVING_RECEIVE=已领取 / 其余=未领取"""
     out = []
+    try:
+        j = extract_json(raw) or {}
+        if isinstance(j, dict):
+            j = j.get("data")
+        for a in (j or []):
+            if not isinstance(a, dict):
+                continue
+            title = str(a.get("couponName") or "")
+            if not title:
+                continue
+            st = str(a.get("couponStatus") or "").upper()
+            claimed = True if st == "HAVING_RECEIVE" else (False if st else None)
+            out.append({
+                "title": title,
+                "claimed": claimed,
+                "status": st,
+                "label": str(a.get("label") or ""),
+                "image": str(a.get("couponImage") or ""),
+            })
+        if out:
+            return out
+    except Exception:
+        pass
+
+    # ---- 兜底：文本解析 ----
     blocks = re.split(r"\n\s*-\s*优惠券标题：", raw)
     for b in blocks[1:]:
         lines = b.split("\n")
@@ -873,7 +944,70 @@ def parse_available(raw: str) -> list:
             continue
         sm = re.search(r"状态：\s*(已领取|未领取)", b)
         st = sm.group(1) if sm else None
-        out.append({"title": title, "claimed": (True if st == "已领取" else (False if st == "未领取" else None))})
+        out.append({"title": title, "status": "",
+                    "claimed": (True if st == "已领取" else (False if st == "未领取" else None))})
+    return out
+
+
+def parse_my_coupons(raw: str) -> list:
+    """解析 query-my-coupons（我的卡包）。
+       结构化 JSON 里每个券都带 id / code / discountInfo / beTypes / orderTypes /
+       tradeEndDate / totalAvailableCount —— 这些才是「能不能用、能省多少」的真字段，
+       早期版本用 markdown 正则只抓了个名字，导致券无法试算、也无法回传给
+       calculate-price，是「券信息与功能断裂」的根因。"""
+    out = []
+    try:
+        j = extract_json(raw) or {}
+        data = j.get("data") if isinstance(j, dict) else None
+        arr = (data or {}).get("coupons") if isinstance(data, dict) else data
+        for c in (arr or []):
+            if not isinstance(c, dict):
+                continue
+            title = str(c.get("title") or c.get("couponName") or "")
+            if not title:
+                continue
+            di = c.get("discountInfo") or {}
+            tags = []
+            for t in (c.get("tags") or []):
+                if isinstance(t, dict):
+                    tags.append(str(t.get("label") or t.get("value") or ""))
+                else:
+                    tags.append(str(t))
+            tags = [t for t in tags if t]
+            out.append({
+                "name": title,
+                "couponId": str(c.get("id") or ""),
+                "couponCode": str(c.get("code") or ""),
+                # discountValue 语义 = 用券后的价格（元），不是减免额
+                "discountValue": to_float(di.get("discountValue")),
+                "discountDesc": str(di.get("discountDesc") or ""),
+                "discountTypeText": str(di.get("discountTypeText") or ""),
+                "tradeEndDate": str(c.get("tradeEndDate") or ""),
+                "tradeStartDate": str(c.get("tradeStartDate") or ""),
+                "orderTypes": c.get("orderTypes") or [],
+                "beTypes": c.get("beTypes") or [],
+                "ifFreeCoupon": bool(c.get("ifFreeCoupon")),
+                "appliedCategory": c.get("appliedCategory"),
+                "totalCount": to_int(c.get("totalCount")),
+                "totalAvailableCount": to_int(c.get("totalAvailableCount")),
+                "tags": tags,
+                "valid": (f"{c.get('tradeStartDate','')}~{c.get('tradeEndDate','')}"
+                          if c.get("tradeEndDate") else ""),
+                "inMine": True,
+            })
+        if out:
+            return out
+    except Exception:
+        pass
+
+    # ---- 兜底：markdown 文本 ----
+    for m in re.finditer(r"^#+\s*(.+?)\s*$", raw, re.M):
+        name = m.group(1).strip()
+        if name.startswith("您的优惠券") or "共" in name:
+            continue
+        blk = raw[m.end(): m.end() + 400]
+        dm = re.search(r"\*\*有效期\*\*[:：]\s*(.+)", blk)
+        out.append({"name": name, "valid": (dm.group(1).strip() if dm else ""), "inMine": True})
     return out
 
 
@@ -1149,29 +1283,80 @@ def main():
     coupons_out = []
     for c in cdata:
         products = c.get("products") or []
-        apply_to, matched_by_name = [], []
+        apply_to, matched_by_name, skus = [], [], []
         for p in products:
             pc = str(p.get("productCode") or "")
+            pname = str(p.get("productName") or "")
+            if pc:
+                skus.append({"code": pc, "name": pname})
             if pc and pc in menu_codes:
                 apply_to.append(pc)
             else:
-                # 编码不在菜单中 → 名称回退匹配
-                for mc in match_menu_codes(str(p.get("productName") or "")):
+                # 编码不在菜单中 → 名称回退匹配（仅用于定位，不用于计价）
+                for mc in match_menu_codes(pname):
                     if mc not in apply_to:
                         matched_by_name.append(mc)
         apply_to += [mc for mc in matched_by_name if mc not in apply_to]
+        # 券自带 SKU：这是「这张券到底该买什么」的权威答案。
+        # 实测「19.9 元王牌炸鸡任选 2」的 couponId 对应独立 SKU 9900016534
+        # （核价 23.8 → 19.9，真实只省 3.9），而该 SKU 不在 query-meals 的菜单里。
+        # 只按标题猜商品会把券算错，也会让用户在页面上根本点不到这张券。
         coupons_out.append({
             "id": str(c.get("couponId") or ""),
             "code": str(c.get("couponCode") or ""),
             "name": c.get("title") or "",
             "desc": "、".join([str(p.get("productName")) for p in products]) or "全场通用",
             "applyTo": apply_to,
+            "skus": skus,
+            "promotionId": str(c.get("promotionId") or ""),
             "valid": c.get("tradeDateTime") or "",
             "codeMatched": len(matched_by_name) == 0 and bool(apply_to),
         })
     print(f"[3/6] 门店可用券: {len(coupons_out)} 张"
           f"（编码直配 {sum(1 for c in coupons_out if c['codeMatched'])}，"
-          f"名称回退 {sum(1 for c in coupons_out if not c['codeMatched'] and c['applyTo'])}）")
+          f"名称回退 {sum(1 for c in coupons_out if not c['codeMatched'] and c['applyTo'])}，"
+          f"自带 SKU {sum(len(c['skus']) for c in coupons_out)} 个）")
+
+    # ---- 3a. 逐张券跑真实核价（这是唯一能确认「券到底能不能用、能省多少」的方式）----
+    # 只看标题必然出错：实测「新人专享-中杯美式7折」对美式返回 600012
+    # 「促销规则不支持该商品」，「人气麦旋风买一送一」返回「当前优惠券不可用」。
+    # 这里把 calculate-price 的真实结果写进数据，页面直接展示，不再靠估算。
+    for c in coupons_out:
+        cid, ccode = c.get("id"), c.get("code")
+        skus = c.get("skus") or []
+        c["realOk"] = None
+        c["realDiscount"] = None
+        c["realPay"] = None
+        c["realOrig"] = None
+        c["realMsg"] = ""
+        if not (cid and ccode and skus):
+            continue
+        sku = skus[0]
+        try:
+            cp = mcp_call_obj("calculate-price", {
+                "storeCode": store_code, "orderType": 1, "beType": 1,
+                "items": [{"productCode": sku["code"], "quantity": 1,
+                           "couponId": cid, "couponCode": ccode}],
+            }, token)
+        except Exception as e:
+            c["realMsg"] = f"核价异常: {e}"
+            continue
+        if not cp.get("success"):
+            c["realOk"] = False
+            c["realMsg"] = str(cp.get("message") or "核价失败")
+            continue
+        d = cp.get("data") or {}
+        c["realOk"] = True
+        c["realDiscount"] = round(to_float(d.get("discount")) / 100.0, 2)
+        c["realPay"] = round(to_float(d.get("price")) / 100.0, 2)
+        c["realOrig"] = round(to_float(d.get("productOriginalPrice")) / 100.0, 2)
+
+    ok_n = sum(1 for c in coupons_out if c.get("realOk") is True)
+    fail_n = sum(1 for c in coupons_out if c.get("realOk") is False)
+    print(f"[3a] 真实核价: {ok_n} 张可用 / {fail_n} 张不可用"
+          + ("（" + "；".join(f"{c['name']}→{c['realMsg']}"
+                             for c in coupons_out if c.get("realOk") is False)[:120] + "）"
+             if fail_n else ""))
 
     # ---- 3b. 营养 ----
     raw_n = mcp_call("list-nutrition-foods", {}, token)
@@ -1179,19 +1364,12 @@ def main():
     print(f"[4/6] 营养: {len(nutri)} 条")
 
     # ---- 5. 提醒数据源 ----
-    my_coupons = []
-    raw_m = mcp_call("query-my-coupons", {}, token)
-    mb = extract_json(raw_m) or {}
-    # query-my-coupons 返回的是 markdown 文本，做轻量提取
-    for m in re.finditer(r"^#+\s*(.+?)\s*$", raw_m, re.M):
-        name = m.group(1).strip()
-        if name.startswith("您的优惠券") or "共" in name:
-            continue
-        blk = raw_m[m.end(): m.end() + 400]
-        dm = re.search(r"\*\*有效期\*\*[:：]\s*(.+)", blk)
-        my_coupons.append({"name": name, "valid": (dm.group(1).strip() if dm else "")})
+    raw_m = json.dumps(mcp_call_obj("query-my-coupons", {"page": "1", "pageSize": "200"}, token),
+                       ensure_ascii=False)
+    my_coupons = parse_my_coupons(raw_m)
 
-    available = parse_available(mcp_call("available-coupons", {}, token))
+    available = parse_available(json.dumps(
+        mcp_call_obj("available-coupons", {}, token), ensure_ascii=False))
 
     # 已领取判定：优先用 available-coupons 自带的「状态」字段；
     # 接口未给状态时，回退为「标题出现在 卡包券 或 门店券 中」
@@ -1202,25 +1380,62 @@ def main():
             a["claimed"] = (a.get("title") or "") in known_titles
         claimed_cnt += bool(a["claimed"])
 
+    # ---- 卡包券的真实核价结果 ----
+    # query-my-coupons 不返回适用商品，所以用同标题的门店券核价结果回填；
+    # 匹配不上的（如「人气麦旋风买一送一」beTypes=[4]、「新人 7 折」）标记为
+    # 「未验证」，页面据此显示「需在结算页核销」，绝不假装能省。
+    real_by_title = {c.get("name", ""): c for c in coupons_out}
+    for m in my_coupons:
+        src = real_by_title.get(m.get("name", ""))
+        if src and src.get("realOk") is not None:
+            m["realOk"] = src.get("realOk")
+            m["realDiscount"] = src.get("realDiscount")
+            m["realPay"] = src.get("realPay")
+            m["realOrig"] = src.get("realOrig")
+            m["realMsg"] = src.get("realMsg", "")
+            m["skus"] = src.get("skus")
+        else:
+            m["realOk"] = None
+            m["realDiscount"] = None
+            m["realPay"] = None
+            m["realOrig"] = None
+            m["realMsg"] = "未能在门店券里找到适用商品，需在结算页核销"
+            m["skus"] = []
+    n_verified = sum(1 for m in my_coupons if m.get("realOk") is not None)
+    print(f"[5a] 卡包券核价: {n_verified}/{len(my_coupons)} 张已验证"
+          + (f"，{len(my_coupons) - n_verified} 张需结算页核销" if len(my_coupons) > n_verified else ""))
+
     # 提醒点击 → 菜单选品映射（券标题 → 菜单编码）。
-    # 同时记录「是否近似匹配」：近似匹配只允许用来在菜单里定位，
-    # **绝不允许**用来算钱（否则会出现「免费券按另一个商品价格计入应付」）。
+    # 优先级必须是：券自带 SKU > 门店券 applyTo > 标题精确匹配 > 2-gram 近似匹配。
+    # 实测「19.9 元王牌炸鸡任选 2」靠标题会匹到 9900016077，而券真实 SKU 是
+    # 9900016534 —— 用错 SKU 会让用户点了券却买错东西，甚至算错钱。
     codes_map, approx_map = {}, {}
+    skus_by_title = {c.get("name", ""): [s["code"] for s in (c.get("skus") or [])]
+                     for c in coupons_out}
+    apply_by_title = {c.get("name", ""): (c.get("applyTo") or []) for c in coupons_out}
+
+    def resolve_codes(title: str):
+        """返回 (codes, approx)。只在「券自带 SKU / applyTo」都用不上时才猜。"""
+        skus = [s for s in skus_by_title.get(title, []) if s]
+        if skus:
+            return skus, False
+        ap = [s for s in apply_by_title.get(title, []) if s]
+        if ap:
+            return ap, False
+        return title_to_codes(title, menu_names, match_menu_codes)
+
     for a in available:
         t = a.get("title") or ""
-        c, approx = title_to_codes(t, menu_names, match_menu_codes)
+        c, approx = resolve_codes(t)
         codes_map[t] = c
         approx_map[t] = approx
         a["codes"] = c
         a["codesApprox"] = approx
     for c in coupons_out:
-        if c.get("applyTo"):
-            codes_map[c["name"]] = c["applyTo"]
-            approx_map[c["name"]] = False
-        else:
-            cc, approx = title_to_codes(c["name"], menu_names, match_menu_codes)
-            codes_map[c["name"]] = cc
-            approx_map[c["name"]] = approx
+        name = c["name"]
+        cc, approx = resolve_codes(name)
+        codes_map[name] = cc
+        approx_map[name] = approx
 
     # ---- 4b. 麦麦商城订单（mall-order-list + 前 10 单详情）----
     orders_out = []
@@ -1278,10 +1493,19 @@ def main():
             d = meal_map.get(code) or {}
             name = d.get("name") or code
             n = match_nutrition(name, nutri) or {}
+            raw_tags = m.get("tags") or []
+            flat_tags = [str(t) for t in raw_tags]
+            # 关键：菜单 currentPrice 有两种口径
+            #   ① 普通商品 = 直接购买价（calculate-price 的 productPrice 与之一致）
+            #   ② 带「麦金卡」标签的商品 = 付费会员卡价；没有该权益的账号核价会按
+            #      originalPrice 收（实测 28 → 57、62.9 → 122.5），必须单独标记，
+            #      否则页面显示的应付金额会低于真实结算价，属于「算错钱」。
+            is_member_price = any("麦金卡" in t for t in flat_tags)
             item = {
                 "code": code, "name": name, "cat": cname,
                 "price": to_float(d.get("currentPrice")),
                 "origin": to_float(d.get("originalPrice")),
+                "memberPrice": is_member_price,
                 "kcal": to_int(n.get("energyKcal")),
                 "kcalEstimated": bool(n.get("kcalEstimated")),
                 "protein": round(to_float(n.get("protein")), 1),
@@ -1289,7 +1513,7 @@ def main():
                 "carb": round(to_float(n.get("carb")), 1),
                 "sodium": to_int(n.get("sodium")),
                 "image": d.get("image") or "",
-                "tags": m.get("tags") or [],
+                "tags": raw_tags,
                 "discountType": d.get("discountType"),
             }
             item["scenes"] = classify_scenes(item)
@@ -1298,6 +1522,47 @@ def main():
     # 场景化：给每个餐品打标签，并为每个场景生成推荐组合
     for m in menu_out:
         m["scenes"] = classify_scenes(m)
+
+    # ---- 6b. 把「券专属 SKU」补进菜单 ----
+    # 有些券只对独立 SKU 生效（如「19.9 元王牌炸鸡任选 2」→ 9900016534），
+    # 这类 SKU 不在 query-meals 里。若不补进菜单，用户在页面上点不到这张券，
+    # 就会出现「券显示可用、但没有东西可买」的功能断裂。
+    coupon_only = []
+    for c in coupons_out:
+        for sku in (c.get("skus") or []):
+            code = str(sku.get("code") or "")
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            cname = "券专属商品"
+            n = match_nutrition(str(sku.get("name") or ""), nutri) or {}
+            # 这类 SKU 不在 query-meals 里，单独核价会返回全 0 / productList 为空
+            #（它只能配合对应券购买），所以用「带券核价」拿到的券前价当 price。
+            base_price = to_float(c.get("realOrig")) or 0.0
+            base_origin = base_price
+            item = {
+                "code": code, "name": str(sku.get("name") or code), "cat": cname,
+                "price": base_price or 0.0,
+                "origin": base_origin or base_price or 0.0,
+                "memberPrice": False,
+                "couponOnly": True,
+                "kcal": to_int(n.get("energyKcal")),
+                "kcalEstimated": bool(n.get("kcalEstimated")),
+                "protein": round(to_float(n.get("protein")), 1),
+                "fat": round(to_float(n.get("fat")), 1),
+                "carb": round(to_float(n.get("carb")), 1),
+                "sodium": to_int(n.get("sodium")),
+                "image": "", "tags": ["券专属"], "discountType": None,
+            }
+            item["scenes"] = classify_scenes(item)
+            menu_out.append(item)
+            coupon_only.append({"code": code, "coupon": c.get("name", ""),
+                                "price": base_price})
+
+    if coupon_only:
+        print(f"[6b] 补入券专属 SKU {len(coupon_only)} 个: "
+              + "、".join(f"{x['code']}({x['coupon']} ¥{x['price']})" for x in coupon_only[:4]))
+
     scenes_out = build_scene_bundles(menu_out)
 
     matched = sum(1 for m in menu_out if m["kcal"] > 0)
@@ -1306,10 +1571,22 @@ def main():
         tag = "兜底" if s.get("fallback") else "命中"
         print(f"      {s['icon']} {s['name']}: {s['count']} 品 / {len(s['bundles'])} 组合 [{tag}]")
 
+    # 外送是否可用：即便门店支持麦乐送，账号里没存收货地址也走不通
+    # （delivery-query-stores 需要 addressId）。页面据此提示用户先去 App 添加地址。
+    delivery_addr_count = 0
+    try:
+        ad = mcp_call_obj("delivery-query-addresses", {}, token)
+        delivery_addr_count = len(((ad.get("data") or {}).get("addresses")) or [])
+    except Exception:
+        pass
+    print(f"[6c] 外送收货地址: {delivery_addr_count} 个"
+          + ("" if delivery_addr_count else "（外送链路不可用，页面默认到店自取）"))
+
     payload = {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "store": {"code": store_code, "name": store_name},
         "stores": stores_out,
+        "deliveryAddressCount": delivery_addr_count,
         "menu": menu_out,
         "coupons": coupons_out,
         "myCoupons": my_coupons,
