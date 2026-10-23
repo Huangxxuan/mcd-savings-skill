@@ -166,6 +166,7 @@ mcd-savings-skill/
 ├── mcp-config.example.json      # 脱敏 MCP 配置示例（仅环境变量占位符）
 ├── workbuddy.md                 # WorkBuddy 开发对话上下文（专项奖必需）
 ├── index.html                   # 入口页（GitHub Pages 短链跳转到点单页）
+├── LICENSE                      # MIT
 ├── .gitignore                   # 排除 .env / *.token / __pycache__ 等
 ├── assets/
 │   ├── order-assistant.html     # 可视化交互点单页（券开关/热量条/DIY勾选/门店导航）
@@ -188,6 +189,32 @@ mcd-savings-skill/
   解析不出来的（如买一送一）宁可不进榜。支持 `build_data.py --rank` 离线重算，不联网、不产生编造数据。
 - **可视化层**：单页 HTML，纯原生 JS 实现状态驱动渲染——选品、券开关、模式切换、门店选择全部实时联动「原价 / 立省 / 应付 / 总热量」。
 - **闭环**：用户确认 → `create-order` → 麦当劳官方支付链接（本项目不接触任何支付信息）。
+
+---
+
+## ❓ 常见问题（FAQ）
+
+**Q1：点开页面一片空白 / 只有一个深色背景？**
+`order-assistant.html` 与 `data.js` **必须在同一个目录**。只下载了 HTML 就会白屏——请整个仓库一起下载，或直接用[在线版](https://huangxxuan.github.io/mcd-savings-skill/)。
+
+**Q2：页面上的价格和店里不一样？**
+页面读的是 `assets/data.js` 快照（**2026-10-20 21:37 抓取**），不是实时价格。要拉最新数据：
+```bash
+MCD_MCP_TOKEN=你的Token python3 scripts/build_data.py
+```
+跑完刷新页面即可。
+
+**Q3：调用 MCP 报 401？**
+Token 失效或没带对。去 <https://open.mcd.cn/mcp> 重新生成，确认 Header 是 `Authorization: Bearer <token>`。
+
+**Q4：报 429 Too Many Requests？**
+触发限流（600 次/分钟）。本项目正常使用不会超——菜单与营养数据每次会话只拉一次并本地缓存，只对 Top 3 组合调 `calculate-price`。若确实超了，等 1 分钟再试。
+
+**Q5：点了「一键领券」，页面还显示「未领取」？**
+`auto-bind-coupons` 成功后，查询接口有**短暂延迟**。等几秒刷新，或重跑 `build_data.py --claim`。这不是领取失败。
+
+**Q6：为什么不直接在 GitHub 上点 `order-assistant.html`？**
+GitHub 只显示源代码，不渲染 HTML。请用[在线版](https://huangxxuan.github.io/mcd-savings-skill/)，或下载后本地双击。
 
 ---
 
