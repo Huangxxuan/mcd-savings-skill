@@ -40,6 +40,42 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
 3. 到店/自取场景：调用 `query-nearby-stores` 查询附近门店。
 4. 选定门店后进入阶段 2；同时记住 `storeId / storeName / 距离 / 营业时间`，用于导航与下单。
 
+#### 外送到家：地址由你自己建，绝不推用户去 App
+
+`delivery-query-addresses` 返回空（新账号几乎必然为空）时，**不要**说
+「请先去麦当劳 App 添加地址」——这是把用户赶走。`delivery-create-address`
+本来就是我们可以调的工具，直接问、直接建：
+
+```
+用户说要外送
+ → 一次性问齐 6 个字段（不要一个字段问一轮）：
+   城市 / 联系人姓名 / 性别（先生、女士）/ 手机号（11 位，1 开头）/
+   配送地址（路名门牌）/ 门牌号（楼栋房号）
+ → delivery-create-address(city, contactName, gender, phone, address, addressDetail)
+ → 拿到 addressId
+ → delivery-query-stores(addressId, beType=2)  取 storeCode + beCode + 配送费/起送门槛
+ → calculate-price(orderType=2, beType=2, storeCode, beCode, items)
+ → 把金额念给用户确认
+ → create-order(orderType=2, beType=2, storeCode, beCode, addressId, items, remark)
+ → 给支付链接
+```
+
+四条硬规则：
+
+1. **外送必须用 `delivery-query-stores` 返回的 `storeCode` 与 `beCode`**，
+   绝不能沿用 `query-nearby-stores`（到店体系）的门店编码 —— 两套编码不通用，会直接下单失败。
+2. `create-order` 外送场景 **必须传 `addressId`**，且 orderType=2 / beType=2。
+   到店场景反过来必须传 `takeWayCode`（来自 `calculate-price` 的 `takeWayList`，本店为
+   `eat-in` 堂食 / `locker-out` 外带）。
+3. 配送费、起送门槛、免配送门槛 **只认接口返回的字段**。接口没给就写「以结算页为准」，
+   永远不要按「6 元」之类的经验值补一个数字 —— 算错一次用户就再也不信这个工具。
+4. 用户只给了模糊地址（「我家」「公司」）时，问一次完整地址即可；拿到后**存下来**，
+   下次直接复用，别每次都重问。
+
+> 可视化页面里的「📍 门店」面板切到「🛵 外送到家」后会给出地址表单，
+> 存 `localStorage`，并生成一段包含以上全部步骤的下单指令。用户把指令贴回来，
+> 你按指令顺序执行即可。
+
 ### 阶段 2：领券 + 读券（省钱核心）
 
 1. 调用 `auto-bind-coupons` 一键领取当前所有可领券（写操作，需用户明确同意；
@@ -134,16 +170,25 @@ python3 scripts/build_data.py --rank
 4. 若用户反悔，调用 `cancel-order` 取消。
 5. 可用 `query-order` / `order-list` 查询订单状态与历史。
 
-### 阶段 7：拼单凑单与分享（社交增强）
+### 阶段 7：凑单 + 麦麦摇摇乐（互动增强）
 
 1. **凑单**：计算当前金额与「起送价 / 满减门槛」的差额，推荐价格刚好补差的 2–4 个商品（凑单神器），并展示达成进度条。
    - 门槛与配送费**只认门店真实字段**（`delivery-query-stores` / `query-nearby-stores` 返回的
      起送价、配送费、免配送门槛）。门店没返回这三项时**不要编一个默认值**，
      直接写「以 `calculate-price` 核价为准」，并提示用户下单前会看到准确金额。
    - 用户选「到店自取」时，起送门槛与配送费都按 0 处理。
-2. **拼单**：支持多人（我 + 小伙伴）各自选品，按人分组展示小计与合计，计算人均金额。
-3. **分享**：生成可直接发送的文本邀请（门店、每人的商品与金额、合计、立省、总热量、是否达起送门槛），一键复制。
-4. 渲染 `assets/order-assistant.html` 的「拼单凑单」面板与「生成分享文案」按钮。
+2. **麦麦摇摇乐**：面对「不知道吃什么」时，从**真实菜单 SKU** 里随机抽一份，三列滚轮停在
+   名称 / 现价 / 热量上，配一句「今日签」，一键加进结算舱。
+   - 只在 `query-meals` 返回的真实 SKU 里抽，**不许编造不存在的餐品**；
+   - 抽中的商品热量缺失时如实显示「热量待核」，不要补数字；
+   - 抽中只是替用户做选择，最终仍要 `calculate-price` 核价；
+   - 用户想晒单时生成可复制的文本（抽到哪份 + 价格 + 热量 + 今日签）。
+3. **分人记账（可选）**：大单需要按人分摊时，仍可按「点单人」分组展示小计与人均。
+   注意：这是本地记账，**不是真的多人协同下单**，不要承诺「发个链接对方就能一起点」。
+4. 渲染 `assets/order-assistant.html` 里的「🎰 麦麦摇摇乐」面板与底部「🧾 结算舱」。
+
+> 命名提醒：「疯狂星期四」是肯德基的招牌营销梗，本 Skill 一律使用「麦麦摇摇乐」，
+> 不要借用竞品梗。
 
 ### 阶段 8：优惠不错过提醒（主动服务）
 
@@ -187,6 +232,13 @@ python3 scripts/build_data.py --rank
 
 - ❌ 绝不编造菜单、价格、热量、优惠、门店信息——一切以 MCP 返回为准；
 - ❌ 绝不把用户的 MCP Token 写入任何文件、日志或输出；配置文件只用 `${MCD_MCP_TOKEN}` 占位符；
+- ❌ **绝不把用户推去麦当劳 App 填地址**。`delivery-create-address` 是我们自己能调的接口，
+  地址由对话里问齐、由我们建档。只有用户坚持要用 App 时才提 App。
+- ❌ **外送绝不沿用门店的到店 `storeCode`**。必须 `delivery-query-stores(addressId, beType=2)`
+  拿 `storeCode` + `beCode`，否则下单必失败。
+- ❌ **页面里绝不使用 `prompt` / `alert` / `confirm`**。在 webview / sandbox iframe 中它们会被
+  静默拦截并返回 null，handler 在第一行就退出，用户只会说「这按钮是假的」。
+  所有输入用页面内表单，所有提示用 `toast()`，所有复制走 `copyText()` 三级降级。
 - ⚠️ 限流 600 次/分钟：菜单与营养数据每次会话缓存一次，组合计算本地做，只对 Top 3 调 `calculate-price`；
 - ⚠️ 遇到 401 提示 Token 失效需重新申请；遇到 429 降低调用频率；
 - ⚠️ 营养数据仅供参考，输出时附带免责说明；餐品价格与供应状态以麦当劳官方渠道实时结果为准。
@@ -200,7 +252,7 @@ python3 scripts/build_data.py --rank
 | `query-nearby-stores` | `beType`(1 到店自提 / 5 得来速)、`searchType`(1 收藏 / 2 按位置) | 可选 `city`、`keyword` |
 | `delivery-query-addresses` | — | 外送场景先取地址列表 |
 | `delivery-query-stores` | `addressId`、`beType`(2 麦乐送 / 6 团餐) | 按地址查可配送门店 |
-| `delivery-create-address` | `address`、`addressDetail`、`city`、`contactName`、`phone` | `gender` 选填；phone 11 位纯数字 |
+| `delivery-create-address` | `address`、`addressDetail`、`city`、`contactName`、`phone` | 建地址 → 返回 `addressId`；`gender` 选填（先生/女士）；phone 11 位纯数字 |
 
 ### 菜单与营养
 
@@ -240,7 +292,9 @@ python3 scripts/build_data.py --rank
 
 1. **`beCode` 传错会直接报错**
    - 到店自提（`beType=1`）：返回的门店**没有** beCode，**后续调用不要传**，传了报错；
-   - 外送（`orderType=2`）：必须传 `delivery-query-addresses` 返回的 beCode；
+   - 外送（`orderType=2`）：`storeCode` 与 `beCode` **都必须来自 `delivery-query-stores(addressId, beType=2)`**。
+     注意不是 `delivery-query-addresses` —— 那个接口只返回地址列表，没有任何门店信息，
+     从它拿 beCode 必然拿到空值，下单直接失败；
    - 得来速（`beType=5`）与团餐（`beType=6`）：必须传 beCode。
 2. **门店接口不返回真实经纬度**——`longitude` / `latitude` 恒为 `0.0`，只有 `distance`（单位：米）。
    → 地图功能必须自建：用高德 Web 服务「地理编码」把 `address` 转坐标，或直接用地址关键字跳转高德/百度网页导航。**不要假设 MCP 会给坐标。**
@@ -303,6 +357,28 @@ python3 scripts/build_data.py --rank
       - `build_data.py` 会从 `query-nearby-stores` 的返回里顺手捞这三个字段，捞不到就不写。
     → 铁律：**应付 = 商品实付 + 配送费**，两个加数都要能在界面上看见；
       看不见的那一项必须写「以 calculate-price 为准」，不能悄悄加进去。
+19. **`prompt()` 是静默杀手，会导致整块功能「看起来是假的」**（真实 bug，用户判了两个功能死刑）
+    `prompt` 在微信/企业微信内置浏览器、sandbox iframe、部分 PWA 里会被直接拦截并返回 `null`
+    （不抛错）。于是 `var name = prompt(...); if (!name) return;` 这一行就静默退出，
+    用户点了「+ 小伙伴」看到的是**完全没有任何反应**。
+    → 铁律：**页面禁用 `prompt` / `alert` / `confirm`**。输入用页内表单，提示用 `toast()`，
+      复制用 `copyText()` 三级降级；关键 handler 用 `safe(label, fn)` 包一层，
+      再挂 `window.onerror` + `unhandledrejection` 兜底，保证**任何点击都有可见反馈**。
+20. **`delivery-query-addresses` 返回空 ≠ 外送不可用**
+    以前页面直接写「请先在麦当劳 App 添加地址」，把用户推走。实际 `delivery-create-address`
+    是我们自己能调的接口：问齐 6 个字段 → 建档 → 拿 `addressId` → `delivery-query-stores`。
+    → 外送链路的**第一步永远是「问地址并建档」**，不是「让用户去 App」。
+21. **`build_data.py` 以前根本没调 `delivery-query-stores`**
+    所以 `data.js` 里从没有外送 `beCode`，配送费/起送门槛自然永远为空，
+    页面只能一直写「以结算页为准」——不是接口不给，是从没问过。
+    → 现在会在有地址时抓取外送门店（`beCode` / `fee` / `min` / `freeOver` 一并落盘）。
+      没地址时写 `deliveryStores: []`，页面提示先填地址，**不臆造**。
+22. **购物车不能塞进 340px 侧栏**（真实体验问题，用户直接说「太小了」）
+    一行里同时放「名称 + ×数量 + 小计 + − + ＋ + ✕」六个元素，名称必然被压碎；
+    而金额与下单按钮又固定在屏幕底部，眼睛要来回跳。
+    → 收成**底部结算舱**：商品行两行制（名称独占一行、数量控件独占第二行右侧），
+      金额明细（原价 / 现价 / 券 / 配送费 / 应付）与两个动作按钮固定在右列，
+      手机端堆叠到最下方。侧栏只留「件数 + 每人小计 + 应付」的摘要。
 19. **券必须按来源分层，否则「别人装上看到的是我的券」**（信息与功能断裂）
     数据来自三个 MCP 接口，语义不同：`query-my-coupons`（我的卡包，只有名字+有效期）、
     `query-store-coupons`（门店券，带 `applyTo` 才能试算）、`available-coupons`（可领券，只有状态）。
