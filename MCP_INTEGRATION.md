@@ -123,16 +123,22 @@ mall-order-detail    → orderId（必填）→ 商品明细、下单时间、�
 → 写入快照 orders[]，页面「06 麦麦商城订单」面板展示，点击卡片展开详情
 ```
 
-**省钱榜单（不新增 MCP 调用，纯本地测算）**
+**省钱榜单（榜单本身不新增 MCP 调用，券的抵扣额来自构建期的 calculate-price）**
 ```
 query-meals（现价 currentPrice + 划线价 originalPrice + kcal/protein）
-  + query-store-coupons / available-coupons（券 Title + applyTo 商品编码）
+  + query-store-coupons / available-coupons / query-my-coupons（券 Title + applyTo + skus）
+  + 每张券逐张 calculate-price（拿 realOk / realOrig / realPay / realDiscount，券只吃 skus[].code）
         ↓  build_data.py  build_savings()   ← 可 --rank 离线重算
-  券后最省 / 官方直降 / 套餐最优 / 每元管饱 / 每元蛋白  +  今日最优解
+  券后最省（只收核价通过的券，按 realDiscount 排序）
+  / 官方直降 / 套餐最优 / 每元管饱 / 每元蛋白  +  今日最优解
         ↓
   写入快照 savings{}，页面「03 省钱榜单」面板展示，点任意一条即按该方案落已选
-  最终金额仍以 calculate-price 核价为准
+  下单前仍以 calculate-price 实时核价为准
 ```
+
+> ⚠️ 这条链路踩过两个真实的账错误：①券 Title 解析不出面额时（如「1024"码"力翻倍」真实省 13.52）
+> 会被当成 unknown 丢掉，最省的券反而不上榜；②按券名关键字凑「任选 2 件」，
+> 把券不管辖的商品也算进优惠，虚报 16 元。现在统一以 `calculate-price` 的 `realDiscount` 为准。
 
 ## 3. 业务价值
 
