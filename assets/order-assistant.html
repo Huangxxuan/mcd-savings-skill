@@ -445,18 +445,98 @@ body {
 }
 .nav-btn:hover { background: transparent; color: var(--acc); }
 
-/* ---------- 拼单人 ---------- */
-.member {
-  border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 10px;
-  margin-bottom: 7px; cursor: pointer; background: var(--surface-2);
-  transition: all var(--dur-1) ease;
+/* ---------- 麦麦摇摇乐 ----------
+   替代原「拼单」面板。拼单在纯前端根本无法真协同（分享出去对方也回填不了），
+   本质只是本地分组，对大众用户是虚设。摇摇乐把「选不出来吃什么」这个真痛点
+   变成可玩的动作：三列滚真实 SKU，停在哪就吃哪，并给一句祝福。 */
+.shake { display: grid; gap: 10px; }
+.reels { display: grid; grid-template-columns: minmax(0, 1fr) 74px 64px; gap: 6px; }
+.reel {
+  position: relative; height: 54px; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .035);
+  transition: border-color var(--dur-1) ease;
 }
-.member:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
-.member.on { border-color: var(--acc); background: linear-gradient(140deg, rgba(255,199,44,.13), rgba(255,199,44,.03)); }
-.member .mh { display: flex; align-items: baseline; gap: 8px; }
-.member .mn { font-size: 12px; font-weight: 700; }
-.member .ms { margin-left: auto; font-family: var(--num); font-size: 11.5px; font-weight: 700; color: var(--acc); }
-.member .mi { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+.reel::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(9, 14, 20, .92), transparent 26%, transparent 74%, rgba(9, 14, 20, .92));
+}
+.reel .strip { will-change: transform; }
+.reel .cell {
+  height: 54px; display: flex; align-items: center; padding: 0 10px;
+  font-family: var(--num); font-size: 11.5px; color: var(--text);
+}
+.reel .cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+.reel.c1 .cell { justify-content: center; color: var(--acc); font-size: 12.5px; }
+.reel.c2 .cell { justify-content: center; color: var(--hud); font-size: 11px; }
+.reel.lock { border-color: var(--line-strong); }
+
+.shake-btn { width: 100%; }
+.shake-btn.shaking { opacity: .65; cursor: wait; }
+
+.shake-card {
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 11px;
+  background: linear-gradient(150deg, rgba(255, 199, 44, .1), rgba(255, 199, 44, .02));
+  animation: cardIn var(--dur-2) var(--ease);
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+.sc-top { display: flex; gap: 10px; align-items: center; }
+.sc-th {
+  width: 46px; height: 46px; border-radius: var(--r-sm); flex: none; overflow: hidden;
+  background: rgba(255, 255, 255, .06); display: flex; align-items: center; justify-content: center; font-size: 21px;
+}
+.sc-body { min-width: 0; flex: 1; }
+.sc-nm {
+  font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sc-mt { font-family: var(--num); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.sc-mt b { color: var(--acc); }
+.sc-bless {
+  margin-top: 9px; padding: 9px 10px; border-radius: var(--r-sm);
+  border-left: 2px solid var(--acc); background: rgba(255, 199, 44, .07);
+  font-size: 11.5px; line-height: 1.7; color: var(--text);
+}
+.sc-bless .qt {
+  display: block; margin-bottom: 3px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--acc);
+}
+.sc-act { display: flex; gap: 6px; margin-top: 9px; }
+.sc-act .btn { flex: 1; padding: 8px; font-size: 11.5px; min-height: 34px; }
+@media (max-width: 420px) {
+  .reels { grid-template-columns: minmax(0, 1fr) 62px 52px; }
+}
+
+/* ---------- 收货地址（外送） ---------- */
+.addrbox {
+  border: 1px dashed var(--line); border-radius: var(--r-md); margin: 9px 0 10px;
+  padding: 10px; background: rgba(255, 255, 255, .022);
+}
+.addrbox.has { border-style: solid; border-color: rgba(255, 199, 44, .4); background: rgba(255, 199, 44, .05); }
+.addr-line { font-size: 11.5px; color: var(--text); line-height: 1.6; }
+.addr-line b { color: var(--acc); font-weight: 700; }
+.addr-line .aph { font-family: var(--num); color: var(--muted); }
+.addr-sub { font-family: var(--num); font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.65; }
+.addr-act { display: flex; gap: 6px; margin-top: 8px; }
+.addr-act .btn { flex: 1; padding: 7px; font-size: 11px; min-height: 32px; }
+
+.af { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 12px 0 4px; }
+.af label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; color: var(--muted);
+}
+.af label.full { grid-column: 1 / -1; }
+.af input, .af select {
+  width: 100%; outline: none;
+  font-family: var(--num); font-size: 12px; color: var(--text);
+  background: rgba(255, 255, 255, .045); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 8px 9px;
+}
+.af input:focus, .af select:focus { border-color: var(--acc); }
+.af input::placeholder { color: rgba(124, 141, 163, .55); }
 
 /* ---------- 提醒（侧栏紧凑） ---------- */
 .remlist { max-height: 268px; overflow-y: auto; padding-right: 4px; }
@@ -515,13 +595,111 @@ body {
   background: rgba(9, 14, 20, .94); backdrop-filter: blur(14px);
   border-top: 1px solid var(--line-strong); padding: 12px 0;
 }
-.hud .wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+/* 只作用于 HUD 自己的两条 bar。早先用后代选择器 `.hud .wrap` 会把结算舱里的
+   `.wrap` 也变成 flex 容器，导致舱头和舱体宽度塌缩到 284px / 690px —— 舱内
+   「清空 / 收起」被挤到左边，金额列也压缩。改成直接子元素选择器即可。 */
+.hud > .wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .snum { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; color: var(--muted); }
 .snum b { display: block; font-family: var(--num); font-size: 16px; letter-spacing: -.01em; color: var(--text); }
 .snum .snote { display: block; font-family: var(--num); font-size: 9px; color: var(--muted); letter-spacing: .03em; margin-top: 1px; }
 .snum.save b { color: var(--ok); }
 .snum.pay b { color: var(--acc); }
 .spacer { flex: 1; }
+
+/* ---------- 结算舱：购物车 + 金额明细 + 下单动作 三合一 ----------
+   旧版把「已选」塞在 340px 侧栏里，一行同时放名称/×数量/小计/三个按钮，
+   名称必然被压碎；金额和下单按钮却固定在屏幕底部，眼睛要来回跳两次。
+   结算舱把三者合成一个可从底部拉起的全宽面板：商品行两行制，
+   名称单独占一整行且可省略号截断，数量控件独占第二行右侧，
+   金额明细与两个动作按钮固定在右列（手机端落到最下方）。 */
+.dock {
+  position: absolute; left: 0; right: 0; bottom: 100%;
+  max-height: 0; overflow: hidden;
+  background: rgba(9, 14, 20, .985);
+  border-top: 1px solid var(--line-strong);
+  backdrop-filter: blur(14px);
+  transition: max-height var(--dur-2) var(--ease);
+}
+.dock.open { max-height: min(74vh, 660px); }
+.dock-scroll { max-height: min(74vh, 660px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.dock-hd {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 13px 0 11px; border-bottom: 1px dashed var(--line);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--acc);
+}
+.dock-hd .dcnt { font-family: var(--num); font-size: 10.5px; letter-spacing: .04em; color: var(--muted); }
+.dock-hd .dx { margin-left: auto; display: flex; gap: 7px; }
+.dock-in {
+  display: grid; grid-template-columns: minmax(0, 1fr) 322px;
+  gap: 16px; padding: 12px 0 16px; align-items: start;
+}
+@media (max-width: 880px) { .dock-in { grid-template-columns: 1fr; gap: 12px; } }
+
+.dgroup {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .12em;
+  color: var(--hud); padding: 8px 0 6px;
+}
+.dgroup .dg-sum { margin-left: auto; font-family: var(--num); font-size: 10.5px; color: var(--muted); letter-spacing: 0; }
+
+.dline {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-areas: "th dn dsum" "th dsub dctl";
+  gap: 3px 10px; padding: 9px 10px; margin-bottom: 7px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: rgba(255, 255, 255, .022); align-items: center;
+  transition: border-color var(--dur-1) ease, background var(--dur-1) ease;
+}
+.dline:hover { border-color: rgba(255, 199, 44, .32); background: rgba(255, 199, 44, .05); }
+.dline .dth {
+  grid-area: th; width: 42px; height: 42px; border-radius: var(--r-sm);
+  object-fit: cover; background: rgba(255, 255, 255, .05);
+  display: flex; align-items: center; justify-content: center; font-size: 19px;
+}
+.dline .dn {
+  grid-area: dn; font-size: 12.5px; color: var(--text); line-height: 1.35; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dline .dn:hover { color: var(--acc); }
+.dline .dsub { grid-area: dsub; font-family: var(--num); font-size: 10px; color: var(--muted); letter-spacing: .02em; }
+.dline .dsum { grid-area: dsum; font-family: var(--num); font-size: 13.5px; color: var(--acc); text-align: right; white-space: nowrap; }
+.dline .dctl { grid-area: dctl; display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+.qbtn {
+  width: 26px; height: 26px; min-width: 26px; border-radius: var(--r-sm); cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: var(--text);
+  font-family: var(--num); font-size: 14px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--dur-1) ease;
+}
+.qbtn:hover { border-color: var(--line-strong); color: var(--acc); background: rgba(255, 199, 44, .1); }
+.qbtn.del:hover { border-color: var(--danger); color: var(--danger); background: rgba(255, 90, 90, .1); }
+.qnum { font-family: var(--num); font-size: 12px; color: var(--text); min-width: 22px; text-align: center; }
+
+.dmoney { border: 1px solid var(--line); border-radius: var(--r-md); padding: 11px 12px; background: rgba(255, 255, 255, .022); }
+.dmrow {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  font-family: var(--num); font-size: 11.5px; color: var(--muted); padding: 3.5px 0;
+}
+.dmrow b { color: var(--text); font-weight: 600; }
+.dmrow.save b { color: var(--ok); }
+.dmrow.warn b { color: var(--warn); }
+.dmtotal {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-top: 8px; padding-top: 9px; border-top: 1px dashed var(--line);
+}
+.dmtotal em { font-style: normal; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+.dmtotal b { font-family: var(--num); font-size: 21px; color: var(--acc); letter-spacing: -.02em; }
+.dact { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.dact .btn { width: 100%; }
+.dnote { font-family: var(--num); font-size: 9.5px; color: var(--muted); line-height: 1.65; margin-top: 8px; }
+
+.dockbtn { position: relative; }
+.dockbtn .badge {
+  position: absolute; top: -7px; right: -7px; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 9px; background: var(--acc); color: var(--bg);
+  font-family: var(--num); font-size: 10px; line-height: 17px; text-align: center; font-weight: 700;
+}
+.dockbtn.on { background: transparent; color: var(--acc); }
 
 .btn {
   font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em;
@@ -720,7 +898,7 @@ body {
     <div class="hd-logo">🍔</div>
     <div>
       <h1 class="hd-title">麦麦省钱点单助手</h1>
-      <div class="hd-sub">Powered by 麦当劳 MCP · 场景搭配 · 实时热量 · 拼单凑单 · 不错过提醒</div>
+      <div class="hd-sub">Powered by 麦当劳 MCP · 场景搭配 · 实时热量 · 结算舱 · 麦麦摇摇乐</div>
     </div>
     <div class="readouts">
       <span class="ro live">MCP <b>LIVE</b></span>
@@ -785,35 +963,57 @@ body {
       </section>
 
       <section class="panel reveal d3">
-        <h2>👥 拼单 <span class="tag">// 点名字切换</span></h2>
-        <div id="members"></div>
-        <div style="display:flex;gap:7px;margin-top:9px">
-          <button class="btn ghost" id="btnAddMember" style="flex:1;padding:8px;font-size:12px">+ 小伙伴</button>
-          <button class="btn" id="btnShare" style="flex:1;padding:8px;font-size:12px">分享文案</button>
+        <h2>🎰 麦麦摇摇乐 <span class="tag">// 摇到哪份吃哪份</span></h2>
+        <div class="shake">
+          <div class="reels" id="reels">
+            <div class="reel c0"><div class="strip" id="reelName"></div></div>
+            <div class="reel c1"><div class="strip" id="reelPrice"></div></div>
+            <div class="reel c2"><div class="strip" id="reelKcal"></div></div>
+          </div>
+          <button class="btn shake-btn" id="btnShake">🎲 摇一摇</button>
         </div>
+        <div id="shakeResult"></div>
         <div id="gapbox"></div>
       </section>
 
       <section class="panel reveal d4">
-        <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span>
-          <button class="mini-btn ghost" id="btnClearCart" style="display:none" title="清空当前点单人的已选">清空</button>
-        </h2>
+        <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span></h2>
         <div id="cart" style="font-family:var(--num);font-size:11.5px;line-height:1.9;color:var(--muted)">尚未选择</div>
         <div class="bar"><i id="kcalBar"></i></div>
         <div class="barinfo"><span id="kcalText">总热量 0 kcal</span><span id="macroText">蛋白 0g / 脂肪 0g / 碳水 0g</span></div>
+        <button class="btn" id="btnOpenDock" style="width:100%;margin-top:11px">展开结算舱 · 改数量 + 下单</button>
       </section>
     </aside>
   </div>
 </main>
 
-<!-- 底部 HUD -->
+<!-- 底部 HUD + 结算舱 -->
 <div class="hud">
+  <div class="dock" id="dock" aria-hidden="true">
+    <div class="dock-scroll">
+      <div class="wrap">
+        <div class="dock-hd">
+          <span>🧾 结算舱</span>
+          <span class="dcnt" id="dockCount">// 0 件</span>
+          <span class="dx">
+            <button class="mini-btn ghost" id="dockClear">清空</button>
+            <button class="mini-btn ghost" id="dockClose">收起 ▾</button>
+          </span>
+        </div>
+        <div class="dock-in">
+          <div id="dockLines"></div>
+          <div id="dockSide"></div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="wrap">
     <div class="snum">原价<b id="sOrigin">¥0</b></div>
     <div class="snum save">立省<b id="sSave">¥0</b><span class="snote" id="sSaveNote">商品</span></div>
     <div class="snum pay">应付<b id="sPay">¥0</b><span class="snote" id="sFee"></span></div>
     <div class="snum">热量<b id="sKcal">0 kcal</b></div>
     <div class="spacer"></div>
+    <button class="btn ghost dockbtn" id="btnDock">🧾 结算 <span class="badge" id="dockBadge" style="display:none">0</span></button>
     <button class="btn ghost" id="btnCopy">复制点单指令</button>
     <button class="btn" id="btnBless">生成祝福卡 ✨</button>
   </div>
@@ -908,6 +1108,39 @@ body {
   </div>
 </div>
 
+<!-- 收货地址弹窗（外送到家） -->
+<div class="modal" id="addrModal">
+  <div class="terminal" style="max-width:500px">
+    <div class="chrome">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="ttl">mcd://address</span>
+      <span class="x" id="addrClose">×</span>
+    </div>
+    <div class="body">
+      <h3 style="font-family:var(--mono);font-size:19px;font-weight:700;margin-bottom:6px">收货地址</h3>
+      <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:4px">
+        填完保存，AI 会调 <b style="color:var(--acc)">delivery-create-address</b> 建档，
+        再查可配送门店、核价、下单 —— 全程在对话里完成，不用去麦当劳 App 填。
+        这些信息只存在你自己的浏览器里，不会上传到任何地方。
+      </p>
+      <div class="af">
+        <label>城市<input id="afCity" placeholder="深圳市" autocomplete="address-level2" /></label>
+        <label>联系人<input id="afName" placeholder="李明" autocomplete="name" /></label>
+        <label>性别
+          <select id="afGender"><option>先生</option><option>女士</option></select>
+        </label>
+        <label>手机号<input id="afPhone" inputmode="numeric" maxlength="11" placeholder="18616646686" autocomplete="tel" /></label>
+        <label class="full">配送地址<input id="afAddr" placeholder="科技园科苑路 8 号 同方信息港" autocomplete="street-address" /></label>
+        <label class="full">门牌号<input id="afDetail" placeholder="A 座 1502" /></label>
+      </div>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn ghost" id="addrCancel">取消</button>
+        <button class="btn" id="addrSave">保存并生成外送指令</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="data.js"></script>
@@ -977,6 +1210,9 @@ var state = {
         逐分对账；
      ③ 实测这批券的 beTypes 大多含 1（到店），切到外送会有券直接用不了。 */
   fulfill: "pickup", // delivery = 外送（含配送费）｜pickup = 到店自取（免配送、无起送）
+  /* 外送收货地址：存在本机 localStorage，由页面收集、交给 Agent 调
+     delivery-create-address 建档。null = 还没填。 */
+  addr: null,
   members: [{ id: "me", name: "我", items: {} }],
   activeMember: "me",
   flash: {},          // 选中闪烁提示
@@ -992,9 +1228,41 @@ function itemByCode(c) {
   return null;
 }
 function toast(msg) {
-  var t = $("#toast"); t.textContent = msg; t.classList.add("show");
-  setTimeout(function () { t.classList.remove("show"); }, 2000);
+  var t = $("#toast");
+  if (!t) { return; }
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { t.classList.remove("show"); }, 2600);
 }
+/* ---------- 静默失败防线 ----------
+   页面上每个按钮点击都必须有可见反馈，否则用户只会得出「这功能是假的」这一个结论。
+   历史上「+ 小伙伴」「分享文案」两个按钮就是这样被判死的：
+     · prompt() 在 webview / sandbox iframe 里被拦截，返回 null 而不抛错；
+     · navigator.clipboard 在非安全上下文下是 undefined，直调直接抛 TypeError。
+   两条都会让 handler 在第一行静默退出。所以：
+     ① 全站禁用 prompt / alert / confirm；
+     ② 关键 handler 用 safe() 包一层，出错必提示；
+     ③ 未捕获的异常统一兜底成 toast，不再只躺在控制台里。 */
+function safe(label, fn) {
+  return function (ev) {
+    try {
+      return fn.call(this, ev);
+    } catch (err) {
+      if (window.console && console.error) console.error("[" + label + "]", err);
+      toast("「" + label + "」暂时不可用，已记录到控制台");
+    }
+  };
+}
+window.addEventListener("error", function (e) {
+  if (window.console && console.error) console.error("[未捕获]", e.message);
+  toast("页面出错：" + (e.message || "未知错误"));
+});
+window.addEventListener("unhandledrejection", function (e) {
+  var r = e.reason;
+  var m = (r && r.message) || r || "未知原因";
+  if (window.console && console.error) console.error("[未处理的 Promise]", m);
+  toast("操作未完成：" + m);
+});
 function activeMember() {
   for (var i = 0; i < state.members.length; i++)
     if (state.members[i].id === state.activeMember) return state.members[i];
@@ -1170,9 +1438,14 @@ function compute() {
     cb += (it.carb || 0) * qty;
     sodium += (it.sodium || 0) * qty;
   });
-  var store = null;
-  D.stores.forEach(function (s) { if (s.id === state.storeId) store = s; });
+  /* 门店池：外送到家必须用 delivery-query-stores 返回的门店（才带 beCode 与真实
+     配送费/起送门槛）；只有到店才有 query-nearby-stores 的收藏门店。
+     之前统一用 D.stores，导致外送永远拿不到 beCode，配送费只能写「以结算页为准」。 */
   var pickup = state.fulfill === "pickup";
+  var storePool = (!pickup && (D.deliveryStores || []).length) ? D.deliveryStores : D.stores;
+  var store = null;
+  storePool.forEach(function (s) { if (s.id === state.storeId) store = s; });
+  if (!store && storePool.length) store = storePool[0];
   /* 配送口径（重要）：
      - 到店自取（pickup）：免配送费、无起送门槛；
      - 外送到家（delivery）：只认门店真实字段 fee / min / freeOver，
@@ -1576,21 +1849,81 @@ function claimSection() {
   return html;
 }
 
+function maskPhone(p) {
+  return String(p || "").replace(/^(\d{3})\d{4}(\d{4})$/, "$1****$2");
+}
+
+/* 地址存本机：这是用户自己的手机号与门牌号，不上传任何服务器。
+   页面只负责收集，建档与下单由 Agent 调 delivery-create-address 完成。 */
+function loadAddr() {
+  try {
+    var raw = localStorage.getItem("mcd_addr_v1");
+    if (!raw) return null;
+    var a = JSON.parse(raw);
+    if (a && a.city && a.contactName && a.phone && a.address) return a;
+  } catch (e) {}
+  return null;
+}
+function saveAddr(a) {
+  state.addr = a;
+  try { localStorage.setItem("mcd_addr_v1", JSON.stringify(a)); } catch (e) {}
+}
+
 function renderStores() {
   var pickup = state.fulfill === "pickup";
+  var a = state.addr || null;
+
   /* 履约方式放在最上面：这一项直接决定有没有配送费、有没有起送门槛，
      比选哪家店更影响最终金额，不放到最显眼的位置用户就会算错账。 */
-  var addrCount = typeof D.deliveryAddressCount === "number" ? D.deliveryAddressCount : null;
   var head = '<div class="fulfill" role="radiogroup" aria-label="就餐方式">' +
     '<button class="fv' + (pickup ? "" : " on") + '" data-fulfill="delivery" role="radio" aria-checked="' + (!pickup) + '">🛵 外送到家</button>' +
     '<button class="fv' + (pickup ? " on" : "") + '" data-fulfill="pickup" role="radio" aria-checked="' + pickup + '">🍽 到店自取</button>' +
     '</div>' +
     '<div class="fhint">' + (pickup
       ? "自取：免配送费、无起送门槛，合计就是商品金额。"
-      : (addrCount === 0
-        ? "⚠️ 这个账号还没有外送收货地址（delivery-query-addresses 返回空），外送无法核价下单。请先在麦当劳 App 添加地址，或切回「到店自取」。"
-        : "外送：配送费与起送门槛以门店/结算页为准，本页不臆造，只算商品金额。")) + '</div>';
-  $("#stores").innerHTML = head + D.stores.map(function (s) {
+      : (a
+        ? "外送：地址填在下面就行，AI 会自动调 delivery-create-address 建档并下单，不用去麦当劳 App。"
+        : "外送：先填一次收货地址（存在本机），之后点单 AI 会自动建档、选可配送门店、核价、下单。")) +
+    '</div>';
+
+  /* 外送地址卡：绝不写「请去 App 添加地址」——那是上一版最劝退的一句话，
+     而 delivery-create-address 本来就是我们自己能调的接口。 */
+  if (!pickup) {
+    if (a) {
+      head += '<div class="addrbox has">' +
+        '<div class="addr-line">📍 <b>' + a.contactName + '</b>' +
+        (a.gender ? " " + a.gender : "") + ' · <span class="aph">' + maskPhone(a.phone) + '</span></div>' +
+        '<div class="addr-sub">' + a.city + ' ' + a.address + ' ' + a.addressDetail + '</div>' +
+        '<div class="addr-act">' +
+        '<button class="btn ghost" data-addr-edit="1">改地址</button>' +
+        '<button class="btn" data-addr-cmd="1">生成外送指令</button>' +
+        '</div></div>';
+    } else {
+      head += '<div class="addrbox">' +
+        '<div class="addr-line">还没有收货地址</div>' +
+        '<div class="addr-sub">填一次就存在本机浏览器里；点单时 AI 会拿它调 delivery-create-address 建档。</div>' +
+        '<div class="addr-act"><button class="btn" data-addr-edit="1">+ 填写收货地址</button></div>' +
+        '</div>';
+    }
+  }
+
+  /* 外送用 delivery-query-stores 的门店（带 beCode 与真实配送费）。
+     拿不到外送门店时**不要**把到店门店顶上来充数 —— 两套编码不通用，
+     用户会以为「外送也能点这家店」，实际下单必失败。宁可空着说清楚。 */
+  var hasDelivery = !pickup && (D.deliveryStores || []).length;
+  var pool = (!pickup && hasDelivery) ? D.deliveryStores : D.stores;
+
+  if (!pickup && !hasDelivery) {
+    $("#stores").innerHTML = head +
+      '<div class="fhint" style="margin-top:10px;line-height:1.8">' +
+      '可配送门店要按地址查，<b style="color:var(--acc)">填完地址点「生成外送指令」</b>后，' +
+      'AI 会调 delivery-query-stores 拉回真实门店（含 beCode 与配送费）。' +
+      '<br>在那之前这里不列到店门店 —— 到店和外送是两套门店编码，混用会下单失败。' +
+      '</div>';
+    return;
+  }
+
+  $("#stores").innerHTML = head + pool.map(function (s) {
     var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || ""));
     var status = s.open === false
       ? '<b style="color:var(--danger)">休息中</b>'
@@ -1602,14 +1935,64 @@ function renderStores() {
       : (fee === null ? "配送费以结算页为准"
         : "配送费 " + money(fee) + (free !== null ? " · 满 " + money(free) + " 免配送" : "") +
           (min !== null ? " · 起送 " + money(min) : ""));
+    var meta = [];
+    if (s.dist) meta.push(s.dist + " km");
+    if (s.hours) meta.push(s.hours);
+    if (s.beCode) meta.push("beCode " + s.beCode);
     return '<div class="store' + (s.id === state.storeId ? " on" : "") +
       '" data-sid="' + s.id + '" tabindex="0" role="radio" aria-checked="' +
       (s.id === state.storeId ? "true" : "false") + '">' +
       '<div class="sname">' + s.name + '</div>' +
-      '<div class="smeta">' + s.dist + ' km · ' + (s.hours || "") + " " + status +
-      '<br>' + (s.addr || "") + '<br><span class="sfee">' + dline + '</span></div>' +
-      '<a class="nav-btn" href="' + url + '" target="_blank" rel="noopener">🧭 导航到店</a></div>';
+      '<div class="smeta">' + (meta.join(" · ") || "") + " " + status +
+      (s.addr ? '<br>' + s.addr : "") + '<br><span class="sfee">' + dline + '</span></div>' +
+      (pickup ? '<a class="nav-btn" href="' + url + '" target="_blank" rel="noopener">🧭 导航到店</a>' : '') +
+      '</div>';
   }).join("");
+}
+
+/* ---------- 地址表单 ---------- */
+function openAddrModal() {
+  var a = state.addr || {};
+  var set = function (id, v) { var el = $(id); if (el) el.value = v || ""; };
+  set("#afCity", a.city);
+  set("#afName", a.contactName);
+  set("#afPhone", a.phone);
+  set("#afAddr", a.address);
+  set("#afDetail", a.addressDetail);
+  var g = $("#afGender");
+  if (g) g.value = a.gender || "先生";
+  var m = $("#addrModal");
+  if (m) m.classList.add("show");
+  setTimeout(function () { var c = $("#afCity"); if (c) c.focus(); }, 80);
+}
+function readAddrForm() {
+  var v = function (id) { var el = $(id); return el ? String(el.value || "").trim() : ""; };
+  return {
+    city: v("#afCity"),
+    contactName: v("#afName"),
+    gender: v("#afGender") || "先生",
+    phone: v("#afPhone"),
+    address: v("#afAddr"),
+    addressDetail: v("#afDetail")
+  };
+}
+function submitAddr() {
+  var a = readAddrForm();
+  if (!a.city) { toast("请填写城市，例如「深圳市」"); var e = $("#afCity"); if (e) e.focus(); return; }
+  if (!a.contactName) { toast("请填写联系人姓名"); return; }
+  if (!/^1\d{10}$/.test(a.phone)) { toast("手机号要 11 位且以 1 开头"); var p = $("#afPhone"); if (p) p.focus(); return; }
+  if (!a.address) { toast("请填写配送地址，例如「科技园科苑路 8 号」"); return; }
+  if (!a.addressDetail) { toast("请填写门牌号，例如「A 座 1502」"); return; }
+  saveAddr(a);
+  var m = $("#addrModal");
+  if (m) m.classList.remove("show");
+  render();
+  toast("收货地址已保存到本机 · 点单会自动建档");
+  /* 保存后直接生成外送指令，用户不用再找按钮 */
+  setTimeout(function () {
+    var r = compute();
+    if (r.lines.length) copyOrderCmd();
+  }, 120);
 }
 
 function memberSubtotal(m) {
@@ -1621,7 +2004,12 @@ function memberSubtotal(m) {
   return t;
 }
 function renderMembers() {
-  $("#members").innerHTML = state.members.map(function (m) {
+  /* 拼单面板已被「麦麦摇摇乐」替换，容器不再存在。
+     这里保留 state.members 的分人记账能力（结算舱按点单人分组），
+     但没有容器时必须安静退出，否则 render() 每次都会抛错。 */
+  var box = $("#members");
+  if (!box) return;
+  box.innerHTML = state.members.map(function (m) {
     var names = Object.keys(m.items).map(function (c) {
       var it = itemByCode(c);
       return it ? it.name + "×" + m.items[c] : "";
@@ -1982,32 +2370,165 @@ function applyRankRow(row, label) {
   toast(label + "　实付 " + money(row.pay) + (row.save > 0 ? " · 省 " + money(row.save) : ""));
 }
 
+/* 侧栏摘要：只回答「点了多少、多少钱、谁点的」，完整可编辑清单在结算舱里。
+   这样侧栏不必再挤 6 个元素，也就不会出现「名称被压到看不清」。 */
 function renderCart(r) {
   var el = $("#cart"), cnt = 0;
   r.lines.forEach(function (l) { cnt += l.qty; });
   $("#cartCount").textContent = "// " + cnt + " 件";
-  var bc = $("#btnClearCart");
-  if (bc) bc.style.display = r.lines.length ? "" : "none";
-  if (!r.lines.length) { el.innerHTML = "尚未选择"; return; }
-  var html = "";
+
+  var bd = $("#dockBadge");
+  if (bd) { bd.textContent = cnt; bd.style.display = cnt ? "" : "none"; }
+
+  if (!cnt) { el.innerHTML = "尚未选择"; }
+  else {
+    var rows = state.members.map(function (m) {
+      var n = 0, sum = 0;
+      Object.keys(m.items).forEach(function (c) {
+        var q = m.items[c] || 0;
+        var it = itemByCode(c);
+        if (!q || !it) return;
+        n += q; sum += it.price * q;
+      });
+      if (!n) return "";
+      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:1px 0">' +
+        '<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+        m.name + ' · ' + n + ' 件</span>' +
+        '<span style="color:var(--acc);flex:none">' + money(sum) + '</span></div>';
+    }).filter(Boolean).join("");
+    el.innerHTML = rows || "尚未选择";
+    el.innerHTML += '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0 0;' +
+      'margin-top:5px;border-top:1px dashed var(--line)">' +
+      '<span style="color:var(--muted)">应付</span>' +
+      '<span style="color:var(--acc);font-size:13px">' + money(r.pay) + '</span></div>';
+  }
+  renderDock(r);
+}
+
+/* ================= 结算舱 =================
+   设计约束（来自真实使用反馈）：
+     ① 名称必须完整可读 → 两行制，名称独占第一行并允许省略号；
+     ② 数量控件要够大 → 26×26px 独立按钮，不再和价格挤在同一行；
+     ③ 金额与下单必须同屏 → 金额明细与两个动作按钮固定在右列（手机端落到底部）；
+     ④ 多人大单要能分人 → 按点单人分组，每组显示自己的小计；
+     ⑤ 每次改动都要立刻重算 → 复用 compute()，不另建一套价格逻辑。 */
+function renderDock(r) {
+  var cnt = 0;
+  r.lines.forEach(function (l) { cnt += l.qty; });
+  var dc = $("#dockCount");
+  if (dc) dc.textContent = "// " + cnt + " 件 · " + r.lines.length + " 种";
+
+  var multi = state.members.filter(function (m) {
+    return Object.keys(m.items).some(function (c) { return (m.items[c] || 0) > 0; });
+  }).length > 1;
+
+  var linesHtml = "";
   state.members.forEach(function (m) {
-    var keys = Object.keys(m.items).filter(function (c) { return m.items[c] > 0; });
+    var keys = Object.keys(m.items).filter(function (c) {
+      return (m.items[c] || 0) > 0 && itemByCode(c);
+    });
     if (!keys.length) return;
-    html += '<div class="mgroup">' + m.name + '</div>';
+    var msum = 0;
+    keys.forEach(function (c) { msum += itemByCode(c).price * m.items[c]; });
+    linesHtml += '<div class="dgroup">' +
+      (state.members.length > 1 ? '👤 ' + m.name : '🛒 已选商品') +
+      '<span class="dg-sum">' + money(msum) + '</span></div>';
     keys.forEach(function (c) {
-      var it = itemByCode(c);
-      if (!it) return;
-      html += '<div class="cline">' +
-        '<span class="cn" data-locate="' + c + '" title="点击在菜单中定位">' + it.name + '</span>' +
-        '<span class="cq">×' + m.items[c] + '</span>' +
-        '<span class="cp">' + money(it.price * m.items[c]) + '</span>' +
-        '<button class="cbtn" data-mminus="' + c + '" data-mid="' + m.id + '" title="减一份">−</button>' +
-        '<button class="cbtn" data-mplus="' + c + '" data-mid="' + m.id + '" title="加一份">+</button>' +
-        '<button class="cbtn del" data-mdel="' + c + '" data-mid="' + m.id + '" title="移除">✕</button>' +
-        '</div>';
+      var it = itemByCode(c), q = m.items[c];
+      var thumb = it.image
+        ? '<img src="' + it.image + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:3px">'
+        : "🍔";
+      var sub = "单价 " + money(it.price);
+      if (it.memberPrice && it.origin > it.price) {
+        sub += ' · <span style="color:var(--warn)">非会员 ' + money(it.origin) + '</span>';
+      }
+      if (it.couponOnly) sub += ' · <span style="color:var(--hud)">券专属</span>';
+      linesHtml += '<div class="dline">' +
+        '<div class="dth">' + thumb + '</div>' +
+        '<div class="dn" data-locate="' + c + '" title="点击在菜单里定位">' + it.name + '</div>' +
+        '<div class="dsum">' + money(it.price * q) + '</div>' +
+        '<div class="dsub">' + sub + '</div>' +
+        '<div class="dctl">' +
+        '<button class="qbtn" data-mminus="' + c + '" data-mid="' + m.id + '" aria-label="减一份" title="减一份">−</button>' +
+        '<span class="qnum">' + q + '</span>' +
+        '<button class="qbtn" data-mplus="' + c + '" data-mid="' + m.id + '" aria-label="加一份" title="加一份">+</button>' +
+        '<button class="qbtn del" data-mdel="' + c + '" data-mid="' + m.id + '" aria-label="移除" title="移除">✕</button>' +
+        '</div></div>';
     });
   });
-  el.innerHTML = html;
+  var linesEl = $("#dockLines");
+  if (linesEl) {
+    linesEl.innerHTML = linesHtml ||
+      '<div style="color:var(--muted);font-size:12px;padding:16px 4px;line-height:1.8">' +
+      '还没有选东西。<br>点上面的场景卡、推荐组合，或菜单里的任意商品，就会出现在这里。</div>';
+  }
+
+  /* 金额明细：每一行都必须能被用户自己验算，所以把「原价 / 券 / 配送费」拆开列。 */
+  var feeTxt, feeWarn = false;
+  if (r.pickup) {
+    feeTxt = "免配送（到店自取）";
+  } else if (r.feeFree) {
+    feeTxt = "已免配送";
+  } else if (r.fee > 0) {
+    feeTxt = money(r.fee) + (r.feeEstimated ? "（预估）" : "");
+    feeWarn = r.feeEstimated;
+  } else {
+    feeTxt = "以结算页为准";
+    feeWarn = true;
+  }
+
+  var side = '<div class="dmoney">' +
+    '<div class="dmrow"><span>商品原价</span><b>' + money(r.origin) + '</b></div>' +
+    '<div class="dmrow"><span>商品现价</span><b>' + money(r.subtotal) + '</b></div>' +
+    (r.discount > 0
+      ? '<div class="dmrow save"><span>券抵扣' +
+        (r.discountLabel ? ' · ' + r.discountLabel : '') + '</span><b>−' + money(r.discount) + '</b></div>'
+      : '<div class="dmrow"><span>券抵扣</span><b style="color:var(--muted);font-weight:400">未使用券</b></div>') +
+    '<div class="dmrow' + (feeWarn ? ' warn' : '') + '"><span>配送费</span><b>' + feeTxt + '</b></div>' +
+    (r.gap > 0
+      ? '<div class="dmrow warn"><span>起送门槛</span><b>还差 ' + money(r.gap) + '</b></div>' : '') +
+    (r.feeToFree > 0
+      ? '<div class="dmrow"><span>再买免配送</span><b>还差 ' + money(r.feeToFree) + '</b></div>' : '') +
+    (r.memberCount > 0
+      ? '<div class="dmrow warn"><span>麦金卡 ' + r.memberCount + ' 件</span><b>非会员多付 ' + money(r.memberDelta) + '</b></div>'
+      : '') +
+    '<div class="dmtotal"><em>应付</em><b>' + money(r.pay) + '</b></div>' +
+    '</div>' +
+    '<div class="dact">' +
+    '<button class="btn" id="dockCopy"' + (cnt ? '' : ' disabled') + '>复制点单指令</button>' +
+    '<button class="btn ghost" id="dockBless"' + (cnt ? '' : ' disabled') + '>生成祝福卡 ✨</button>' +
+    '</div>' +
+    '<div class="dnote">' +
+    (r.pickup
+      ? '到店自取：无配送费、无起送门槛，应付 = 商品实付。'
+      : '外送：配送费与起送门槛一律以门店/结算页返回为准，本页不臆造。') +
+    (multi ? '<br>本单 ' + state.members.length + ' 人，按「点单人」分组，各自小计已单列。' : '') +
+    '</div>';
+
+  var sideEl = $("#dockSide");
+  if (sideEl) sideEl.innerHTML = side;
+}
+
+function openDock() {
+  var d = $("#dock");
+  if (!d) return;
+  d.classList.add("open");
+  d.setAttribute("aria-hidden", "false");
+  var b = $("#btnDock");
+  if (b) b.classList.add("on");
+}
+function closeDock() {
+  var d = $("#dock");
+  if (!d) return;
+  d.classList.remove("open");
+  d.setAttribute("aria-hidden", "true");
+  var b = $("#btnDock");
+  if (b) b.classList.remove("on");
+}
+function toggleDock() {
+  var d = $("#dock");
+  if (!d) return;
+  if (d.classList.contains("open")) closeDock(); else openDock();
 }
 
 function render() {
@@ -2256,6 +2777,26 @@ function showBlessing() {
 
 /* ---------- 事件 ---------- */
 document.addEventListener("click", function (e) {
+  /* 结算舱内的两个动作按钮：DOM 每次重算都会重建，只能走事件委托 */
+  if (e.target.closest("#dockCopy")) { copyOrderCmd(); return; }
+  if (e.target.closest("#dockBless")) { showBlessing(); return; }
+
+  /* 摇摇乐结果卡上的三个动作（同样是动态 DOM） */
+  var sAdd = e.target.closest("[data-shake-add]");
+  if (sAdd) { addFromShake(sAdd.dataset.shakeAdd); return; }
+  if (e.target.closest("[data-shake-again]")) { doShake(); return; }
+  if (e.target.closest("[data-shake-share]")) { shareShake(); return; }
+
+  /* 外送地址卡上的两个按钮 */
+  if (e.target.closest("[data-addr-edit]")) { openAddrModal(); return; }
+  if (e.target.closest("[data-addr-cmd]")) {
+    var ra = compute();
+    if (!ra.lines.length) { toast("先选商品，再生成外送指令"); return; }
+    if (state.fulfill !== "delivery") { state.fulfill = "delivery"; render(); }
+    copyOrderCmd();
+    return;
+  }
+
   var sc = e.target.closest(".scene");
   if (sc) {
     var sid = sc.dataset.scene;
@@ -2491,42 +3032,175 @@ $("#kcalRange").addEventListener("input", function (e) {
   setKcal(Number(e.target.value) >= 1000 ? 0 : Number(e.target.value));
 });
 
-$("#btnAddMember").addEventListener("click", function () {
-  var name = prompt("小伙伴叫什么？（比如：小明）");
-  if (!name) return;
-  var id = "m" + Date.now();
-  state.members.push({ id: id, name: name.trim(), items: {} });
-  state.activeMember = id;
-  render();
-  toast("已添加「" + name.trim() + "」，现在为他选餐");
-});
+/* ================= 麦麦摇摇乐 =================
+   三列同时滚真实菜单 SKU，停在哪份就吃哪份。
+   数据全部来自 data.js 的真实餐品（名称 / 现价 / 热量），不编造任何一项；
+   抽中的 SKU 直接进结算舱，用户仍可改数量或删掉 —— 摇的是选择，不是承诺。 */
+var SHAKE_CELL = 54;       // 必须与 CSS 里 .reel .cell 的 height 一致
 
-$("#btnShare").addEventListener("click", function () {
-  var r = compute();
-  if (!r.lines.length) { toast("先选点东西再分享吧～"); return; }
-  var txt = "🍔 拼单点单邀请 · 麦麦省钱助手\n\n门店：" +
-    (r.store ? r.store.name : "未选择") +
-    (r.store && r.store.dist ? "（" + r.store.dist + "km）" : "") + "\n";
-  state.members.forEach(function (m) {
-    var keys = Object.keys(m.items).filter(function (c) { return m.items[c] > 0; });
-    if (!keys.length) return;
-    txt += "\n" + m.name + "：\n";
-    keys.forEach(function (c) {
-      var it = itemByCode(c);
-      if (it) txt += "  · " + it.name + " ×" + m.items[c] + " " + money(it.price * m.items[c]) + "\n";
-    });
+var SHAKE_LUCK = [
+  "摇到它，就是今天的答案。别再想了，吃吧。",
+  "犹豫的时候交给运气，运气通常比你更懂你。",
+  "这不是随机，这是你身体提前发出的信号。",
+  "今天就宠自己一次，热量的事明天再说。",
+  "手气不错，这一单吃得心安理得。",
+  "宇宙已经替你做好了今天的决定。",
+  "别改了，改了就不灵了。",
+  "摇出来的都是缘，吃下去的才是福。",
+  "这一份不贵，但此刻的满足很贵。",
+  "今天的好运，从这一口开始。"
+];
+
+var shake = { busy: false, item: null, timer: null, luck: "" };
+
+function shakePool() {
+  return D.menu.filter(function (m) {
+    return m && m.code && m.name && (m.price || 0) > 0;
   });
-  txt += "\n合计 " + money(r.pay) + "（" +
-         (r.fulfill === "pickup" ? "到店自取，无配送费"
-           : (r.fee > 0 ? "含配送费 " + money(r.fee) : "商品金额，配送费以结算页为准")) +
-         "）｜立省 " + money(r.save) + "｜总热量 " + r.kcal + " kcal\n";
-  txt += r.gap > 0 ? "⚠️ 距起送还差 " + money(r.gap) + "\n"
-                   : (r.fulfill === "pickup" ? "🍽 到店自取\n" : "✅ 可下单\n");
-  txt += "\n👉 回复「加入拼单」并把商品发给我，就能一起凑单啦";
-  navigator.clipboard.writeText(txt).then(function () {
-    toast("分享文案已复制");
-  }, function () { prompt("复制这段分享文案：", txt); });
-});
+}
+
+/* 把一列内容换成 N 个随机格 + 最后的目标格，然后滚到目标格 */
+function spinReel(sel, pool, targetText, textOf, cells, dur) {
+  var el = $(sel);
+  if (!el) return;
+  var html = "";
+  for (var i = 0; i < cells; i++) {
+    var m = pool[Math.floor(Math.random() * pool.length)];
+    html += '<div class="cell"><span>' + textOf(m) + '</span></div>';
+  }
+  html += '<div class="cell"><span>' + targetText + '</span></div>';
+  el.innerHTML = html;
+  el.style.transition = "none";
+  el.style.transform = "translateY(0px)";
+  void el.offsetHeight;   // 强制 reflow，否则 transition 不生效
+  el.style.transition = "transform " + dur + "ms cubic-bezier(.16,.9,.2,1)";
+  el.style.transform = "translateY(-" + (cells * SHAKE_CELL) + "px)";
+}
+
+function initReels() {
+  var pool = shakePool();
+  if (!pool.length) return;
+  var it = pool[0];
+  var seed = [
+    ["#reelName", it.name],
+    ["#reelPrice", money(it.price)],
+    ["#reelKcal", it.kcal > 0 ? it.kcal + " kcal" : "—"]
+  ];
+  seed.forEach(function (p) {
+    var el = $(p[0]);
+    if (!el) return;
+    el.innerHTML = '<div class="cell"><span>' + p[1] + '</span></div>';
+    el.style.transform = "translateY(0px)";
+  });
+}
+
+function shakeBlessing() {
+  shake.luck = SHAKE_LUCK[Math.floor(Math.random() * SHAKE_LUCK.length)];
+  var arr = BLESSINGS[state.scene] || BLESSINGS.all;
+  return {
+    luck: shake.luck,
+    warm: arr[Math.floor(Math.random() * arr.length)]
+  };
+}
+
+function showShakeResult(it) {
+  var box = $("#shakeResult");
+  if (!box) return;
+  var b = shakeBlessing();
+  var thumb = it.image
+    ? '<img src="' + it.image + '" alt="" style="width:100%;height:100%;object-fit:cover">'
+    : "🍔";
+  var kcalTxt = it.kcal > 0 ? ((it.kcalEstimated ? "≈" : "") + it.kcal + " kcal") : "热量待核";
+  var warn = [];
+  if (it.memberPrice && it.origin > it.price) warn.push("麦金卡价 · 非会员 " + money(it.origin));
+  if (it.couponOnly) warn.push("券专属 SKU");
+
+  box.innerHTML = '<div class="shake-card">' +
+    '<div class="sc-top">' +
+    '<div class="sc-th">' + thumb + '</div>' +
+    '<div class="sc-body">' +
+    '<div class="sc-nm" title="' + it.name + '">' + it.name + '</div>' +
+    '<div class="sc-mt"><b>' + money(it.price) + '</b> · ' + kcalTxt +
+    (it.cat ? " · " + it.cat : "") + '</div>' +
+    (warn.length ? '<div class="sc-mt" style="color:var(--warn)">' + warn.join(" · ") + '</div>' : "") +
+    '</div></div>' +
+    '<div class="sc-bless"><span class="qt">// 今日签</span>' + b.luck +
+    '<div style="margin-top:4px;color:var(--muted);font-size:10.5px">' + b.warm + '</div></div>' +
+    '<div class="sc-act">' +
+    '<button class="btn" data-shake-add="' + it.code + '">加进结算舱</button>' +
+    '<button class="btn ghost" data-shake-again="1">再摇一次</button>' +
+    '</div>' +
+    '<div class="sc-act" style="margin-top:6px">' +
+    '<button class="btn ghost" data-shake-share="1">晒一摇 · 复制文案</button>' +
+    '</div>' +
+    '</div>';
+}
+
+function doShake() {
+  if (shake.busy) return;
+  var pool = shakePool();
+  var btn = $("#btnShake");
+  if (!pool.length) { toast("菜单数据还没加载出来，稍后再摇"); return; }
+  if (!btn) return;
+
+  var target = pool[Math.floor(Math.random() * pool.length)];
+  shake.busy = true;
+  shake.item = target;
+
+  btn.disabled = true;
+  btn.classList.add("shaking");
+  btn.textContent = "🎰 摇动中…";
+  var box = $("#shakeResult");
+  if (box) box.innerHTML = "";
+  document.querySelectorAll(".reel").forEach(function (r) { r.classList.add("lock"); });
+
+  spinReel("#reelName", pool, target.name, function (m) { return m.name; }, 24, 1000);
+  spinReel("#reelPrice", pool, money(target.price), function (m) { return money(m.price); }, 24, 1240);
+  spinReel("#reelKcal", pool,
+    target.kcal > 0 ? target.kcal + " kcal" : "—",
+    function (m) { return m.kcal > 0 ? m.kcal + " kcal" : "—"; }, 24, 1480);
+
+  clearTimeout(shake.timer);
+  shake.timer = setTimeout(function () {
+    shake.busy = false;
+    btn.disabled = false;
+    btn.classList.remove("shaking");
+    btn.textContent = "🎲 再摇一次";
+    showShakeResult(target);
+  }, 1520);
+}
+
+function addFromShake(code) {
+  var it = itemByCode(code);
+  if (!it) { toast("这个餐品不在当前菜单里，换一个吧"); return; }
+  var m = activeMember();
+  m.items[code] = (m.items[code] || 0) + 1;
+  render();
+  openDock();
+  toast("已加进结算舱：" + it.name);
+}
+
+function shareShake() {
+  var it = shake.item;
+  if (!it) { toast("先摇一次再晒单"); return; }
+  var txt = "🎰 我在「麦麦摇摇乐」摇到了：" + it.name + "\n" +
+    money(it.price) + " · " + (it.kcal > 0 ? it.kcal + " kcal" : "热量待核") +
+    (it.cat ? " · " + it.cat : "") + "\n" +
+    "今日签：" + (shake.luck || SHAKE_LUCK[0]) + "\n\n" +
+    "—— 麦麦省钱点单助手 · 麦当劳 MCP 实时数据";
+  copyText(txt).then(function (how) {
+    if (how === "manual") {
+      showCmd(txt, "环境限制无法自动写剪贴板，已自动全选，按 ⌘/Ctrl + C 即可分享。");
+      toast("已生成分享文案，请手动复制");
+    } else {
+      showCmd(txt, "已复制（" + how + "）。发到群里，看谁跟你摇到同一份。");
+      toast("晒单文案已复制");
+    }
+  });
+}
+
+var shakeBtn = $("#btnShake");
+if (shakeBtn) shakeBtn.addEventListener("click", safe("摇摇乐", doShake));
 
 /* ---------- 复制工具：三级降级，保证「点了一定有反馈」 ----------
    1) navigator.clipboard（需安全上下文：https / localhost）
@@ -2583,28 +3257,48 @@ function hideCmd() {
    本店为 eat-in 堂食 / locker-out 外带）。少这个参数下单会直接失败，
    所以指令里必须显式写出来，让 Agent 知道该传什么。 */
 function buildOrderCmd(r) {
-  var storeCode = r.store ? (r.store.id || r.store.code || "") : "";
-  var beType = r.fulfill === "pickup" ? 1 : 2;
-  var orderType = r.fulfill === "pickup" ? 1 : 2;
+  var a = state.addr || null;
   var parts = [];
   parts.push("帮我下单：" + r.lines.map(function (l) { return l.item.name + "×" + l.qty; }).join("、"));
-  if (r.store) parts.push("门店：" + r.store.name + "（storeCode=" + storeCode + "）");
-  parts.push("就餐方式：" + (r.fulfill === "pickup" ? "到店自取" : "外送到家") +
-    "（orderType=" + orderType + "，beType=" + beType + "）");
+
   if (r.fulfill === "pickup") {
+    var storeCode = r.store ? (r.store.id || r.store.code || "") : "";
+    if (r.store) parts.push("门店：" + r.store.name + "（storeCode=" + storeCode + "）");
+    parts.push("就餐方式：到店自取（orderType=1，beType=1）");
     parts.push("取餐方式 takeWayCode 用 calculate-price 返回的 takeWayList（本店为 eat-in 堂食 / locker-out 外带）");
+  } else {
+    /* 外送这三步必须按顺序来，任何一步偷懒都会算错账：
+       ① 先建档拿 addressId（delivery-create-address）
+       ② 再按 addressId 查可配送门店，拿 storeCode + beCode（delivery-query-stores）
+       ③ 用 orderType=2 / beType=2 核价，create-order 必须带 addressId 与 beCode
+       —— 绝不能沿用页面当前到店门店的 storeCode，那是两套完全不同的门店编码体系。 */
+    if (a) {
+      parts.push("收货地址（请先调 delivery-create-address 建档）：城市=" + a.city +
+        "，联系人=" + a.contactName + "（" + a.gender + "），手机号=" + a.phone +
+        "，配送地址=" + a.address + "，门牌号=" + a.addressDetail);
+      parts.push("建档拿到 addressId 后，调 delivery-query-stores(addressId, beType=2) 取可配送门店的 storeCode 与 beCode，" +
+        "不要用页面当前选的门店编码（那是到店体系）");
+      parts.push("再用 orderType=2、beType=2 调 calculate-price 核价（配送费与起送门槛以它返回为准），" +
+        "最后 create-order 必须带 addressId 与 beCode，remark 可填「无接触配送」");
+    } else {
+      parts.push("就餐方式：外送到家（orderType=2，beType=2）");
+      parts.push("我还没填收货地址，请先问我：城市、联系人姓名、性别、手机号、配送地址、门牌号，" +
+        "拿到后调 delivery-create-address 建档，再继续");
+    }
   }
+
   if (r.discountLabel) {
     var on = couponList().filter(function (c) { return state.couponsOn[c.key]; })[0];
     parts.push("使用优惠券：" + r.discountLabel +
       (on && on.couponId ? "（couponId=" + on.couponId + (on.code ? "，couponCode=" + on.code : "") + "）" : ""));
     parts.push("注意：一张券只对 1 件生效，多件请拆成多行分别核价");
   }
-  var cmd = parts.join("，") + "。请先 calculate-price 核价（含配送费与起送门槛以接口返回为准），再用 create-order 下单。";
+  var cmd = parts.join("；") + "。请先 calculate-price 核价，确认金额后再 create-order 下单。";
   return cmd;
 }
 
-$("#btnCopy").addEventListener("click", function () {
+/* 复制点单指令：HUD 与结算舱共用同一段实现，避免两个入口行为不一致 */
+function copyOrderCmd() {
   var r = compute();
   if (!r.lines.length) { toast("先选几个产品再复制指令"); return; }
   var txt = buildOrderCmd(r);
@@ -2617,10 +3311,24 @@ $("#btnCopy").addEventListener("click", function () {
       toast("点单指令已复制");
     }
   });
-});
+}
+$("#btnCopy").addEventListener("click", copyOrderCmd);
 $("#cmdClose").addEventListener("click", hideCmd);
 
 $("#btnBless").addEventListener("click", showBlessing);
+
+/* ---------- 结算舱交互 ----------
+   dockCopy / dockBless 由 renderDock 每次重建 DOM，不能用一次性绑定，
+   所以统一走 document 级委托（下面 document click 里处理）。 */
+$("#btnDock").addEventListener("click", toggleDock);
+var bod = $("#btnOpenDock");
+if (bod) bod.addEventListener("click", function () {
+  var r = compute();
+  if (!r.lines.length) { toast("还没有选商品，先挑一个再加单"); return; }
+  openDock();
+});
+var dcl = $("#dockClose");
+if (dcl) dcl.addEventListener("click", closeDock);
 
 /* 一键领券：页面无法直连 MCP，复制指令交由 Agent 调 auto-bind-coupons；
    领取后重跑 build_data.py 即可看到真实「已领取」状态 */
@@ -2629,23 +3337,29 @@ function doClaim() {
   var av = D.available || [];
   var left = av.filter(function (a) { return !a.claimed; }).length;
   if (!left) { toast("当前 " + av.length + " 张可领券已全部领取 ✓"); return; }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(CLAIM_CMD).then(function () {
-      toast("已复制领券指令 · 剩 " + left + " 张未领取，粘贴给 AI 即可到账");
-    }, function () { prompt("复制领券指令：", CLAIM_CMD); });
-  } else {
-    prompt("复制领券指令：", CLAIM_CMD);
-  }
+  /* 统一走 copyText() 的三级降级：prompt() 在 webview / sandbox iframe 里会被静默
+     拦截并返回 null，用户看到的就是「点了没反应」——这正是本页多个按钮失效的根因。 */
+  copyText(CLAIM_CMD).then(function (how) {
+    if (how === "manual") {
+      showCmd(CLAIM_CMD, "环境限制无法自动写剪贴板，已自动全选，按 ⌘/Ctrl + C 后发给 AI。");
+      toast("已生成领券指令，请手动复制");
+    } else {
+      showCmd(CLAIM_CMD, "已复制（" + how + "）。粘给 AI 执行 auto-bind-coupons，剩 " + left + " 张待领。");
+      toast("领券指令已复制 · 剩 " + left + " 张");
+    }
+  });
 }
 $("#btnClaim").addEventListener("click", doClaim);
 
-/* 清空当前点单人的已选（不动其他拼单人） */
-var bcc = $("#btnClearCart");
-if (bcc) bcc.addEventListener("click", function () {
-  activeMember().items = {};
+/* 清空：结算舱里的「清空」清的是当前点单人的已选（多人大单时不影响别人） */
+var dclr = $("#dockClear");
+if (dclr) dclr.addEventListener("click", safe("清空已选", function () {
+  var m = activeMember();
+  if (!m || !Object.keys(m.items).length) { toast("当前点单人还没有已选商品"); return; }
+  m.items = {};
   render();
-  toast("已清空当前点单人的选择");
-});
+  toast("已清空「" + m.name + "」的选择");
+}));
 
 function syncAutoBtn() {
   var b = $("#btnAuto");
@@ -2669,15 +3383,37 @@ $("#blessModal").addEventListener("click", function (e) {
 $("#sceneModal").addEventListener("click", function (e) {
   if (e.target === $("#sceneModal")) $("#sceneModal").classList.remove("show");
 });
+
+/* 地址表单：保存 / 取消 / 点遮罩关闭 */
+var aSave = $("#addrSave");
+if (aSave) aSave.addEventListener("click", safe("保存地址", submitAddr));
+var aCancel = $("#addrCancel");
+if (aCancel) aCancel.addEventListener("click", function () { $("#addrModal").classList.remove("show"); });
+var aClose = $("#addrClose");
+if (aClose) aClose.addEventListener("click", function () { $("#addrModal").classList.remove("show"); });
+var aModal = $("#addrModal");
+if (aModal) aModal.addEventListener("click", function (e) {
+  if (e.target === aModal) aModal.classList.remove("show");
+});
+/* 手机号框只允许数字，避免提交时才发现格式错 */
+var aPhone = $("#afPhone");
+if (aPhone) aPhone.addEventListener("input", function () {
+  this.value = String(this.value || "").replace(/\D/g, "").slice(0, 11);
+});
+
 document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") {
     $("#blessModal").classList.remove("show");
     $("#sceneModal").classList.remove("show");
+    var am = $("#addrModal");
+    if (am) am.classList.remove("show");
+    closeDock();
   }
 });
 
 /* ---------- 初始化 ---------- */
 (function init() {
+  state.addr = loadAddr();
   if (D.menu.length && D.menu[0].cat) state.cat = D.menu[0].cat;
   if (D.stores.length) state.storeId = D.stores[0].id;
 
@@ -2687,6 +3423,7 @@ document.addEventListener("keydown", function (e) {
   $("#hdrStat").textContent = D.menu.length + " 品 · " + withKcal + " 条热量";
   syncAutoBtn();
   render();
+  initReels();
 
   // 一次编排好的入场序列：错峰揭示
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: no-preference)").matches) {
