@@ -141,6 +141,12 @@ query-meals（现价 currentPrice + 划线价 originalPrice + kcal/protein）
 > 会被当成 unknown 丢掉，最省的券反而不上榜；②按券名关键字凑「任选 2 件」，
 > 把券不管辖的商品也算进优惠，虚报 16 元。现在统一以 `calculate-price` 的 `realDiscount` 为准。
 
+> ⏰ **快照会变旧，券的有效期由前端按「当前时间」现算**。`realOk / realPay` 是构建那一刻的核价结论，
+> 快照放一天后，「19.9 元王牌炸鸡」这类券已被麦当劳核销不了，页面若继续照抄就会算出一个
+> 今天下不了单的价格。所以 `order-assistant.html` 用 `couponTimeState()` 复核有效期：
+> 过期 / 未生效的券退出计价，榜单里依赖它的行改用现价重算并沉底。
+> 真正的实时结果仍只有一条路——`calculate-price`。
+
 ## 3. 业务价值
 
 | 价值点 | 说明 |
