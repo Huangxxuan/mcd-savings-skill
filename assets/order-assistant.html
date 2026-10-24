@@ -544,6 +544,9 @@ body {
 }
 .sc-act { grid-column: 1 / -1; display: flex; gap: 7px; }
 .sc-act .btn { flex: 1; padding: 9px; font-size: 11.5px; min-height: 36px; }
+/* 摇动中把上一次的结果压暗，而不是清空 —— 清空会让面板塌缩、下方内容跳动 */
+#shakeResult { transition: opacity var(--dur-1) ease; }
+#shakeResult.loading { opacity: .3; }
 @media (max-width: 760px) {
   .shake-banner .sb-grid { grid-template-columns: 1fr; }
   .shake-card { grid-template-columns: 1fr; }
@@ -916,6 +919,10 @@ body {
 .rank-pay { font-family: var(--num); font-size: 14.5px; font-weight: 700; color: var(--acc); }
 .rank-sv { font-family: var(--num); font-size: 9.5px; color: var(--ok); margin-top: 2px; }
 .rank-sv.none { color: var(--muted); }
+/* 券失效的行：金额已换成现价，视觉上退一步，别和真正能省的行抢注意力 */
+.rank-row.stale { opacity: .68; background: transparent; }
+.rank-row.stale:hover { opacity: 1; }
+.rank-row.stale .rank-idx, .rank-row.stale .rank-pay { color: var(--muted); }
 
 
 /* ---------- 入场编排：3–6 组，错峰 60–120ms ---------- */
@@ -1668,6 +1675,34 @@ function renderItems() {
    这样即使某个账号只有 myCoupons、没有门店券，也能在面板里看到并切换。 */
 function ckey(t) { return String(t || "").replace(/[\s　]/g, ""); }
 
+/* ---------- 券的时间有效性 ----------
+   data.js 是「抓取那一刻」的快照，realOk 也只是那一刻的核价结论。
+   快照放一天之后，「19.9 元王牌炸鸡」这类券早就过期了，realOk 却还是 true ——
+   页面就会拿一张今天根本核销不了的券，算出一个今天下不了单的价格。
+   所以每次渲染都按「当前时间」再判一次：过期 / 未生效的券一律退出计价，
+   并在券卡上写明原因。解析不出有效期的（可领券只有标题）不在这里判，仍交给 realOk。 */
+function couponSpan(c) {
+  var s = String((c && (c.valid || c.tradeEndDate)) || "");
+  var ds = s.match(/\d{4}-\d{2}-\d{2}/g);
+  if (!ds || !ds.length) return null;
+  function at(day, endOfDay) {
+    var p = day.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2],
+      endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0).getTime();
+  }
+  /* 只有一天时（tradeEndDate="2026-10-23"）按「那天结束」算，不按那天开始算 */
+  var from = ds[0], to = ds.length > 1 ? ds[1] : ds[0];
+  return { start: at(from, false), end: at(to, true), from: from, to: to };
+}
+function couponTimeState(c) {
+  var w = couponSpan(c);
+  if (!w) return { ok: true };
+  var now = Date.now();
+  if (now > w.end) return { ok: false, phase: "expired", why: "已过期（有效期至 " + w.to + "）" };
+  if (now < w.start) return { ok: false, phase: "pending", why: "尚未生效（" + w.from + " 起可用）" };
+  return { ok: true };
+}
+
 function couponList() {
   var out = [], byKey = {};
   // 需要跨来源合并的字段：能决定「能不能用、能省多少」的全部带上
@@ -1679,6 +1714,16 @@ function couponList() {
     if (!k) return;
     var hit = byKey[k];
     if (hit) {
+      /* 同名不同批次很常见：卡包里同时躺着一张「10-23 到期」和一张「10-26 才生效」。
+         取「截止最晚」那一批的券码与有效期，否则先写入的过期批次会把后面那张
+         盖掉 —— 明明有券可用，页面却报「已过期」。 */
+      var he = couponSpan(hit), ce = couponSpan(c);
+      if (ce && (!he || ce.end > he.end)) {
+        ["valid", "tradeEndDate", "code", "couponId", "realOk", "realDiscount",
+          "realPay", "realOrig", "realMsg", "skus"].forEach(function (f) {
+          if (c[f] !== undefined && c[f] !== null && c[f] !== "") hit[f] = c[f];
+        });
+      }
       MERGE.forEach(function (f) {
         var hv = hit[f], cv = c[f];
         var emptyH = hv === undefined || hv === null || hv === "" ||
@@ -1756,6 +1801,10 @@ function couponScopeLines(c, lines) {
 
 /* 这张券能不能参与「本地金额试算」——不能算就明说，不让用户以为它省了钱 */
 function couponCalcState(c) {
+  /* 有效期排第一：过期 / 未生效比「核价不可用」更根本，
+     先说清楚「这张券今天用不了」，再说别的限制。 */
+  var ts = couponTimeState(c);
+  if (!ts.ok) return { ok: false, why: "⚠️ " + ts.why + "，不参与计价", phase: ts.phase };
   var p = parseCoupon(c);
   /* 第一优先级：build_data.py 用 calculate-price 跑出来的真实结论。
      实测「人气麦旋风买一送一」beTypes=[4]、到店核价直接 600012「当前优惠券
@@ -1795,6 +1844,7 @@ function moneyCoupons() {
 }
 
 function couponUsable(c, subtotal) {
+  if (!couponTimeState(c).ok) return false;
   if (!couponSceneOk(c).ok) return false;
   var p = parseCoupon(c);
   if (p.type === "threshold" && subtotal < p.min) return false;
@@ -1836,13 +1886,15 @@ function couponRow(c, subtotal) {
   var usable = st.ok && couponUsable(c, subtotal);
   var cls = "coupon" + (on ? " on" : "") + (usable ? "" : (st.ok ? " disabled" : " notry"));
   var tags = [];
+  var ts = couponTimeState(c);
+  if (!ts.ok) tags.push(ts.phase === "expired" ? "已过期" : "未生效");
   if (c.inMine) tags.push("我的卡包");
   if (c.inStore) tags.push("门店券");
   if (c.claimed && (c.inMine || c.inStore)) tags.push("已领取");
   if (c.claimed && !c.inMine && !c.inStore) tags.push("接口标记已领 · 卡包未列出");
   if (c.codesApprox) tags.push("商品为近似匹配");
   var desc = (c.desc || "") + (c.valid ? "　·　" + c.valid : "");
-  if (!st.ok) desc += "　·　⚠️ " + st.why;
+  if (!st.ok) desc += "　·　" + st.why;
   return '<div class="' + cls + '" data-cid="' + c.key + '" tabindex="0" role="switch" ' +
     'aria-checked="' + (on ? "true" : "false") + '" title="' + (st.ok ? "点击启用/停用此券" : st.why) + '">' +
     '<span class="amt">' + parseCoupon(c).label + '</span>' +
@@ -2137,6 +2189,53 @@ function guessCodesByTitle(title) {
   };
 }
 
+/* 快照里的「剩余 N 天」是抓取那一刻算出来的，隔一天就全错。
+   「11.9 元麦辣鸡腿堡」10-23 到期，快照里还写着「剩余 2 天」——
+   今天是 10-25，这条提醒本身已经过期了。所以这里按当前时间重算，
+   券类提醒优先看券自身的有效期，而不是提醒里那个 deadline。 */
+function daysToDeadline(dl) {
+  var m = String(dl || "").match(/\d{4}-\d{2}-\d{2}/);
+  if (!m) return null;
+  var p = m[0].split("-").map(Number);
+  return Math.ceil((new Date(p[0], p[1] - 1, p[2], 23, 59, 59).getTime() - Date.now()) / 86400000);
+}
+function remCouponState(r) {
+  if (!/券/.test(r.type || "")) return null;
+  var k = ckey(r.title), hit = null;
+  couponList().forEach(function (c) { if (!hit && ckey(c.name) === k) hit = c; });
+  return hit ? couponTimeState(hit) : null;
+}
+function remindFresh(r) {
+  /* 只处理券类提醒。活动 / 积分的 deadline 是另一个语义（活动结束日、积分有效期），
+     拿「这张券还能不能用」去套会把「积分有效期 1529 天」这种文案搞乱。 */
+  if (!/券/.test(r.type || "")) return r;
+  var cs = remCouponState(r);
+  var left = daysToDeadline(r.deadline);
+  var o = {}, f;
+  for (f in r) o[f] = r[f];
+  if (cs && !cs.ok) {
+    o.days = -1;
+    o.level = "ok";
+    if (cs.phase === "pending") {
+      o.desc = (r.type === "用券" ? "已领取，但" : "　") + cs.why;
+    } else {
+      o.desc = r.type === "用券" ? "已过期，这条可以忽略" : "　已过期";
+    }
+    return o;
+  }
+  if (left === null) return r;
+  o.days = left;
+  if (left < 0) {
+    o.level = "ok";
+    o.desc = "　已过期";
+    return o;
+  }
+  var t = left === 0 ? "今天最后一天" : "剩余 " + left + " 天";
+  var d = String(r.desc || "");
+  o.desc = (!d || /^\s*剩余\s*\d+\s*天\s*$/.test(d)) ? "　" + t : d + " · " + t;
+  return o;
+}
+
 /* 提醒列表：以 D.reminders 为底，用 D.available 校正「是否已领取」，
    消除旧数据里「available 说已领、reminders 说待领」的自相矛盾。 */
 function remindersView() {
@@ -2154,15 +2253,15 @@ function remindersView() {
       /* 已经领取的券不该再喊「待领」，但也不该直接消失：
          券有有效期，提醒的价值在于「别放过期 / 顺手用掉」。
          这里转成「用券」提醒，点一下就在菜单里定位对应商品。 */
-      out.push({
+      out.push(remindFresh({
         level: "ok", icon: "🎟️", type: "用券",
         title: r.title, desc: "已领取，点一下在菜单定位对应商品",
         deadline: r.deadline || "", days: r.days || 0,
         codes: r.codes || [], codesApprox: r.codesApprox
-      });
+      }));
       return;
     }
-    out.push(r);
+    out.push(remindFresh(r));
   });
   (D.available || []).forEach(function (a) {
     if (a.claimed) return;
@@ -2310,24 +2409,54 @@ function rankRowHtml(r, i, boardId) {
   else meta.push("热量待核");
   if (r.perYuanKcal > 0) meta.push(r.perYuanKcal + " kcal/元");
   if (r.perYuanProtein > 0) meta.push(r.perYuanProtein + " g蛋白/元");
-  if (r.coupon) meta.push("🎟️ " + r.coupon);
+  /* 券失效的行写明是哪张券、为什么失效，金额已经换成「不用券的现价」 */
+  if (r.couponStale) meta.push("⏰ " + r.couponStale + " " + (r.staleWhy || "已失效"));
+  else if (r.coupon) meta.push("🎟️ " + r.coupon);
   else if (r.origin > r.pay) meta.push("划线价直降");
   /* 麦金卡会员价：菜单价只有持卡才能拿到，非会员按划线价结算，必须写清楚 */
   if (r.memberOnly) {
     meta.push("🪪 麦金卡价" + (r.nonMemberPay ? " · 非会员 " + money(r.nonMemberPay) : ""));
   }
-  return '<div class="rank-row" data-rank="' + boardId + ":" + i + '" tabindex="0" role="button" title="点击按这个方案点单">' +
+  return '<div class="rank-row' + (r.couponStale ? " stale" : "") +
+    '" data-rank="' + boardId + ":" + i + '" tabindex="0" role="button" title="' +
+    (r.couponStale ? "该券已失效，点击按现价点单" : "点击按这个方案点单") + '">' +
     '<span class="rank-idx">' + (i + 1) + '</span>' +
     '<div class="rank-main"><div class="rank-name">' + names + '</div>' +
     '<div class="rank-meta">' + meta.join("　·　") + '</div></div>' +
     '<div class="rank-right"><div class="rank-pay">' + money(r.pay) + '</div>' +
     '<div class="rank-sv' + (r.save > 0 ? "" : " none") + '">' +
-    (r.save > 0 ? "省 " + money(r.save) : "未用券") + '</div></div></div>';
+    (r.save > 0 ? "省 " + money(r.save) : (r.couponStale ? "券已失效" : "未用券")) + '</div></div></div>';
+}
+/* 榜单是快照那一刻算的，券一过期这一行的券后价就作废了。
+   「19.9 元王牌炸鸡」10-23 到期，榜单还挂着 ¥19.9，点下去却按 ¥23.8 结算 ——
+   用户会觉得榜单在骗人。所以按当前时间复核：券失效的行改用「不用券的现价合计」，
+   并沉到队尾，保证前面几行都是今天真能付的价。 */
+function rankRowLive(r) {
+  if (!r || !r.coupon) return r;
+  var k = ckey(r.coupon), hit = null;
+  couponList().forEach(function (c) { if (!hit && ckey(c.name) === k) hit = c; });
+  if (!hit) return r;                    // 券已不在快照里，无从判断，保持原样
+  var ts = couponTimeState(hit);
+  if (ts.ok) return r;
+  var pay = (r.items || []).reduce(function (s, x) { return s + (x.price || 0); }, 0);
+  var c = {};
+  for (var f in r) c[f] = r[f];
+  c.pay = Math.round(pay * 100) / 100;
+  c.save = 0;
+  c.couponStale = r.coupon;
+  c.staleWhy = ts.why;
+  c.coupon = "";
+  return c;
 }
 function rankRowsOf(board) {
-  var rows = (board.rows || []).filter(function (r) {
+  var rows = (board.rows || []).map(rankRowLive);
+  rows = rows.filter(function (r) {
     return !(board.id === "combo" && state.rankBudget > 0) || r.pay <= state.rankBudget;
   });
+  /* 券失效的沉底；同为失效时保持原顺序（比较索引，避免依赖 sort 稳定性） */
+  rows = rows.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) {
+    return ((a.r.couponStale ? 1 : 0) - (b.r.couponStale ? 1 : 0)) || (a.i - b.i);
+  }).map(function (x) { return x.r; });
   return rows.slice(0, 12);
 }
 function rankBoardOf(id) {
@@ -2348,7 +2477,7 @@ function renderRank() {
   $("#rankTag").textContent = "// 基于 " + (D.menu.length) + " 个餐品真实价格 + " +
     ((typeof couponList === "function" ? couponList() : (D.coupons || [])).length) + " 张券测算";
   var html = "";
-  var h = sv.hero;
+  var h = sv.hero ? rankRowLive(sv.hero) : null;
   if (h) {
     html += '<div class="rank-hero">' +
       '<div class="rh-top"><span class="rh-badge">今日最优解</span>' +
@@ -2356,6 +2485,8 @@ function renderRank() {
       '<div class="rh-line">原价 <span class="old">' + money(h.origin) + '</span> → 实付 <b>' +
       money(h.pay) + '</b>　<span class="rh-save">立省 ' + money(h.save) + '（' + h.savePct + '%）</span></div>' +
       (h.coupon ? '<div class="rh-note">🎟️ 用券：' + h.coupon + '</div>' : "") +
+      (h.couponStale ? '<div class="rh-note">⏰ 原券 ' + h.couponStale + " " + (h.staleWhy || "已失效") +
+        "，已按现价重算</div>" : "") +
       '<div class="rh-note">' + (h.tip || "") + '</div>' +
       (h.kcal > 0 ? '<div class="rh-note">🔥 ' + h.kcal + ' kcal' + (h.kcalKnown ? "" : "（含待核商品）") + '</div>' : "") +
       '<div class="rh-act"><button class="btn" data-rankapply="hero">就按这个点</button></div></div>';
@@ -2889,7 +3020,7 @@ document.addEventListener("click", function (e) {
   var ra = e.target.closest("[data-rankapply]");
   if (ra) {
     var sv0 = rankData();
-    if (sv0 && sv0.hero) applyRankRow(sv0.hero, "已按今日最优解点单");
+    if (sv0 && sv0.hero) applyRankRow(rankRowLive(sv0.hero), "已按今日最优解点单");
     return;
   }
   var rrow = e.target.closest(".rank-row[data-rank]");
@@ -3114,7 +3245,9 @@ function maskCell() {
    不需要额外的揭晓动画，也不会在滚动途中漏出任何信息。 */
 function spinReel(cells, dur, onDone) {
   var el = $("#reelStrip");
-  if (!el) return;
+  /* 找不到 strip 不能直接 return —— 那样 onDone 永不执行，用户点了「摇一摇」
+     什么都不会发生（webview 里就是「点了没反应」）。宁可跳过动画直接出结果。 */
+  if (!el) { if (onDone) onDone(); return; }
   var html = "";
   for (var i = 0; i < cells; i++) html += maskCell();
   el.innerHTML = html;
@@ -3122,7 +3255,9 @@ function spinReel(cells, dur, onDone) {
   el.style.transform = "translateY(0px)";
   void el.offsetHeight;   // 强制 reflow，否则 transition 不生效
   el.style.transition = "transform " + dur + "ms cubic-bezier(.16,.9,.2,1)";
-  el.style.transform = "translateY(-" + (cells * SHAKE_CELL) + "px)";
+  /* 停在最后一格，而不是把 strip 整条滚出视口 ——
+     滚出去会留一瞬空白，看着像卡住了。最后一格也是遮罩，停稳后才被图片替换。 */
+  el.style.transform = "translateY(-" + ((cells - 1) * SHAKE_CELL) + "px)";
   if (onDone) setTimeout(onDone, dur);
 }
 
@@ -3209,8 +3344,10 @@ function doShake() {
   btn.disabled = true;
   btn.classList.add("shaking");
   btn.textContent = "🎰 摇动中…";
+  /* 上一次的结果卡不清空，只压暗 —— 清空会让整块面板塌缩，
+     下面所有板块在 1 秒内上下跳一次，比看着旧结果更难受。 */
   var box = $("#shakeResult");
-  if (box) box.innerHTML = "";
+  if (box) box.classList.add("loading");
 
   /* 重摇时窗口可能还停在上一次的图片上，先还原成可滚动的 strip */
   var rb = $("#reelBox");
@@ -3219,10 +3356,16 @@ function doShake() {
     if (!$("#reelStrip")) rb.innerHTML = '<div class="strip" id="reelStrip"></div>';
   }
 
+  /* 系统开了「减少动态效果」就不滚 1.2 秒，直接短促滚动后揭示 */
+  var reduce = !!(window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var rollDur = reduce ? 260 : 1180;
+
   /* 26 格遮罩滚下来，最后才把图片交出来 —— 这一下就是「揭晓」的动作 */
-  spinReel(26, 1180, function () {
+  spinReel(26, rollDur, function () {
     revealInBox(target);
     showShakeResult(target);
+    if (box) box.classList.remove("loading");
   });
 
   clearTimeout(shake.timer);
@@ -3231,7 +3374,8 @@ function doShake() {
     btn.disabled = false;
     btn.classList.remove("shaking");
     btn.textContent = "🎲 再摇一次";
-  }, 1260);
+    if (box) box.classList.remove("loading");
+  }, reduce ? 360 : 1260);
 }
 
 function addFromShake(code) {
