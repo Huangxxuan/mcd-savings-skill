@@ -956,6 +956,63 @@ body {
 .bd-sv { color: var(--ok); font-weight: 700; }
 .bd-sv.none { color: var(--muted); font-weight: 400; }
 .bd-why { font-family: var(--mono); font-size: 9.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+/* 套餐构成与营养来源：≥100 元档必须看得出「这是几个套餐」，
+   营养若来自估算要带 *（官方字段只给主堡，薯条/可乐/派是按菜单官方值相加的） */
+.bd-comp { font-family: var(--mono); font-size: 9px; color: var(--hud); margin-left: 7px; }
+.bd-comp.none { color: var(--muted); opacity: .75; }
+.bd-why .est { color: var(--hud); font-style: normal; font-weight: 700; }
+.bd-why .unk { color: #ffb74d; font-style: normal; }
+.bd-est { font-family: var(--mono); font-size: 9px; color: var(--muted); opacity: .8; margin-top: 3px; line-height: 1.55; }
+/* 组合卡的「套餐 / 组合 / 单品」标签，以及套餐已含饮料的提示 */
+.bundle .kind {
+  font-family: var(--mono); font-style: normal; font-size: 8.5px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px; margin-left: 7px; vertical-align: 1px;
+  background: rgba(255,255,255,.07); color: var(--muted); letter-spacing: .03em;
+}
+.bundle .kind.set { background: rgba(255,199,0,.16); color: var(--acc); }
+.bundle .kind.single { background: rgba(255,255,255,.05); }
+.bundle .btip { font-family: var(--mono); font-size: 9px; color: var(--hud); margin-left: 9px; }
+.bundle .best { font-family: var(--mono); font-size: 9px; color: var(--muted); opacity: .78; margin-top: 4px; line-height: 1.55; }
+.memdot { font-style: normal; color: var(--hud); font-size: 10px; }
+/* ================= MCP Tools 面板 ================= */
+.toolsnote { font-size: 10px; line-height: 1.7; color: var(--muted); margin: 2px 0 8px; }
+.toolsnote b { color: var(--text); }
+.toolsnote .tw { color: #ffb74d; font-weight: 700; }
+.tgroup { border: 1px solid var(--line); border-radius: var(--r-sm); margin-bottom: 6px; background: var(--surface); overflow: hidden; }
+.tgroup.open { border-color: rgba(255,199,0,.32); }
+.tg-hd {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: none; border: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 11px; color: var(--text); text-align: left;
+}
+.tg-hd:hover { background: rgba(255,255,255,.03); }
+.tg-ar { color: var(--acc); font-size: 9px; width: 9px; }
+.tg-nm { flex: 1; }
+.tg-ct { font-family: var(--num); font-size: 9.5px; color: var(--muted); }
+.tg-bd { border-top: 1px dashed var(--line); padding: 6px 8px 8px; }
+.trow { padding: 7px 4px; border-bottom: 1px dashed rgba(255,255,255,.045); }
+.trow:last-child { border-bottom: 0; }
+.tr-hd { display: flex; align-items: center; gap: 7px; }
+.tr-nm { font-family: var(--mono); font-size: 10.5px; color: var(--hud); background: none; }
+.tr-w {
+  font-family: var(--mono); font-size: 8.5px; font-weight: 700; color: #ffb74d;
+  border: 1px solid rgba(255,183,77,.45); border-radius: 3px; padding: 0 4px;
+}
+.tcopy {
+  margin-left: auto; font-family: var(--mono); font-size: 9px; cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--muted); padding: 2px 7px; transition: all var(--dur-1) ease;
+}
+.tcopy:hover { color: var(--acc); border-color: rgba(255,199,0,.5); }
+.tcopy.ok { color: var(--ok); border-color: rgba(60,220,150,.5); }
+.tr-ds { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-top: 3px; }
+.tr-args { font-family: var(--mono); font-size: 9px; color: var(--muted); line-height: 1.6; margin-top: 3px; }
+.tr-args b { color: var(--text); margin-right: 5px; font-weight: 700; }
+.tr-ex {
+  font-family: var(--mono); font-size: 9px; color: #9fd9c0; background: rgba(0,0,0,.42);
+  border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; margin-top: 4px;
+  white-space: pre-wrap; word-break: break-all; line-height: 1.55; overflow-x: auto;
+}
 .rank-row {
   display: flex; align-items: center; gap: 9px; padding: 9px 11px;
   border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface);
@@ -1085,6 +1142,18 @@ body {
       <section class="panel reveal d2">
         <h2>📍 门店 <span class="tag">// 点击切换</span></h2>
         <div id="stores"></div>
+      </section>
+
+      <section class="panel reveal d3">
+        <h2>🧰 MCP Tools <span class="tag" id="toolsTag">// 加载中</span>
+          <button class="mini-btn" id="btnCopyTools" title="复制全部工具清单（Markdown，可直接贴给 Agent）">复制全部</button>
+        </h2>
+        <div class="toolsnote">
+          本页全部数据都来自这套麦当劳 MCP Server。<b>点任一工具</b>展开参数与调用样例，
+          右侧「复制」拿到可直接执行的调用。
+          <span class="tw">⚠️</span> 表示写操作（会真实下单 / 领券 / 抽奖），执行前务必确认。
+        </div>
+        <div id="tools"></div>
       </section>
 
       <!-- 「已选」整块已并入结算舱：侧栏摘要 / HUD 数字 / 结算舱清单三处重复，
@@ -1314,6 +1383,7 @@ var state = {
   kcalBudget: 0,      // 0 = 不限
   couponsOn: {},
   autoCoupon: true,   // 选品后自动启用最优可用券
+  toolsOpen: {},      // MCP Tools 面板：按分组记录展开状态
   storeId: null,
   /* 默认「到店自取」，理由有三：
      ① 外送必须先在麦当劳 App 里存配送地址（delivery-query-addresses 为空时
@@ -1644,13 +1714,106 @@ function renderScenes() {
 
 /* 组合卡片 HTML —— 主区与弹窗共用，保证「组合名称」与「菜单数据」完全同源 */
 function bundleHtml(b, i, prefix) {
-  var names = b.items.map(function (x) { return x.name + "（¥" + x.price + "）"; }).join("　+　");
-  var kcal = b.kcal ? b.kcal + " kcal · 蛋白 " + b.protein + "g" : "热量待核";
+  var names = b.items.map(function (x) {
+    return x.name + "（¥" + x.price + "）" +
+      (x.memberOnly ? '<i class="memdot" title="麦金卡会员商品：¥' + x.price + ' 是非会员结算价">＊</i>' : "");
+  }).join("　+　");
+  /* 营养必须标来源：套餐的官方字段只给主堡，剩下的薯条/可乐/派是按菜单官方值相加的估算，
+     带 * 才不会让人当成官方数字（用户明确问过「这个卡路里准不准」）。 */
+  var kcal;
+  if (b.kcal > 0) {
+    kcal = b.kcal + " kcal" + (b.kcalEstimated ? "*" : "") + " · 蛋白 " + b.protein + "g";
+  } else {
+    kcal = '<i class="unk">热量待核</i>';
+  }
+  var kind = b.kind === "set" ? "套餐" : (b.kind === "single" ? "单品" : "组合");
+  var tip = b.kind === "set" ? "套餐已含薯条与饮料，不用再加饮品"
+    : (b.setCount ? "" : "");
   return '<div class="bundle" data-bundle="' + prefix + i + '" tabindex="0" role="button">' +
-    '<div class="bh"><span class="bn">' + prefix + '方案 ' + (i + 1) + '</span>' +
+    '<div class="bh"><span class="bn">' + prefix + '方案 ' + (i + 1) +
+    '<em class="kind ' + (b.kind || "") + '">' + kind + '</em></span>' +
     '<span class="bs">' + kcal + '</span></div>' +
     '<div class="bi">' + names + '</div>' +
-    '<div class="bd"><span>合计 ' + money(b.total) + '</span></div></div>';
+    '<div class="bd"><span>合计 ' + money(b.total) + '</span>' +
+    (tip ? '<span class="btip">' + tip + '</span>' : "") + '</div>' +
+    (b.estNote ? '<div class="best">' + b.estNote + '</div>' : "") + '</div>';
+}
+
+/* ================= MCP Tools 面板 =================
+   数据来自 data.js 的 tools 字段（build_data.py 里的 MCP_TOOLS 常量，共 35 个工具），
+   不依赖任何运行时 MCP 调用 —— 页面离线打开也能看到完整能力清单。
+
+   为什么要这块：别人 clone 走之后只知道「这是个省钱页面」，不知道背后能调 35 个工具、
+   每个要传什么参数。这里一次说清楚，并且单条 / 全部都能一键复制成可直接执行的调用。 */
+function toolIndex() {
+  var T = D.tools;
+  return (T && T.groups && T.groups.length) ? T : null;
+}
+function escHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function findTool(name) {
+  var T = toolIndex();
+  if (!T) return null;
+  var hit = null;
+  T.groups.forEach(function (g) {
+    g.items.forEach(function (t) { if (t.name === name) hit = t; });
+  });
+  return hit;
+}
+function toolCopyText(t) {
+  return "麦当劳 MCP Tool: " + t.name + "\n" +
+    "用途：" + t.desc.replace(/⚠️\s*/, "") + "\n" +
+    "参数：" + t.args + "\n" +
+    "调用示例：" + t.example + "\n";
+}
+function allToolsText() {
+  var T = toolIndex();
+  if (!T) return "";
+  var out = ["# " + T.server + " · " + T.count + " 个 Tools", "", "> " + T.note, ""];
+  T.groups.forEach(function (g) {
+    out.push("## " + g.icon + " " + g.name + "（" + g.items.length + "）", "");
+    g.items.forEach(function (t) {
+      out.push("### `" + t.name + "`", "", t.desc.replace(/⚠️\s*/, ""), "",
+        "- 参数：" + t.args,
+        "- 调用：", "", "```", t.example, "```", "");
+    });
+  });
+  return out.join("\n");
+}
+function renderTools() {
+  var box = $("#tools");
+  if (!box) return;
+  var T = toolIndex();
+  if (!T) {
+    box.innerHTML = '<div class="empty">[ 未生成工具清单 · 运行 scripts/build_data.py --rank ]</div>';
+    $("#toolsTag").textContent = "// 无";
+    return;
+  }
+  $("#toolsTag").textContent = "// " + T.count + " 个 · " + T.groups.length + " 组";
+  box.innerHTML = T.groups.map(function (g) {
+    var open = !!state.toolsOpen[g.id];
+    var body = "";
+    if (open) {
+      body = '<div class="tg-bd">' + g.items.map(function (t) {
+        var warn = /⚠️/.test(t.desc);
+        return '<div class="trow">' +
+          '<div class="tr-hd"><code class="tr-nm">' + escHtml(t.name) + '</code>' +
+          (warn ? '<span class="tr-w" title="写操作：会真实下单/领券/抽奖">写</span>' : '') +
+          '<button class="tcopy" data-tcopy="' + escHtml(t.name) + '" title="复制这一条调用">复制</button></div>' +
+          '<div class="tr-ds">' + escHtml(t.desc.replace(/⚠️\s*/, "")) + '</div>' +
+          '<div class="tr-args"><b>参数</b>' + escHtml(t.args) + '</div>' +
+          '<pre class="tr-ex">' + escHtml(t.example) + '</pre></div>';
+      }).join("") + '</div>';
+    }
+    return '<div class="tgroup' + (open ? " open" : "") + '">' +
+      '<button class="tg-hd" data-tgroup="' + g.id + '">' +
+      '<span class="tg-ar">' + (open ? "▾" : "▸") + '</span>' +
+      '<span class="tg-nm">' + g.icon + " " + g.name + '</span>' +
+      '<span class="tg-ct">' + g.items.length + '</span></button>' + body + '</div>';
+  }).join("");
 }
 
 function renderBundles() {
@@ -2576,7 +2739,19 @@ function rankRowsOf(board) {
       var b100 = (sv0.budgets || []).filter(function (b) { return b.cap === 100; })[0];
       rows = (b100 && b100.row) ? [rankRowLive(b100.row)] : [];
     } else {
-      rows = rows.filter(function (r) { return r.pay <= cap; });
+      /* 点预算档位时，**第一行恒为该档最优解**（budgets 里那一单），
+         后面再挂同价位备选。不这么做的话，≤20 档会因为套餐榜里最便宜的一行
+         已经涨到 20.48 而直接显示空列表 —— 用户以为「点了没反应」。 */
+      var sv1 = rankData() || {};
+      var bcap = (sv1.budgets || []).filter(function (b) { return b.cap === cap; })[0];
+      var head = (bcap && bcap.row) ? [rankRowLive(bcap.row)] : [];
+      var keys = {};
+      var rowKey = function (r) {
+        return (r.items || []).map(function (x) { return x.code; }).join(",");
+      };
+      head.forEach(function (r) { keys[rowKey(r)] = 1; });
+      var rest = rows.filter(function (r) { return r.pay <= cap && !keys[rowKey(r)]; });
+      rows = head.concat(rest);
     }
   }
   /* 券失效的沉底；同为失效时保持原顺序（比较索引，避免依赖 sort 稳定性） */
@@ -2603,14 +2778,24 @@ function budgetCards(bs, active) {
       var sv = r.save > 0
         ? '<span class="bd-sv">省 ' + money(r.save) + '（' + r.savePct + '%）</span>'
         : '<span class="bd-sv none">这档没有可用券</span>';
+      /* 套餐构成：≥¥100 那档必须让人看出「这是几个套餐」，
+         而不是一串单品拼在一起（旧版就是 6 个单点冒充套餐，被用户当场指出）。 */
+      var setCnt = r.setCount || 0;
+      var comp = setCnt
+        ? '<span class="bd-comp">' + setCnt + ' 个套餐' +
+          (r.items.length > setCnt ? ' + ' + (r.items.length - setCnt) + ' 件单品' : '') + '</span>'
+        : '<span class="bd-comp none">单品组合</span>';
+      var nutTxt = r.kcal > 0
+        ? '　·　' + r.kcal + ' kcal' + (r.kcalEstimated ? '<i class="est">*</i>' : "")
+        : '　·　<i class="unk">热量待核</i>';
       return '<div class="bd-card" data-bdapply="' + b.cap + '" tabindex="0" role="button" ' +
-        'title="点击把这一单放进结算舱">' +
+        'title="点击把这一单放进结算舱' + (r.setNote ? '\n' + r.setNote : '') + '">' +
         '<div class="bd-hd"><span class="bd-cap">' + capTxt + '</span>' +
-        '<span class="bd-need">' + (b.multi ? b.people + " 人份" : (b.need || "")) + '</span></div>' +
+        '<span class="bd-need">' + (b.multi ? b.people + " 人份" : (b.need || "")) + comp + '</span></div>' +
         '<div class="bd-nm">' + names + '</div>' +
         '<div class="bd-line">实付 <b>' + money(r.pay) + '</b>　' + sv + '</div>' +
-        '<div class="bd-why">' + (b.why || "") +
-        (r.kcal > 0 ? '　·　' + r.kcal + ' kcal' : "") + '</div></div>';
+        '<div class="bd-why">' + (b.why || "") + nutTxt + '</div>' +
+        (r.setNote ? '<div class="bd-est">' + r.setNote + '</div>' : "") + '</div>';
     }).join("") + '</div>';
 }
 function rankBoardOf(id) {
@@ -2840,7 +3025,7 @@ function toggleDock() {
 function render() {
   var r = compute();
   renderScenes(); renderReminders(); renderBundles();
-  renderRank();
+  renderRank(); renderTools();
   renderCats(); renderItems(); renderCoupons();
   renderStores(); renderGap(r); renderCart(r); renderOrders();
 
@@ -3150,6 +3335,32 @@ document.addEventListener("click", function (e) {
 
   var loc = e.target.closest("[data-locate]");
   if (loc) { syncMenuToSelection([loc.dataset.locate]); return; }
+
+  /* ---- MCP Tools 面板 ---- */
+  var tg = e.target.closest("[data-tgroup]");
+  if (tg) {
+    var gid = tg.dataset.tgroup;
+    state.toolsOpen[gid] = !state.toolsOpen[gid];
+    renderTools();
+    return;
+  }
+  var tc = e.target.closest("[data-tcopy]");
+  if (tc) {
+    var tool = findTool(tc.dataset.tcopy);
+    if (tool) {
+      copyText(toolCopyText(tool));
+      /* 双重反馈：按钮即时变化 + toast，避免用户不确定到底复制成功没有 */
+      var oldTxt = tc.textContent;
+      tc.textContent = "✓ 已复制";
+      tc.classList.add("ok");
+      toast("已复制「" + tool.name + "」的调用，直接粘给 Agent 即可");
+      setTimeout(function () {
+        tc.textContent = oldTxt;
+        tc.classList.remove("ok");
+      }, 1400);
+    }
+    return;
+  }
 
   /* ---- 省钱榜单 ---- */
   var rt = e.target.closest("[data-ranktab]");
@@ -3713,6 +3924,28 @@ function doClaim() {
   });
 }
 $("#btnClaim").addEventListener("click", doClaim);
+
+/* MCP Tools：一键复制全部清单（Markdown）
+   两条复制路径都走 copyText() 的三级降级，绝不直调 navigator.clipboard。 */
+(function () {
+  var b = $("#btnCopyTools");
+  if (!b) return;
+  b.addEventListener("click", safe("复制工具清单", function () {
+    var txt = allToolsText();
+    if (!txt) { toast("工具清单还没生成，先运行 build_data.py --rank"); return; }
+    var T = toolIndex();
+    copyText(txt).then(function (how) {
+      if (how === "manual") {
+        showCmd(txt, "环境限制无法自动写剪贴板，已自动全选，按 ⌘/Ctrl + C 后发给 AI。");
+        toast("已生成完整工具清单，请手动复制");
+      } else {
+        toast("已复制 " + T.count + " 个工具清单（" + how + "）");
+      }
+    });
+    b.textContent = "✓ 已复制";
+    setTimeout(function () { b.textContent = "复制全部"; }, 1700);
+  }));
+})();
 
 /* 清空：结算舱里的「清空」清的是当前点单人的已选（多人大单时不影响别人） */
 var dclr = $("#dockClear");
