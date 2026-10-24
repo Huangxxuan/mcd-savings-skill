@@ -445,58 +445,96 @@ body {
 }
 .nav-btn:hover { background: transparent; color: var(--acc); }
 
-/* ---------- 麦麦摇摇乐 ----------
-   替代原「拼单」面板。拼单在纯前端根本无法真协同（分享出去对方也回填不了），
-   本质只是本地分组，对大众用户是虚设。摇摇乐把「选不出来吃什么」这个真痛点
-   变成可玩的动作：三列滚真实 SKU，停在哪就吃哪，并给一句祝福。 */
-.shake { display: grid; gap: 10px; }
-.reels { display: grid; grid-template-columns: minmax(0, 1fr) 74px 64px; gap: 6px; }
-.reel {
-  position: relative; height: 54px; overflow: hidden;
-  border: 1px solid var(--line); border-radius: var(--r-md);
-  background: rgba(255, 255, 255, .035);
+/* ---------- 麦麦摇摇乐（主栏通栏 · 摇的过程零信息） ----------
+   替代原「拼单」面板（纯前端无法真协同，分享出去对方也回填不了）。
+   设计要点：遮罩期只滚「?」，名称 / 价格 / 热量全部不可见 —— 只藏名称没用，
+   ¥36.50 + 513 kcal 一样能查出是哪份；停下那一刻才揭示。
+   侧栏 340px 放不下这套信息（热量格只剩 44px 文案宽度，必截断），故移到主栏通栏。 */
+.shake-banner .sb-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) 272px;
+  gap: 14px; align-items: stretch;
+}
+.sb-stage { display: grid; gap: 8px; align-content: start; }
+.reelbox {
+  position: relative; height: 104px; width: 100%; overflow: hidden;
+  border: 1px dashed var(--line-strong); border-radius: var(--r-md);
+  background:
+    radial-gradient(120% 150% at 50% -40%, rgba(255, 199, 44, .12), transparent 62%),
+    rgba(255, 255, 255, .022);
   transition: border-color var(--dur-1) ease;
 }
-.reel::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(9, 14, 20, .92), transparent 26%, transparent 74%, rgba(9, 14, 20, .92));
+.reelbox::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: linear-gradient(180deg, rgba(9, 14, 20, .96), transparent 32%,
+              transparent 68%, rgba(9, 14, 20, .96));
+  transition: opacity var(--dur-2) ease;
 }
-.reel .strip { will-change: transform; }
-.reel .cell {
-  height: 54px; display: flex; align-items: center; padding: 0 10px;
-  font-family: var(--num); font-size: 11.5px; color: var(--text);
+.reelbox.locked { border-style: solid; border-color: rgba(255, 199, 44, .55); }
+.reelbox.locked::after { opacity: 0; }
+.reelbox .strip { will-change: transform; }
+.reelbox .cell {
+  height: 104px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px; padding: 0 18px;
 }
-.reel .cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
-.reel.c1 .cell { justify-content: center; color: var(--acc); font-size: 12.5px; }
-.reel.c2 .cell { justify-content: center; color: var(--hud); font-size: 11px; }
-.reel.lock { border-color: var(--line-strong); }
+.reelbox .cell .mask {
+  font-family: var(--num); font-size: 38px; line-height: 1;
+  letter-spacing: .24em; text-indent: .24em; color: var(--acc);
+}
+.reelbox .cell .sub {
+  font-family: var(--num); font-size: 11px; color: var(--muted); letter-spacing: .04em;
+}
+/* 餐品图是 427×320 的白底 PNG（无 alpha），铺满会变成一块大白板。
+   所以做成「相片卡」：固定小尺寸 + 浅色相纸 + contain，白底看着像相纸而不是漏光。 */
+.reelbox .box-photo {
+  height: 100%; display: flex; align-items: center; justify-content: center; gap: 14px;
+}
+.reelbox .box-photo .pic {
+  width: 84px; height: 84px; flex: none; border-radius: var(--r-sm); overflow: hidden;
+  background: #f2efe8; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .4);
+  animation: boxOpen var(--dur-2) var(--ease);
+}
+.reelbox .box-photo .pic img { width: 100%; height: 100%; object-fit: contain; }
+.reelbox .box-photo .cap {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .16em; color: var(--acc);
+}
+.reelbox .box-photo .cap i {
+  display: block; margin-top: 5px; font-style: normal;
+  font-family: var(--num); font-size: 9.5px; letter-spacing: .04em; color: var(--muted);
+}
+@keyframes boxOpen {
+  from { opacity: 0; transform: scale(.86); }
+  to { opacity: 1; transform: none; }
+}
+.sb-hint {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; color: var(--muted);
+}
+.sb-ctrl { display: grid; gap: 9px; align-content: center; }
+.sb-ctrl .shake-btn { width: 100%; min-height: 58px; font-size: 15px; letter-spacing: .04em; }
+.shake-btn.shaking { opacity: .7; cursor: wait; }
+.sb-note { font-family: var(--num); font-size: 10px; line-height: 1.75; color: var(--muted); }
 
-.shake-btn { width: 100%; }
-.shake-btn.shaking { opacity: .65; cursor: wait; }
-
+/* 结果区：左信息 / 右今日签 / 底部动作（通栏才有这个横向空间） */
 .shake-card {
-  border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 11px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 10px 16px; margin-top: 13px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 13px;
   background: linear-gradient(150deg, rgba(255, 199, 44, .1), rgba(255, 199, 44, .02));
   animation: cardIn var(--dur-2) var(--ease);
 }
 @keyframes cardIn {
-  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
-.sc-top { display: flex; gap: 10px; align-items: center; }
-.sc-th {
-  width: 46px; height: 46px; border-radius: var(--r-sm); flex: none; overflow: hidden;
-  background: rgba(255, 255, 255, .06); display: flex; align-items: center; justify-content: center; font-size: 21px;
-}
-.sc-body { min-width: 0; flex: 1; }
+.sc-top { min-width: 0; align-self: center; }
 .sc-nm {
-  font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35;
+  font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.3;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sc-mt { font-family: var(--num); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
-.sc-mt b { color: var(--acc); }
+.sc-mt { font-family: var(--num); font-size: 12px; color: var(--muted); margin-top: 4px; }
+.sc-mt b { color: var(--acc); font-size: 15px; }
 .sc-bless {
-  margin-top: 9px; padding: 9px 10px; border-radius: var(--r-sm);
+  align-self: center; padding: 9px 11px; border-radius: var(--r-sm);
   border-left: 2px solid var(--acc); background: rgba(255, 199, 44, .07);
   font-size: 11.5px; line-height: 1.7; color: var(--text);
 }
@@ -504,10 +542,16 @@ body {
   display: block; margin-bottom: 3px;
   font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: var(--acc);
 }
-.sc-act { display: flex; gap: 6px; margin-top: 9px; }
-.sc-act .btn { flex: 1; padding: 8px; font-size: 11.5px; min-height: 34px; }
-@media (max-width: 420px) {
-  .reels { grid-template-columns: minmax(0, 1fr) 62px 52px; }
+.sc-act { grid-column: 1 / -1; display: flex; gap: 7px; }
+.sc-act .btn { flex: 1; padding: 9px; font-size: 11.5px; min-height: 36px; }
+@media (max-width: 760px) {
+  .shake-banner .sb-grid { grid-template-columns: 1fr; }
+  .shake-card { grid-template-columns: 1fr; }
+  .sc-act { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reelbox .box-photo .pic { animation: none; }
+  .shake-card { animation: none; }
 }
 
 /* ---------- 收货地址（外送） ---------- */
@@ -914,6 +958,24 @@ body {
   <div class="layout">
     <!-- ============ 主区 ============ -->
     <div>
+      <!-- 00 麦麦摇摇乐：通栏。遮罩期零信息，摇稳那一刻才揭示 -->
+      <section class="panel reveal d1 shake-banner">
+        <h2><span class="idx">00</span> 麦麦摇摇乐 <span class="tag">// 摇到哪份吃哪份 · 停下才知道</span></h2>
+        <div class="sb-grid">
+          <div class="sb-stage">
+            <div class="reelbox" id="reelBox">
+              <div class="strip" id="reelStrip"></div>
+            </div>
+            <div class="sb-hint">名称 · 价格 · 热量全程遮罩，摇稳了才揭晓</div>
+          </div>
+          <div class="sb-ctrl">
+            <button class="btn shake-btn" id="btnShake">🎲 摇一摇</button>
+            <div class="sb-note">从当前门店在售 SKU 里抽一份<br>抽中可直接加进结算舱，也可以再摇</div>
+          </div>
+        </div>
+        <div id="shakeResult"></div>
+      </section>
+
       <section class="panel reveal d1">
         <h2><span class="idx">01</span> 选择场景 <span class="tag">// 点场景卡打开推荐设置</span></h2>
         <div class="scenes" id="scenes"></div>
@@ -963,25 +1025,13 @@ body {
         <div id="stores"></div>
       </section>
 
-      <section class="panel reveal d3">
-        <h2>🎰 麦麦摇摇乐 <span class="tag">// 摇到哪份吃哪份</span></h2>
-        <div class="shake">
-          <div class="reels" id="reels">
-            <div class="reel c0"><div class="strip" id="reelName"></div></div>
-            <div class="reel c1"><div class="strip" id="reelPrice"></div></div>
-            <div class="reel c2"><div class="strip" id="reelKcal"></div></div>
-          </div>
-          <button class="btn shake-btn" id="btnShake">🎲 摇一摇</button>
-        </div>
-        <div id="shakeResult"></div>
-        <div id="gapbox"></div>
-      </section>
-
       <section class="panel reveal d4">
         <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span></h2>
         <div id="cart" style="font-family:var(--num);font-size:11.5px;line-height:1.9;color:var(--muted)">尚未选择</div>
         <div class="bar"><i id="kcalBar"></i></div>
         <div class="barinfo"><span id="kcalText">总热量 0 kcal</span><span id="macroText">蛋白 0g / 脂肪 0g / 碳水 0g</span></div>
+        <!-- 起送差额 / 配送费：跟着购物车走，不跟着摇摇乐走 -->
+        <div id="gapbox"></div>
         <button class="btn" id="btnOpenDock" style="width:100%;margin-top:11px">展开结算舱 · 改数量 + 下单</button>
       </section>
     </aside>
@@ -3019,10 +3069,13 @@ $("#kcalRange").addEventListener("input", function (e) {
 });
 
 /* ================= 麦麦摇摇乐 =================
-   三列同时滚真实菜单 SKU，停在哪份就吃哪份。
-   数据全部来自 data.js 的真实餐品（名称 / 现价 / 热量），不编造任何一项；
-   抽中的 SKU 直接进结算舱，用户仍可改数量或删掉 —— 摇的是选择，不是承诺。 */
-var SHAKE_CELL = 54;       // 必须与 CSS 里 .reel .cell 的 height 一致
+   摇到哪份就吃哪份。数据全部来自 data.js 的真实餐品（名称 / 现价 / 热量 / 图片），
+   不编造任何一项；抽中的 SKU 直接进结算舱，用户仍可改数量或删掉 —— 摇的是选择，不是承诺。
+
+   位置：主栏通栏（原在侧栏第三块，340px 里三列并排，热量格只剩 44px 文案宽度必截断）。
+   氛围：摇的过程只滚「?」，摇稳才揭晓 —— 神秘感来自「不知道在摇什么」，
+   而不是摇完才告诉你摇的是什么。 */
+var SHAKE_CELL = 104;      // 必须与 CSS 里 .reelbox .cell 的 height 一致
 
 var SHAKE_LUCK = [
   "摇到它，就是今天的答案。别再想了，吃吧。",
@@ -3045,39 +3098,64 @@ function shakePool() {
   });
 }
 
-/* 把一列内容换成 N 个随机格 + 最后的目标格，然后滚到目标格 */
-function spinReel(sel, pool, targetText, textOf, cells, dur) {
-  var el = $(sel);
+/* 遮罩期的格子：只出现「?」和占位价格，绝不写入真实名称。
+   注意：只藏名称是不够的 —— ¥36.50 + 513 kcal 本身就是指纹，
+   所以价格与热量在位期间也必须一起遮。 */
+var SHAKE_MASKS = ["? ? ?", "?  ? ?", "? ?  ?", "?? ? ?", "? ? ??"];
+
+function maskCell() {
+  var m = SHAKE_MASKS[Math.floor(Math.random() * SHAKE_MASKS.length)];
+  return '<div class="cell"><span class="mask">' + m + '</span>' +
+    '<span class="sub">¥ ??.?? · ??? kcal</span></div>';
+}
+
+/* 把窗口内容换成 N 个遮罩格 + 最后的目标格，再滚到目标格。
+   目标格在视口外，只有停稳后才进入窗口 —— 「停下才揭示」靠这个自然实现，
+   不需要额外的揭晓动画，也不会在滚动途中漏出任何信息。 */
+function spinReel(cells, dur, onDone) {
+  var el = $("#reelStrip");
   if (!el) return;
   var html = "";
-  for (var i = 0; i < cells; i++) {
-    var m = pool[Math.floor(Math.random() * pool.length)];
-    html += '<div class="cell"><span>' + textOf(m) + '</span></div>';
-  }
-  html += '<div class="cell"><span>' + targetText + '</span></div>';
+  for (var i = 0; i < cells; i++) html += maskCell();
   el.innerHTML = html;
   el.style.transition = "none";
   el.style.transform = "translateY(0px)";
   void el.offsetHeight;   // 强制 reflow，否则 transition 不生效
   el.style.transition = "transform " + dur + "ms cubic-bezier(.16,.9,.2,1)";
   el.style.transform = "translateY(-" + (cells * SHAKE_CELL) + "px)";
+  if (onDone) setTimeout(onDone, dur);
 }
 
+/* 待摇状态：窗口里只有一个静止的「?」，不预载任何真实 SKU */
 function initReels() {
-  var pool = shakePool();
-  if (!pool.length) return;
-  var it = pool[0];
-  var seed = [
-    ["#reelName", it.name],
-    ["#reelPrice", money(it.price)],
-    ["#reelKcal", it.kcal > 0 ? it.kcal + " kcal" : "—"]
-  ];
-  seed.forEach(function (p) {
-    var el = $(p[0]);
-    if (!el) return;
-    el.innerHTML = '<div class="cell"><span>' + p[1] + '</span></div>';
-    el.style.transform = "translateY(0px)";
-  });
+  var el = $("#reelStrip");
+  if (!el) return;
+  el.style.transition = "none";
+  el.style.transform = "translateY(0px)";
+  el.innerHTML = maskCell();
+}
+
+/* 摇中后才把窗口交给图片：盒子盖板打开，露出来的是一张小相片。
+   名字/价格留给下方结果卡，避免同一个名字在通栏里出现两次。 */
+function revealInBox(it) {
+  var box = $("#reelBox");
+  if (!box) return;
+  box.classList.add("locked");
+  box.innerHTML = '<div class="box-photo">' +
+    '<div class="pic">' + (it.image
+      ? '<img src="' + it.image + '" alt="' + it.name + '">'
+      : '<span style="font-size:34px">🍔</span>') + '</div>' +
+    '<div class="cap">// 已开出<i>再看看这次的手气</i></div>' +
+    '</div>';
+}
+
+/* 回到待摇状态：清掉图片，重新装回 strip */
+function resetBox() {
+  var box = $("#reelBox");
+  if (!box) return;
+  box.classList.remove("locked");
+  box.innerHTML = '<div class="strip" id="reelStrip"></div>';
+  initReels();
 }
 
 function shakeBlessing() {
@@ -3093,30 +3171,25 @@ function showShakeResult(it) {
   var box = $("#shakeResult");
   if (!box) return;
   var b = shakeBlessing();
-  var thumb = it.image
-    ? '<img src="' + it.image + '" alt="" style="width:100%;height:100%;object-fit:cover">'
-    : "🍔";
   var kcalTxt = it.kcal > 0 ? ((it.kcalEstimated ? "≈" : "") + it.kcal + " kcal") : "热量待核";
   var warn = [];
   if (it.memberPrice && it.origin > it.price) warn.push("麦金卡价 · 非会员 " + money(it.origin));
   if (it.couponOnly) warn.push("券专属 SKU");
 
+  /* 通栏布局：左信息 / 右今日签 / 底部动作。
+     图片已经在上方窗口里揭示过了，这里不重复放图，避免同一个名字出现两次。 */
   box.innerHTML = '<div class="shake-card">' +
     '<div class="sc-top">' +
-    '<div class="sc-th">' + thumb + '</div>' +
-    '<div class="sc-body">' +
     '<div class="sc-nm" title="' + it.name + '">' + it.name + '</div>' +
     '<div class="sc-mt"><b>' + money(it.price) + '</b> · ' + kcalTxt +
     (it.cat ? " · " + it.cat : "") + '</div>' +
     (warn.length ? '<div class="sc-mt" style="color:var(--warn)">' + warn.join(" · ") + '</div>' : "") +
-    '</div></div>' +
+    '</div>' +
     '<div class="sc-bless"><span class="qt">// 今日签</span>' + b.luck +
     '<div style="margin-top:4px;color:var(--muted);font-size:10.5px">' + b.warm + '</div></div>' +
     '<div class="sc-act">' +
     '<button class="btn" data-shake-add="' + it.code + '">加进结算舱</button>' +
     '<button class="btn ghost" data-shake-again="1">再摇一次</button>' +
-    '</div>' +
-    '<div class="sc-act" style="margin-top:6px">' +
     '<button class="btn ghost" data-shake-share="1">晒一摇 · 复制文案</button>' +
     '</div>' +
     '</div>';
@@ -3138,13 +3211,19 @@ function doShake() {
   btn.textContent = "🎰 摇动中…";
   var box = $("#shakeResult");
   if (box) box.innerHTML = "";
-  document.querySelectorAll(".reel").forEach(function (r) { r.classList.add("lock"); });
 
-  spinReel("#reelName", pool, target.name, function (m) { return m.name; }, 24, 1000);
-  spinReel("#reelPrice", pool, money(target.price), function (m) { return money(m.price); }, 24, 1240);
-  spinReel("#reelKcal", pool,
-    target.kcal > 0 ? target.kcal + " kcal" : "—",
-    function (m) { return m.kcal > 0 ? m.kcal + " kcal" : "—"; }, 24, 1480);
+  /* 重摇时窗口可能还停在上一次的图片上，先还原成可滚动的 strip */
+  var rb = $("#reelBox");
+  if (rb) {
+    rb.classList.remove("locked");
+    if (!$("#reelStrip")) rb.innerHTML = '<div class="strip" id="reelStrip"></div>';
+  }
+
+  /* 26 格遮罩滚下来，最后才把图片交出来 —— 这一下就是「揭晓」的动作 */
+  spinReel(26, 1180, function () {
+    revealInBox(target);
+    showShakeResult(target);
+  });
 
   clearTimeout(shake.timer);
   shake.timer = setTimeout(function () {
@@ -3152,8 +3231,7 @@ function doShake() {
     btn.disabled = false;
     btn.classList.remove("shaking");
     btn.textContent = "🎲 再摇一次";
-    showShakeResult(target);
-  }, 1520);
+  }, 1260);
 }
 
 function addFromShake(code) {
