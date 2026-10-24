@@ -20,6 +20,7 @@ build_data.py — 把麦当劳 MCP 的真实返回转换为前端可渲染的数
     python3 scripts/build_data.py --store-code 1420762
 """
 import argparse
+import itertools
 import json
 import os
 import re
@@ -527,6 +528,8 @@ def build_scene_bundles(menu: list) -> list:
 DRINK_CATS = ("饮品", "麦咖啡™")
 MAIN_RE = re.compile(r"堡|卷|饭|满分|粥|鸡排|麦乐鸡|套餐|四件套|三件套|随心选|随心配|拼")
 NON_FOOD_RE = re.compile(r"徽章|周边|玩具|卡片|马克杯|杯垫|袋子")
+# 酱料 / 调味包不是「吃到的东西」，不能拿来凑组合，否则 20 元档会被答成「鸡排 + 一包酱」
+SAUCE_RE = re.compile(r"酱|调味|糖浆|配料")
 # 「四件套 / 随心选」这一族在菜单里给的是麦金卡会员价（实测：龙焰美味四件套菜单 29，
 # calculate-price 无券核价 57、discount 0；人气超值四件套随心选 28 → 57 同理）。
 # query-meals 的麦金卡标签并不总打全（9900016311 就没打），所以这里用名字兜一层。
@@ -635,11 +638,49 @@ def best_coupon(rules: list, items: list):
 # 没有核价结果的券，宁可不进榜，也不猜。
 # =============================================================================
 
-def verified_coupon_rules(coupons: list, by_code: dict) -> list:
-    """把已核价成功的券转成「按 SKU 生效的固定抵扣」规则列表。"""
+def coupon_window(c: dict):
+    """解析券的生效区间。valid 有两种格式并存，必须都吃：
+       门店券 "2026-10-19 10:30:00-2026-10-23 23:59:59"；卡包券 "2026-10-19~2026-10-23"。
+    valid 缺失时退回 tradeStartDate / tradeEndDate。"""
+    v = (c.get("valid") or "").strip()
+    stamps = DT_RE.findall(v) if v else []
+    if len(stamps) >= 2:
+        return parse_dt(stamps[0]), parse_dt(stamps[-1])
+    s, e = c.get("tradeStartDate"), c.get("tradeEndDate")
+    return (parse_dt(s) if s else None), (parse_dt(e) if e else None)
+
+
+def coupon_valid_now(c: dict, now: datetime = None):
+    """这张券「此刻」能不能用，返回 (bool, 原因)。
+
+    ★ 为什么必须在这一层判：realOk/realPay 是**抓取那一刻**调 calculate-price 的结论，
+      快照一过夜，券可能已经过期，但核价结论还躺着。
+      榜单若照抄，就会出现「榜单挂 ¥11.9，点下去 ¥22.5」——页面层之前靠 rankRowLive 打补丁，
+      根因在这里：生成榜单时根本没看时间。
+    """
+    now = now or datetime.now()
+    s, e = coupon_window(c)
+    if s and now < s:
+        return False, "not_started"
+    if e:
+        # tradeEndDate 只有日期，按「当天最后一秒」算，不然 23:00 就把当天券判死
+        e2 = e if (e.hour or e.minute or e.second) else e.replace(hour=23, minute=59, second=59)
+        if now > e2:
+            return False, "expired"
+    return True, ""
+
+
+def verified_coupon_rules(coupons: list, by_code: dict, only_valid: bool = True) -> list:
+    """把已核价成功的券转成「按 SKU 生效的固定抵扣」规则列表。
+
+    only_valid=True 时按**生成时刻**再复核一次有效期：过期/未生效的券不进榜。
+    否则快照里那些隔天就死的券会一直挂在榜单上，金额全是假的。
+    """
     out = []
     for c in coupons or []:
         if not c.get("realOk"):
+            continue
+        if only_valid and not coupon_valid_now(c)[0]:
             continue
         pay = to_float(c.get("realPay"))
         orig = to_float(c.get("realOrig"))
@@ -783,12 +824,20 @@ def build_savings(menu: list, coupons: list) -> dict:
                            for m in food if (m.get("protein") or 0) > 0],
                           key=lambda r: -r["perYuanProtein"])
 
-    # ---------- 组合：套餐最优（主食 + 饮品[+ 小食]，含券） ----------
-    mains = [m for m in food if MAIN_RE.search(m["name"]) and m["price"] <= 45]
+    # ---------- 组合：单品 / 主食+小食 / 主食+饮品 / 三件套 / 多人拼单 ----------
+    # 旧版这里用「mains <= 45」「origin > 50」「origin > 55」「pay <= 45」四处硬编码，
+    # 把两端挖成了空档：菜单最低 3 元却一个都进不了套餐榜（≤20 永远为空），
+    # 最贵单品 72.5 也永远上不了 100 元档。
+    # 现在全价位都生成，由下面的 budgets 分档「挑」最优 —— 预算是挑出来的，不是砍出来的。
+    mains = [m for m in food
+             if MAIN_RE.search(m["name"]) and m["cat"] not in DRINK_CATS]
     drinks = [m for m in food if m["cat"] in DRINK_CATS]
-    sides = [m for m in food if m["cat"] not in DRINK_CATS and not MAIN_RE.search(m["name"])
-             and m["price"] <= 15]
-    combo_rows = []
+    sides = [m for m in food if m["cat"] not in DRINK_CATS
+             and not MAIN_RE.search(m["name"]) and m["price"] <= 15
+             and not SAUCE_RE.search(m["name"])]
+    main_codes = {m["code"] for m in mains}
+    drink_codes = {m["code"] for m in drinks}
+    all_rows = []
 
     def combo_coupon(items):
         """组合里能用的券：优先用核价过的券（抵扣额真实），没有核价结果才退回 Title 估算。"""
@@ -796,42 +845,132 @@ def build_savings(menu: list, coupons: list) -> dict:
             return best_verified_coupon(vrules, items)
         return best_coupon(rules, items)
 
+    def add(items, kind):
+        """加入候选池。kcal=0（热量待核）的行照样保留 —— 旧版用 r["kcal"] > 0 一刀切，
+        等于把 55 个「待核」商品从榜单里全部除名，这也是榜单只剩 24 行的原因之一。"""
+        its = [_item(m) for m in items]
+        origin = sum(i["price"] for i in items)
+        save, cname = combo_coupon(its)
+        note = " + ".join(i["name"] for i in items) + (f"，用「{cname}」" if cname else "")
+        all_rows.append(_row(its, origin, save, cname, note, kind))
+
+    # 单品：20 元档的答案常常就是「一个堡」，没有单品候选这档永远填不满
+    for m in food:
+        add([m], "single")
+
+    # 主食 + 小食（20 元档主力：再加一杯饮料就 23.5 起了）
+    cheap_sides = sorted(sides, key=lambda x: x["price"])[:6]
+    for a in mains:
+        for c in cheap_sides:
+            if c["code"] != a["code"]:
+                add([a, c], "combo")
+
+    # 主食 + 饮品
     for a in mains:
         for b in drinks:
-            items = [_item(a), _item(b)]
-            origin = a["price"] + b["price"]
-            if origin > 50:
-                continue
-            save, cname = combo_coupon(items)
-            note = f"{a['name']} + {b['name']}" + (f"，用「{cname}」" if cname else "，无需用券")
-            combo_rows.append(_row(items, origin, save, cname, note, "combo"))
-        for b in drinks:
-            for c in sides:
-                items = [_item(a), _item(b), _item(c)]
-                origin = a["price"] + b["price"] + c["price"]
-                if origin > 55:
-                    continue
-                save, cname = combo_coupon(items)
-                note = f"{a['name']} + {b['name']} + {c['name']}" + (f"，用「{cname}」" if cname else "")
-                combo_rows.append(_row(items, origin, save, cname, note, "combo"))
+            if b["code"] != a["code"]:
+                add([a, b], "combo")
+
+    # 主食 + 饮品 + 小食（每个主食只配最便宜的 3×3，否则组合数上万）
+    cheap_drinks = sorted(drinks, key=lambda x: x["price"])[:3]
+    cheap3 = sorted(sides, key=lambda x: x["price"])[:3]
+    for a in mains:
+        for b in cheap_drinks:
+            for c in cheap3:
+                if len({a["code"], b["code"], c["code"]}) == 3:
+                    add([a, b, c], "combo")
+
+    # 多人拼单：单人单份物理上到不了 100（本店最贵单品 72.5），
+    # 所以 100+ 这一档问的是「几个人怎么点」。饮品池必须带上券管的 SKU，
+    # 否则拼单永远套不上券，只能报一堆「省 0 元」的假最优。
+    coupon_drink = [m for m in drinks if any(m["code"] in r["codes"] for r in vrules)]
+    pool_drink = sorted({m["code"]: m for m in
+                         list(sorted(drinks, key=lambda x: x["price"])[:4]) + coupon_drink}.values(),
+                        key=lambda x: x["price"])[:6]
+    pool_side = sorted(sides, key=lambda x: x["price"])[:4]
+    pool_main = sorted(mains, key=lambda x: -(x.get("kcal") or 0))[:10]
+    for a, b in itertools.combinations(pool_main, 2):
+        for d1, d2 in itertools.combinations(pool_drink, 2):
+            for s1, s2 in itertools.combinations(pool_side, 2):
+                add([a, b, d1, d2, s1, s2], "multi")
 
     # 注意：这里原本有一段「N 元任选 M 件 → 直接按券凑一单」的逻辑，已删除。
     # 它按券名关键字从全菜单捞商品凑数，把券不管辖的商品也算进「任选」（虚报 16 元），
     # 现在这类券统一由 verified_coupon_rules() 按核价 SKU 出榜。
 
-    # 完整套餐优先（必须有主食 + 饮品），按「省得多 + 每元热量高」排；过贵的不进榜
-    combo_rows = [r for r in combo_rows if r["kcal"] > 0 and r["pay"] <= 45]
-    # 麦金卡当主食的组合排后面：对非会员来说那些「省」并不成立
-    combo_rows.sort(key=lambda r: (r.get("memberOnly", False), -r["save"], -r["perYuanKcal"]))
-    # 同一主食只保留最优的一条，避免整屏都是同一个堡
-    uniq, seen = [], set()
-    for r in combo_rows:
-        key = r["items"][0]["code"]
-        if key in seen:
+    # ---------- 预算分档：每档回答「这些钱怎么点最值」 ----------
+    # 用户问的是「我有 20 / 30 / 50 / 100 块，怎么点最划算」，
+    # 要回答的是「该档预算内最优的一单」，而不是把榜单筛一遍。
+    #
+    # 三条规则，缺一档就会答错：
+    #   ① 预算要用足：只在 [cap×0.6, cap] 内挑。否则「我有 50 块」会被答成一份 14 元的鸡排。
+    #   ② 必须是一顿饭：20 元内凑不出「主食+饮品」（最便宜 23.5），这一档只要求有主食；
+    #      30/50 必须含饮品，否则会选出一杯咖啡当午饭。
+    #   ③ 排序先比省下的钱、再比省的比例、最后比每元热量。
+    #      不能先比每元热量：省 40% 的两件套（20.48 元）会被「热量待核」打成 0 分而落选，
+    #      结果每档都退化成「现价买东西」，等于没帮你省钱。
+    def has_code(r, codes):
+        return any(i["code"] in codes for i in r["items"])
+
+    def budget_key(r):
+        return (r["save"], r["savePct"], r["perYuanKcal"], r["kcal"])
+
+    budgets = []
+    prev_pay = 0.0
+    for cap in (20, 30, 50):
+        cand = [r for r in all_rows if r["kind"] != "multi" and r["pay"] <= cap + 1e-9]
+        # 递进：这一档必须比上一档多花钱（至少 20%），否则「我有 50 块」会被答成
+        # 一个 30 元的单子 —— 上一档已经答过了，重复回答等于没回答。
+        # 预算用足：只在 [cap×0.75, cap] 内挑。门槛低了会答成「我有 50 块，结果推荐一份 37 元
+        # 的两件套」—— 省是省了 13 块，但这档预算根本没被用上，用户会觉得答非所问。
+        # 20 元档例外放到 0.6：这一档预算本来就小，苛求用足反而会错过「14 元鸡排 385kcal」
+        # 这种每元热量最高的答案，换成 17 元的汉堡。
+        floor = max(cap * (0.6 if cap <= 20 else 0.75), prev_pay * 1.2)
+        band = [r for r in cand if r["pay"] >= floor] or cand
+        meal = [r for r in band if has_code(r, main_codes)
+                and (cap < 30 or has_code(r, drink_codes))] or band
+        if not meal:
+            budgets.append({"cap": cap, "row": None, "count": 0})
             continue
-        seen.add(key)
-        uniq.append(r)
-    combo_rows = uniq
+        best = max(meal, key=budget_key)
+        prev_pay = best["pay"]
+        why = ("用券后省得最多" if best["save"] > 0 else "档内每元热量最高")
+        if best.get("kcal") == 0:
+            why += "（这单热量待核，不参与热量对比）"
+        budgets.append({
+            "cap": cap, "row": best, "count": len(cand),
+            "need": "一份主食" if cap < 30 else "主食 + 饮品",
+            "why": why,
+        })
+
+    # 100+：多人拼单
+    multi = [r for r in all_rows if r["kind"] == "multi" and r["pay"] >= 100 - 1e-9]
+    if multi:
+        m100 = max(multi, key=budget_key)
+        people = max(2, sum(1 for i in m100["items"] if i["code"] in main_codes))
+        budgets.append({
+            "cap": 100, "row": m100, "count": len(multi), "multi": True, "people": people,
+            "need": f"{people} 人份", "why": "多人拼单：先套券，再比人均吃到的量",
+        })
+
+    # ---------- 展示列表 ----------
+    # 列表要让「20 块 / 30 块 / 50 块」都看得到东西，不能二十几行全挤在 40 元上下。
+    # 按价位分桶各取 6 条，同一主食不重复（避免整屏都是同一个堡）。
+    combo_rows = [r for r in all_rows if r["kind"] != "multi"]
+    picked, seen_main = [], set()
+    for lo, hi in [(0, 25), (25, 35), (35, 50), (50, 1e9)]:
+        n = 0
+        for r in sorted([x for x in combo_rows if lo <= x["pay"] < hi],
+                        key=lambda x: (x.get("memberOnly", False), -x["save"], -x["perYuanKcal"])):
+            key = r["items"][0]["code"]
+            if key in seen_main:
+                continue
+            seen_main.add(key)
+            picked.append(r)
+            n += 1
+            if n >= 6:
+                break
+    combo_rows = picked
 
     # 券后最省：单项与组合混排，按省下的钱排
     coupon_rows = [r for r in coupon_rows if r["save"] > 0]
@@ -839,7 +978,11 @@ def build_savings(menu: list, coupons: list) -> dict:
 
     # ---------- 今日最优解：省得多、还得是一顿完整的饭 ----------
     # 只从「人人可用」的行里选：麦金卡会员价对非会员不成立，不能当今日最优解。
-    public = [r for r in combo_rows if r["save"] > 0 and not r.get("memberOnly")]
+    # 必须在全量候选里挑（combo_rows 已被价位分桶，省最多那单可能不在里面），
+    # 且必须含主食 —— 否则一张咖啡券省 9.1 元就能当「今日最优解」，不合常理。
+    public = [r for r in all_rows
+              if r["kind"] != "multi" and r["save"] > 0 and not r.get("memberOnly")
+              and has_code(r, main_codes)]
     public += [r for r in drop_rows
                if not r.get("memberOnly")
                and re.search(r"套餐|四件套|三件套|随心选", r["items"][0]["name"])]
@@ -872,7 +1015,7 @@ def build_savings(menu: list, coupons: list) -> dict:
          "desc": "MCP 返回的划线价对比，不用券也比原价便宜（末位标🪪的是麦金卡会员价，非会员按划线价结算）", "unit": "降",
          "rows": drop_public + drop_member},
         {"id": "combo", "name": "套餐最优", "icon": "🍱",
-         "desc": "主食 + 饮品（可加小食）自动套最优券；可用预算筛选「20 块怎么吃」", "unit": "省",
+         "desc": "按预算分档给「这钱怎么点最值」：≤20 / ≤30 / ≤50 各一单，100 以上是多人拼单", "unit": "省",
          "rows": combo_rows[:24]},
         {"id": "kcal", "name": "每元管饱", "icon": "🍚",
          "desc": "每 1 元能换多少大卡，管饱优先", "unit": "kcal/元",
@@ -886,8 +1029,9 @@ def build_savings(menu: list, coupons: list) -> dict:
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "basis": ("price/origin/kcal/protein 全部来自 MCP 快照；"
                   "券后金额一律取 calculate-price 的 realDiscount（券只作用在它核价吃下的 SKU 上），"
-                  "Title 仅用于展示"),
+                  "生成榜单前会按当前时间再复核一次券的有效期，过期/未生效的券不进榜"),
         "hero": hero,
+        "budgets": budgets,
         "boards": boards,
     }
 
