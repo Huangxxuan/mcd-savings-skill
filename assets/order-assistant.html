@@ -409,6 +409,32 @@ body {
   font-family: var(--mono); font-size: 10px; color: var(--acc);
   background: rgba(255,199,44,.12); padding: 1px 4px; border-radius: 3px;
 }
+/* 券来源横幅：这是谁的券，一眼看清，不再藏在折叠里 */
+.dsrc-warn { font-size: 11px; font-weight: 700; color: var(--warn); line-height: 1.5; }
+.dsrc-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 10.5px; }
+.dsrc-stats i { font-style: normal; color: var(--muted); }
+.dsrc-stats b { color: var(--ok); font-size: 12px; }
+.dsrc-note { margin-top: 4px; font-size: 10px; color: var(--muted); }
+.dsrc-act { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+/* 自动用券结果卡：把「已经帮你省了多少」摆到台面上 */
+.ac-card {
+  border: 1px solid var(--line); border-left: 2px solid var(--muted);
+  border-radius: var(--r-sm); padding: 9px 11px; margin-bottom: 9px;
+  background: var(--surface);
+}
+.ac-card.on { border-left-color: var(--ok); background: rgba(0, 214, 143, .06); }
+.ac-card.none { border-left-color: var(--warn); background: rgba(255, 159, 28, .05); }
+.ac-card.idle { border-left-color: var(--line); font-size: 10.5px; color: var(--muted); }
+.ac-hd { font-size: 11.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; line-height: 1.5; }
+.ac-card.on .ac-hd { color: var(--ok); }
+.ac-card.none .ac-hd { color: var(--warn); }
+.ac-line { font-size: 11px; color: var(--muted); line-height: 1.8; }
+.ac-line b { color: var(--acc); font-size: 15px; }
+.ac-alt { font-size: 10px; }
+.ac-note { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.65; }
+/* 现在真能用上的券：给一条绿边，和「看得到但用不了」的券区分开 */
+.coupon.live { border-left: 2px solid var(--ok); }
 
 /* ---------- 门店 ---------- */
 /* 履约方式切换：直接决定有无配送费/起送门槛，放在门店列表最上方 */
@@ -681,6 +707,11 @@ body {
   gap: 16px; padding: 12px 0 16px; align-items: start;
 }
 @media (max-width: 880px) { .dock-in { grid-template-columns: 1fr; gap: 12px; } }
+/* 热量 / 宏量 / 起送差额：从侧栏「已选」搬来，全宽铺在清单与金额下面 */
+.dock-extra { padding-top: 10px; border-top: 1px dashed var(--line); }
+.dock-extra .bar { margin-top: 0; }
+.dock-extra .barinfo { margin-bottom: 0; }
+.dock-extra:empty { display: none; }
 
 .dgroup {
   display: flex; align-items: baseline; gap: 8px;
@@ -901,6 +932,30 @@ body {
   margin-bottom: 9px; font-family: var(--mono); font-size: 10px; color: var(--muted);
 }
 .rank-list { display: flex; flex-direction: column; gap: 7px; }
+
+/* 预算分档卡：每档直接给「这些钱怎么点最值」的答案，
+   不再是一个空列表让用户自己猜为什么没有东西。 */
+.bd-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  gap: 8px; margin-bottom: 11px;
+}
+.bd-grid.single { grid-template-columns: 1fr; }
+.bd-card {
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface);
+  padding: 9px 11px; cursor: pointer; transition: all var(--dur-1) ease;
+}
+.bd-card:hover { border-color: var(--acc); background: rgba(255, 199, 44, .06); }
+.bd-card.off { opacity: .45; cursor: default; }
+.bd-card.off:hover { border-color: var(--line); background: var(--surface); }
+.bd-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.bd-cap { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--acc); letter-spacing: .04em; }
+.bd-need { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+.bd-nm { font-size: 12px; color: var(--text); font-weight: 700; line-height: 1.45; margin-bottom: 4px; }
+.bd-line { font-family: var(--num); font-size: 10.5px; color: var(--muted); }
+.bd-line b { color: var(--acc); font-size: 14px; }
+.bd-sv { color: var(--ok); font-weight: 700; }
+.bd-sv.none { color: var(--muted); font-weight: 400; }
+.bd-why { font-family: var(--mono); font-size: 9.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
 .rank-row {
   display: flex; align-items: center; gap: 9px; padding: 9px 11px;
   border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface);
@@ -1032,15 +1087,9 @@ body {
         <div id="stores"></div>
       </section>
 
-      <section class="panel reveal d4">
-        <h2>🧾 已选 <span class="tag" id="cartCount">// 0 件</span></h2>
-        <div id="cart" style="font-family:var(--num);font-size:11.5px;line-height:1.9;color:var(--muted)">尚未选择</div>
-        <div class="bar"><i id="kcalBar"></i></div>
-        <div class="barinfo"><span id="kcalText">总热量 0 kcal</span><span id="macroText">蛋白 0g / 脂肪 0g / 碳水 0g</span></div>
-        <!-- 起送差额 / 配送费：跟着购物车走，不跟着摇摇乐走 -->
-        <div id="gapbox"></div>
-        <button class="btn" id="btnOpenDock" style="width:100%;margin-top:11px">展开结算舱 · 改数量 + 下单</button>
-      </section>
+      <!-- 「已选」整块已并入结算舱：侧栏摘要 / HUD 数字 / 结算舱清单三处重复，
+           动作（复制点单指令、生成祝福卡）也重复两份。现在商品清单、热量、
+           起送差额、金额明细、两个动作全部只在结算舱里出现一次。 -->
     </aside>
   </div>
 </main>
@@ -1062,6 +1111,12 @@ body {
           <div id="dockLines"></div>
           <div id="dockSide"></div>
         </div>
+        <!-- 热量 / 宏量 / 起送差额：从侧栏「已选」搬过来的，全宽放在清单下面 -->
+        <div class="dock-extra">
+          <div class="bar"><i id="kcalBar"></i></div>
+          <div class="barinfo"><span id="kcalText">总热量 0 kcal</span><span id="macroText">蛋白 0g / 脂肪 0g / 碳水 0g</span></div>
+          <div id="gapbox"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1071,9 +1126,8 @@ body {
     <div class="snum pay">应付<b id="sPay">¥0</b><span class="snote" id="sFee"></span></div>
     <div class="snum">热量<b id="sKcal">0 kcal</b></div>
     <div class="spacer"></div>
-    <button class="btn ghost dockbtn" id="btnDock">🧾 结算 <span class="badge" id="dockBadge" style="display:none">0</span></button>
-    <button class="btn ghost" id="btnCopy">复制点单指令</button>
-    <button class="btn" id="btnBless">生成祝福卡 ✨</button>
+    <!-- 复制指令 / 祝福卡只在结算舱里出现一次（HUD 原来各有一份，重复了） -->
+    <button class="btn dockbtn" id="btnDock">🧾 结算 <span class="badge" id="dockBadge" style="display:none">0</span></button>
   </div>
   <!-- 指令输出框：无论剪贴板是否可用，点击后都能看到生成的内容 -->
   <div class="wrap" id="cmdOut" style="display:none">
@@ -1861,15 +1915,35 @@ function couponUsable(c, subtotal) {
   return true;
 }
 
-/* 数据来源说明条：解决「别人装上看到的是我的券」这种信息断裂。
-   默认只占一行（快照时间 + 这是谁的券），细节折叠，避免把券列表挤下去。 */
+/* 券来源横幅：解决「别人 clone 仓库打开，看到的是我的券」这种信息断裂。
+   旧版把关键信息塞在折叠的 details 里，默认只显示一行「来自生成 data.js 的那个账号」——
+   太含糊，用户根本不知道自己在看谁的券。现在标题和统计全部展开，折叠的只剩解释。 */
 function dataSourceNote() {
   var at = D.generatedAt || "未知时间";
+  var all = couponList();
+  var live = moneyCoupons();
+  var pending = 0, expired = 0;
+  all.forEach(function (c) {
+    var t = couponTimeState(c);
+    if (t.ok) return;
+    if (t.phase === "expired") expired++; else pending++;
+  });
+  var noCalc = all.length - live.length - pending - expired;
+  var acc = (D.account && D.account.accountId) ? D.account.accountId : "未知";
+  var bits = [];
+  if (pending) bits.push(pending + " 张未生效");
+  if (expired) bits.push(expired + " 张已过期");
+  if (noCalc > 0) bits.push(noCalc + " 张接口不支持核价");
   return '<div class="dsrc">' +
-    '<div class="dsrc-top"><span>📅 快照 <b>' + at + '</b> · 券/门店/余额来自生成 data.js 的那个账号</span>' +
-    '<button class="mini-btn" data-own="1" title="复制命令：用自己的 Token 重跑 build_data.py --claim">📋 换成我的券</button>' +
+    '<div class="dsrc-warn">这是快照账号 ' + acc + ' 的券，不是你的</div>' +
+    '<div class="dsrc-stats">' +
+    '<span>快照 <i>' + at + '</i></span>' +
+    '<span><b>' + live.length + '</b> / ' + all.length + ' 张现在能用</span></div>' +
+    (bits.length ? '<div class="dsrc-note">其余：' + bits.join(" · ") + '</div>' : "") +
+    '<div class="dsrc-act">' +
+    '<button class="mini-btn" data-own="1" title="复制命令：用自己的 Token 重跑 build_data.py --claim">📋 用我自己的券</button>' +
     '</div>' +
-    '<details><summary>换成我自己的券 / 为什么应付和商品金额不一样</summary>' +
+    '<details><summary>怎么换成我的券 / 为什么应付和商品金额不一样</summary>' +
     '<div class="dsrc-body">' +
     '<b>换券</b>：让 Agent 用<b>你自己的 Token</b> 重跑 ' +
     '<code>python scripts/build_data.py --claim</code>（会先调 auto-bind-coupons 领券，再抓券/菜单/营养/余额）。' +
@@ -1880,14 +1954,75 @@ function dataSourceNote() {
     '</div></details></div>';
 }
 
+/* 自动用券结果卡：选完商品后告诉用户「已经用了哪张、省了多少、为什么是它」。
+   这个能力其实一直在跑（compute() 内部调 autoApplyCoupons），但界面上一个字都没写，
+   用户完全不知道自己已经被省了钱 —— 所以才会问「怎么选品后自动用最优券」。 */
+function autoCouponCard() {
+  var r = compute();
+  if (!r.lines.length) {
+    return '<div class="ac-card idle">🎟️ 选好商品后，这里会显示自动用了哪张券、省了多少</div>';
+  }
+  var on = couponList().filter(function (c) { return state.couponsOn[c.key]; })[0];
+  if (r.discount > 0 && on) {
+    /* 第二优对照：让「为什么是这张」有答案，而不是只有一个数字 */
+    var second = null;
+    moneyCoupons().forEach(function (c) {
+      if (c.key === on.key || !couponUsable(c, r.subtotal)) return;
+      var d = discountOf(c, r.subtotal, r.lines);
+      if (d > 0.009 && (!second || d > second.d)) second = { d: d, n: c.name };
+    });
+    return '<div class="ac-card on">' +
+      '<div class="ac-hd">🎟️ 已自动用券：' + on.name + '</div>' +
+      '<div class="ac-line">省 <b>' + money(r.discount) + '</b>　应付 ' + money(r.pay) +
+      (second ? '　<span class="ac-alt">次优「' + second.n + '」只能省 ' + money(second.d) + '</span>' : "") +
+      '</div><div class="ac-note">' + (state.autoCoupon
+        ? '选完商品自动挑「省得最多」的那张，不用手点。想换一张，点下面的券就行。'
+        : '自动用券已关（右上角开关），现在这张是你手动选的。') + '</div></div>';
+  }
+  /* 没选中券：把「哪张券管哪样商品」直接列出来，别让用户自己猜 */
+  var usable = moneyCoupons().filter(function (c) { return couponUsable(c, r.subtotal); });
+  if (!usable.length) {
+    var owners = [];
+    moneyCoupons().forEach(function (c) {
+      var codes = (c.skus && c.skus.length)
+        ? c.skus.map(function (s) { return s.code || s; })
+        : (c.applyTo || []);
+      var names = codes.map(function (k) {
+        var it = itemByCode(k);
+        return it ? it.name : k;
+      }).slice(0, 3);
+      if (names.length) owners.push('「' + c.name + '」→ ' + names.join("、"));
+    });
+    return '<div class="ac-card none">' +
+      '<div class="ac-hd">🎟️ 这一单用不上券</div>' +
+      '<div class="ac-note">券只对它核价时的那几样商品生效：' +
+      (owners.length ? owners.slice(0, 3).join("；") : "暂无可核价的券") +
+      '。照着这些商品点，会自动抵扣。</div></div>';
+  }
+  return '<div class="ac-card none"><div class="ac-hd">🎟️ 当前没有券能减到钱</div>' +
+    '<div class="ac-note">能用的有：' + usable.map(function (c) { return c.name; }).join("、") +
+    '，可能没满足门槛或商品范围。点一下券可以手动启用。</div></div>';
+}
+
+/* 券卡第一个标签：现在能不能用。其余标签都是「券从哪来」，
+   只有这个是「能不能省钱」，所以必须排在最前且唯一。 */
+function couponNowTag(ts, st) {
+  if (ts.ok && st.ok) return "✓ 现在能用";
+  if (!ts.ok) return ts.phase === "expired" ? "已过期" : "未生效";
+  return "无法核价";
+}
+
 function couponRow(c, subtotal) {
   var st = couponCalcState(c);
+  var ts = couponTimeState(c);
   var on = !!state.couponsOn[c.key];
   var usable = st.ok && couponUsable(c, subtotal);
-  var cls = "coupon" + (on ? " on" : "") + (usable ? "" : (st.ok ? " disabled" : " notry"));
+  /* live = 现在真能用上（能算 + 在有效期）：给绿边，和「看得到但用不了」的券分开 */
+  var cls = "coupon" + (on ? " on" : "") + ((st.ok && ts.ok) ? " live" : "") +
+    (usable ? "" : (st.ok ? " disabled" : " notry"));
   var tags = [];
-  var ts = couponTimeState(c);
-  if (!ts.ok) tags.push(ts.phase === "expired" ? "已过期" : "未生效");
+  var hn = couponNowTag(ts, st);
+  if (hn) tags.push(hn);
   if (c.inMine) tags.push("我的卡包");
   if (c.inStore) tags.push("门店券");
   if (c.claimed && (c.inMine || c.inStore)) tags.push("已领取");
@@ -1895,6 +2030,7 @@ function couponRow(c, subtotal) {
   if (c.codesApprox) tags.push("商品为近似匹配");
   var desc = (c.desc || "") + (c.valid ? "　·　" + c.valid : "");
   if (!st.ok) desc += "　·　" + st.why;
+  else if (ts.ok) desc += "　·　选到适用商品会自动抵扣";
   return '<div class="' + cls + '" data-cid="' + c.key + '" tabindex="0" role="switch" ' +
     'aria-checked="' + (on ? "true" : "false") + '" title="' + (st.ok ? "点击启用/停用此券" : st.why) + '">' +
     '<span class="amt">' + parseCoupon(c).label + '</span>' +
@@ -1907,7 +2043,9 @@ function couponRow(c, subtotal) {
 function renderCoupons() {
   var subtotal = subtotalSafe();
   var list = couponList();
-  var html = dataSourceNote();
+  /* 来源横幅 + 自动用券结果，放在券列表最前面：
+     用户先要知道「这是谁的券」「这单自动省了多少」，才看得懂下面每张券的含义。 */
+  var html = dataSourceNote() + autoCouponCard();
   if (!list.length) {
     $("#coupons").innerHTML = html + '<div class="empty">[ 没读到任何券 · 说「帮我领券」让 Agent 调 auto-bind-coupons ]</div>';
     return;
@@ -2115,30 +2253,10 @@ function gapCandidates(r) {
 function renderGap(r) {
   var box = $("#gapbox");
   if (!box) return;
-  if (!r.lines.length) { box.innerHTML = ""; return; }
-  /* 自取：没有起送门槛也没有配送费，这块直接说明白，避免"还差 X 起送"的假提示 */
-  if (r.pickup) {
-    box.innerHTML = '<div class="gapbox" style="border-color:rgba(37,208,122,.5);' +
-      'background:rgba(37,208,122,.08)">' +
-      '<div class="gt" style="color:var(--ok)">🍽 到店自取：无起送门槛、无配送费</div>' +
-      '<div style="font-family:var(--num);font-size:10px;color:var(--muted)">' +
-      '应付 = 商品实付 ' + money(r.subtotal - r.discount) + '　·　到店出示取餐码</div></div>';
-    return;
-  }
-  if (r.gap <= 0) {
-    var feeLine = r.feeKnown
-      ? "配送费 " + money(r.fee) + (r.feeFree ? "（已达免配送）" : "")
-      : "配送费与起送门槛以门店结算页为准";
-    if (!r.minKnown && !r.feeKnown) {
-      feeLine = "门店未返回起送/配送费，以 calculate-price 为准";
-    }
-    box.innerHTML = '<div class="gapbox" style="border-color:rgba(37,208,122,.5);' +
-      'background:rgba(37,208,122,.08)">' +
-      '<div class="gt" style="color:var(--ok)">✅ 商品金额已可下单</div>' +
-      '<div style="font-family:var(--num);font-size:10px;color:var(--muted)">' +
-      feeLine + '</div></div>';
-    return;
-  }
+  /* 只在「还差起送、需要凑单」时才出现。
+     已达起送 / 到店自取的信息结算舱金额明细里已经有了，再说一遍就是重复 ——
+     这块的价值是「凑单建议」，不是复述金额。 */
+  if (!r.lines.length || r.pickup || r.gap <= 0) { box.innerHTML = ""; return; }
   var cands = gapCandidates(r);
   var inner = '<div class="gapbox"><div class="gt">🛒 还差 ' + money(r.gap) + ' 起送</div>';
   if (!cands.length) {
@@ -2450,14 +2568,50 @@ function rankRowLive(r) {
 }
 function rankRowsOf(board) {
   var rows = (board.rows || []).map(rankRowLive);
-  rows = rows.filter(function (r) {
-    return !(board.id === "combo" && state.rankBudget > 0) || r.pay <= state.rankBudget;
-  });
+  var cap = state.rankBudget;
+  if (board.id === "combo" && cap > 0) {
+    if (cap >= 100) {
+      /* ≥¥100 是多人拼单：候选在 budgets 里（列表只放单人单份），直接取那一条 */
+      var sv0 = rankData() || {};
+      var b100 = (sv0.budgets || []).filter(function (b) { return b.cap === 100; })[0];
+      rows = (b100 && b100.row) ? [rankRowLive(b100.row)] : [];
+    } else {
+      rows = rows.filter(function (r) { return r.pay <= cap; });
+    }
+  }
   /* 券失效的沉底；同为失效时保持原顺序（比较索引，避免依赖 sort 稳定性） */
   rows = rows.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) {
     return ((a.r.couponStale ? 1 : 0) - (b.r.couponStale ? 1 : 0)) || (a.i - b.i);
   }).map(function (x) { return x.r; });
   return rows.slice(0, 12);
+}
+/* 预算分档卡：build_data.py 已经算好每档「最值的一单」，这里只负责画出来。
+   数据里没有 budgets 时（旧快照）整块不显示，不编造。 */
+function budgetCards(bs, active) {
+  var list = active ? bs.filter(function (b) { return b.cap === active; }) : bs;
+  if (!list.length) return "";
+  return '<div class="bd-grid' + (list.length === 1 ? " single" : "") + '">' +
+    list.map(function (b) {
+      var r = b.row ? rankRowLive(b.row) : null;
+      var capTxt = (b.multi ? "≥ " : "≤ ") + "¥" + b.cap;
+      if (!r) {
+        return '<div class="bd-card off"><div class="bd-hd"><span class="bd-cap">' + capTxt +
+          '</span><span class="bd-need">' + (b.need || "") + '</span></div>' +
+          '<div class="bd-nm" style="color:var(--muted)">这一档暂时凑不出组合</div></div>';
+      }
+      var names = r.items.map(function (x) { return x.name; }).join(" + ");
+      var sv = r.save > 0
+        ? '<span class="bd-sv">省 ' + money(r.save) + '（' + r.savePct + '%）</span>'
+        : '<span class="bd-sv none">这档没有可用券</span>';
+      return '<div class="bd-card" data-bdapply="' + b.cap + '" tabindex="0" role="button" ' +
+        'title="点击把这一单放进结算舱">' +
+        '<div class="bd-hd"><span class="bd-cap">' + capTxt + '</span>' +
+        '<span class="bd-need">' + (b.multi ? b.people + " 人份" : (b.need || "")) + '</span></div>' +
+        '<div class="bd-nm">' + names + '</div>' +
+        '<div class="bd-line">实付 <b>' + money(r.pay) + '</b>　' + sv + '</div>' +
+        '<div class="bd-why">' + (b.why || "") +
+        (r.kcal > 0 ? '　·　' + r.kcal + ' kcal' : "") + '</div></div>';
+    }).join("") + '</div>';
 }
 function rankBoardOf(id) {
   var sv = rankData();
@@ -2500,7 +2654,20 @@ function renderRank() {
   sv.boards.forEach(function (b) { if (b.id === state.rankTab) board = b; });
   if (!board) board = sv.boards[0];
   html += '<div class="rank-budget">' + board.icon + " " + board.desc + '</div>';
-  if (board.id === "combo") {
+  var bs = (board.id === "combo" && sv.budgets) ? sv.budgets : [];
+  if (board.id === "combo" && bs.length) {
+    /* 档位由数据决定，不在这里写死 —— 写死过一次 20/30/45，
+       结果 50 和 100 两档根本不存在，用户点不到。 */
+    var opts = [{ v: 0, l: "不限" }].concat(bs.map(function (b) {
+      return { v: b.cap, l: (b.multi ? "≥ " : "≤ ") + "¥" + b.cap };
+    }));
+    html += '<div class="rank-budget"><span style="flex:none">预算</span>' +
+      opts.map(function (o) {
+        return '<button class="chip' + (state.rankBudget === o.v ? " active" : "") +
+          '" data-rankbudget="' + o.v + '">' + o.l + '</button>';
+      }).join("") + '</div>';
+    html += budgetCards(bs, state.rankBudget);
+  } else if (board.id === "combo") {
     html += '<div class="rank-budget">预算：' + [0, 20, 30, 45].map(function (v) {
       return '<button class="chip' + (state.rankBudget === v ? " active" : "") +
         '" data-rankbudget="' + v + '">' + (v ? "≤ ¥" + v : "不限") + '</button>';
@@ -2508,8 +2675,9 @@ function renderRank() {
   }
   var rows = rankRowsOf(board);
   if (!rows.length) {
-    html += '<div class="empty">[ 该预算下暂无组合，放宽一点试试 ]</div>';
-    $("#rankBody").innerHTML = html;
+    html += '<div class="empty">[ 这一档没有更多备选，上面那张就是最优解 ]' +
+      (state.rankBudget ? '　<button class="chip" data-rankbudget="0">看全部</button>' : "") + '</div>';
+    box.innerHTML = html;
     return;
   }
   html += '<div class="rank-list">' + rows.map(function (r, i) {
@@ -2531,43 +2699,14 @@ function applyRankRow(row, label) {
   toast(label + "　实付 " + money(row.pay) + (row.save > 0 ? " · 省 " + money(row.save) : ""));
 }
 
-/* 侧栏摘要：只回答「点了多少、多少钱、谁点的」，完整可编辑清单在结算舱里。
-   这样侧栏不必再挤 6 个元素，也就不会出现「名称被压到看不清」。 */
+/* HUD 汇总：原来这里还要写侧栏「已选」摘要，和结算舱清单是完全重复的三份之一
+   （侧栏摘要 / HUD 数字 / 结算舱清单）。侧栏删掉后，这里只负责徽标数字，
+   商品清单、热量、起送差额、金额明细全部交给 renderDock。 */
 function renderCart(r) {
-  var el = $("#cart"), cnt = 0;
+  var cnt = 0;
   r.lines.forEach(function (l) { cnt += l.qty; });
-  $("#cartCount").textContent = "// " + cnt + " 件";
-
   var bd = $("#dockBadge");
   if (bd) { bd.textContent = cnt; bd.style.display = cnt ? "" : "none"; }
-
-  if (!cnt) { el.innerHTML = "尚未选择"; }
-  else {
-    var rows = state.members.map(function (m) {
-      var n = 0, sum = 0;
-      Object.keys(m.items).forEach(function (c) {
-        var q = m.items[c] || 0;
-        var it = itemByCode(c);
-        if (!q || !it) return;
-        n += q; sum += it.price * q;
-      });
-      if (!n) return "";
-      return '<div style="display:flex;justify-content:space-between;gap:8px;padding:1px 0">' +
-        '<span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-        m.name + ' · ' + n + ' 件</span>' +
-        '<span style="color:var(--acc);flex:none">' + money(sum) + '</span></div>';
-    }).filter(Boolean).join("");
-    el.innerHTML = rows || "尚未选择";
-    el.innerHTML += '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0 0;' +
-      'margin-top:5px;border-top:1px dashed var(--line)">' +
-      '<span style="color:var(--muted)">应付' + (r.memberCount > 0 ? '（含麦金卡价）' : '') + '</span>' +
-      '<span style="color:var(--acc);font-size:13px">' + money(r.pay) + '</span></div>' +
-      (r.memberCount > 0
-        ? '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0 0">' +
-          '<span style="color:var(--warn)">非会员实际</span>' +
-          '<span style="color:var(--warn);font-size:12px">' + money(r.pay + r.memberDelta) + '</span></div>'
-        : '');
-  }
   renderDock(r);
 }
 
@@ -2755,8 +2894,8 @@ function render() {
   $("#kcalText").textContent = "总热量 " + kcalTxt + " / 预算 " + target;
   $("#macroText").textContent = "蛋白 " + r.protein + "g · 脂肪 " + r.fat + "g · 碳水 " + r.carb + "g";
 
-  $("#btnBless").disabled = r.lines.length === 0;
-  $("#btnCopy").disabled = r.lines.length === 0;
+  /* 复制 / 祝福卡按钮已只存在于结算舱（由 renderDock 每次重建并自带 disabled），
+     HUD 上不再有这两个按钮，所以这里不需要再取它们。 */
 
   /* 指令框必须跟随购物车：否则改完商品后框里还留着上一次的旧指令，
      用户会以为下错了单（真实反馈过的 bug）。购物车清空则直接关闭。 */
@@ -3017,6 +3156,17 @@ document.addEventListener("click", function (e) {
   if (rt) { state.rankTab = rt.dataset.ranktab; state.rankBudget = 0; renderRank(); return; }
   var rb = e.target.closest("[data-rankbudget]");
   if (rb) { state.rankBudget = Number(rb.dataset.rankbudget) || 0; renderRank(); return; }
+  /* 预算分档卡：直接按这一档的最优解点单 */
+  var bd = e.target.closest("[data-bdapply]");
+  if (bd) {
+    var bcap = Number(bd.dataset.bdapply);
+    var svb = rankData() || {};
+    var bhit = (svb.budgets || []).filter(function (x) { return x.cap === bcap; })[0];
+    if (bhit && bhit.row) {
+      applyRankRow(bhit.row, "已按「" + (bhit.multi ? "≥" : "≤") + "¥" + bcap + "」点单");
+    }
+    return;
+  }
   var ra = e.target.closest("[data-rankapply]");
   if (ra) {
     var sv0 = rankData();
@@ -3520,21 +3670,26 @@ function copyOrderCmd() {
     }
   });
 }
-$("#btnCopy").addEventListener("click", copyOrderCmd);
+/* 复制点单指令：只剩结算舱一个入口（HUD 那份已删），不会再出现两个按钮做同一件事 */
+function copyOrderCmd() {
+  var r = compute();
+  if (!r.lines.length) { toast("先选几个产品再复制指令"); return; }
+  var txt = buildOrderCmd(r);
+  copyText(txt).then(function (how) {
+    if (how === "manual") {
+      showCmd(txt, "当前环境无法自动写入剪贴板（浏览器限制），已自动全选，按 ⌘/Ctrl + C 即可复制。");
+    } else {
+      showCmd(txt, "已复制到剪贴板 ✓（方式：" + how + "，如未生效请手动全选复制）");
+      toast("点单指令已复制");
+    }
+  });
+}
 $("#cmdClose").addEventListener("click", hideCmd);
-
-$("#btnBless").addEventListener("click", showBlessing);
 
 /* ---------- 结算舱交互 ----------
    dockCopy / dockBless 由 renderDock 每次重建 DOM，不能用一次性绑定，
    所以统一走 document 级委托（下面 document click 里处理）。 */
 $("#btnDock").addEventListener("click", toggleDock);
-var bod = $("#btnOpenDock");
-if (bod) bod.addEventListener("click", function () {
-  var r = compute();
-  if (!r.lines.length) { toast("还没有选商品，先挑一个再加单"); return; }
-  openDock();
-});
 var dcl = $("#dockClose");
 if (dcl) dcl.addEventListener("click", closeDock);
 
