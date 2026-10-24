@@ -99,6 +99,18 @@ query-meals   → 从真实菜单 SKU 里随机抽一份（不编造餐品）
 → 最终金额仍由 calculate-price 决定
 ```
 
+**页面右栏「MCP Tools」面板（35 个工具的能力自述）**
+```
+tools/list（一次性，人工核对）→ 35 个工具名 + 参数 → 写进 build_data.py 的 MCP_TOOLS 常量
+→ 渲染进 assets/data.js 的 tools 字段（静态清单，页面不联网也能看）
+→ 页面：6 组折叠 + 单条复制 + 一键复制全部（Markdown）
+```
+> 为什么要把工具清单固化进 data.js 而不是运行时调 `tools/list`：页面是纯静态单文件，
+> 打开时不该再发一次 MCP 请求；而且**别人拿到仓库时最想知道的就是「这套 MCP 能干什么」**，
+> 清单必须在离线状态下也完整可见。写操作（`create-order` / `cancel-order` /
+> `auto-bind-coupons` / `mall-create-order` / `party-order-create` / `draw-lottery` /
+> `delivery-create-address`）在面板里打 `写` 标，避免照着示例直接跑出真实订单。
+
 **优惠不错过提醒（8 类规则，本次快照生成 9 条，随账号实时变化）**
 ```
 query-my-coupons     → 券有效期 → 临期提醒（≤3天 danger / ≤7天 warn）
@@ -191,6 +203,15 @@ query-meals（现价 currentPrice + 划线价 originalPrice + kcal/protein）
 1. 门店接口**不返回真实经纬度**（恒为 0.0），因此不做地图，只用高德 `uri.amap.com` 网页跳转导航（零 Key 方案）；
 2. 营养数据是**紧凑文本**而非 JSON，需自行解析并按名称模糊匹配；
 3. 优惠券**不返回面额**，精确金额须由 `calculate-price` 核出；
+4. **套餐的 `kcal / protein` 只等于主堡单品**（2026-10-24 复测）：板烧鸡腿堡四件套 391 = 板烧鸡腿堡 391，
+   培根安格斯四件套 707 = 单品 707；薯条 + 可乐 + 派合计 668 kcal 全部缺失。
+   `query-meal-detail` 也只给套餐组成，没有逐件的营养拆解。
+   → 本项目的处理：以「套餐 kcal == 主名单品 kcal」判定「只算了主堡」，再用 `list-nutrition-foods`
+   里薯条 289 / 可乐 147 / 派 232 的官方值相加，标 `setKcalEstimated` 并在页面写清构成；
+   构成不明的（随心选 / 双人餐 / 拼盘）标「营养未含配餐」，**绝不编造**。
+5. **菜单价可能是麦金卡会员价**：四件套菜单 28 / 划线 57，非会员按 57 结算（`calculate-price` 实测）。
+   标签还会漏打（9900016311「龙焰美味四件套」没有麦金卡标签，但结算价仍是 57），
+   → 判会员价必须「标签 OR（名字含四件套/随心选 且 划线价 > 菜单价 ×1.2）」双条件兜底。
 4. `beCode` 传参规则严格（到店自取不可传，外送/得来速/团餐必传），传错直接报错。
 
 ## 5. 合规声明
