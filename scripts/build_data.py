@@ -318,10 +318,146 @@ SCENES = [
     {"id": "kids", "name": "儿童套餐", "icon": "🧒",
      "desc": "小朋友的快乐 · 目标 ≤ 450 kcal", "kcalMax": 450, "priceMax": 40},
     {"id": "fitness", "name": "健身运动餐", "icon": "💪",
-     "desc": "高蛋白控卡 · 蛋白 ≥ 15g", "kcalMax": 550, "proteinMin": 15},
+     "desc": "高蛋白控卡 · 方案蛋白 ≥ 25g · ≤ 550 kcal", "kcalMax": 550, "proteinMin": 25},
     {"id": "beauty", "name": "悦己养颜餐", "icon": "🌸",
      "desc": "犒赏自己的小甜头 · 目标 ≤ 400 kcal", "kcalMax": 400, "priceMax": 35},
 ]
+
+# =============================================================================
+# 套餐型 SKU：营养与价格的口径纠正（第 19 轮）
+# =============================================================================
+# 两个实测事实，决定了下面所有规则：
+#
+# ① **套餐的 kcal / protein 只等于主堡单品**。
+#    板烧鸡腿堡四件套 391 = 板烧鸡腿堡 391；培根安格斯四件套 707 = 培根安格斯单品 707；
+#    不素之霸四件套 493 = 不素之霸单品 493。薯条 + 可乐 + 派 一粒卡都没算进去。
+#    直接当整份营养用，四件套会「虚低」约 600~700 kcal —— 健身/控卡场景就会把
+#    一个 1000+ kcal 的套餐当成「539 kcal 高蛋白餐」推荐出去（用户当场发现）。
+#
+# ② **四件套/随心选的「菜单价」是麦金卡会员价**，划线价才是普通账号的结算价。
+#    板烧四件套 菜单 28 / 划线 57，非会员按 57 收（calculate-price 实测）。
+#    所以场景方案里「四件套 ¥28 + 奶铁 ¥13.9 = ¥41.9」对没开卡的账号是假的，
+#    真实要付 ¥70.9。凡对外报价，一律用结算价，会员价只作为「有卡还能再省」的附注。
+SET_RE = re.compile(r"两件套|四件套|三件套|套餐|乐园餐|随心选|双人餐|随心拼|拼盘|四宫格|七件任选")
+SET_SUFFIX_RE = re.compile(r"(两件套|四件套|三件套|套餐|乐园餐|随心选|双人餐|随心拼|四宫格小食盘双人餐)$|（\d+件任选）$")
+# 配餐基准：只用菜单里真实存在、且官方给了营养值的条目，不臆造数字
+SET_PART_KEYS = ("fries", "coke", "pie")
+
+
+def settle_price(m: dict) -> float:
+    """真实结算价。麦金卡商品的菜单价是会员价，普通账号按划线价付款。
+
+    标签不可靠：实测 9900016311「龙焰美味四件套」没打麦金卡标签，菜单 29 / 划线 57，
+    核价仍按 57 收。所以「名字是四件套/随心选 且 划线价高于菜单价 20%」也判为会员价。
+    """
+    o = m.get("origin") or m["price"]
+    if o <= m["price"]:
+        return m["price"]
+    if m.get("memberPrice") or m.get("member"):
+        return o
+    try:
+        if MEMBER_NAME_RE.search(m["name"]) and o > m["price"] * 1.2:
+            return o
+    except NameError:
+        pass
+    return m["price"]
+
+
+def set_part_size(name: str) -> int:
+    """套餐里有几件：四件套=4，三件套/xx套餐=3，其余（随心选/双人餐/拼盘）构成不明=0"""
+    if "四件套" in name:
+        return 4
+    if "三件套" in name:
+        return 3
+    if re.search(r"套餐$", name):
+        return 3
+    if re.search(r"乐园餐$", name):
+        return 3
+    if "两件套" in name:
+        return 2
+    return 0
+
+
+def set_core(name: str) -> str:
+    """套餐的主品名：板烧鸡腿堡四件套 → 板烧鸡腿堡。
+
+    场景方案去重要用它 —— 否则「板烧单品 / 板烧四件套 / 板烧三件套」会被当成三个
+    不同方案推给用户（实际是同一个堡换三种包装，用户已经指出过）。
+    """
+    base = SET_SUFFIX_RE.sub("", name or "").strip("（）() ")
+    return core_name(base) or core_name(name or "")
+
+
+def enrich_set_nutrition(menu: list) -> dict:
+    """给套餐型 SKU 补上「配餐」的营养（估算），并如实标注来源。
+
+    判定依据是硬证据而不是猜测：**套餐 kcal 与同名主堡单品的 kcal 完全相等**，
+    就说明接口只算了主堡。已经按整份给的（如「500大卡套餐」495 kcal）绝不重复相加。
+
+    补不出来的（随心选 / 双人餐 / 拼盘 —— 官方没说里面是什么）标 `setKcalPartial`，
+    宁可显示「营养未含配餐」，也不编一个数字。
+    """
+    by_name = {}
+    for m in menu:
+        if not SET_RE.search(m["name"]):
+            by_name.setdefault(m["name"], m)
+    parts = {}
+    for key, nm in (("fries", "薯条"), ("coke", "可乐"), ("pie", "派")):
+        c = next((m for m in menu if m["name"] == nm and (m.get("kcal") or 0) > 0), None)
+        if c:
+            parts[key] = c
+
+    stats = {"sets": 0, "estimated": 0, "official": 0, "partial": 0, "unknown": 0}
+    for m in menu:
+        if not SET_RE.search(m["name"]):
+            continue
+        stats["sets"] += 1
+        m["setMeal"] = True
+        if m.get("setKcalEstimated"):
+            # 幂等：已经补过的不再相加（重复跑会出现 1059 + 668 = 1727 的滚雪球）
+            stats["estimated"] += 1
+            continue
+        kcal = m.get("kcal") or 0
+        if kcal <= 0:
+            m["setKcalPartial"] = True
+            stats["unknown"] += 1
+            continue
+        if re.search(r"大卡", m["name"] + str(m.get("cat") or "")):
+            # 「500大卡套餐」这一类官方给的就是整份（牛气满满 495 / 苹板支撑 476），
+            # 分类名里带「大卡」，光看餐品名会漏判成 partial
+            m["setKcalOfficial"] = True
+            stats["official"] += 1
+            continue
+        base = SET_SUFFIX_RE.sub("", m["name"]).strip("（）() ")
+        single = by_name.get(base)
+        if not single or (single.get("kcal") or 0) <= 0 or abs(kcal - single["kcal"]) > 2:
+            m["setKcalPartial"] = True
+            stats["partial"] += 1
+            continue
+        n = set_part_size(m["name"])
+        keys = []
+        if n >= 3:
+            keys += ["fries", "coke"]
+        if n >= 4:
+            keys.append("pie")
+        if not keys or any(k not in parts for k in keys):
+            m["setKcalPartial"] = True
+            stats["partial"] += 1
+            continue
+        add_kcal = sum(parts[k]["kcal"] for k in keys)
+        add_pro = sum(parts[k].get("protein") or 0 for k in keys)
+        m["kcalOfficialMain"] = kcal
+        m["kcal"] = kcal + add_kcal
+        m["protein"] = round((m.get("protein") or 0) + add_pro, 1)
+        m["fat"] = round((m.get("fat") or 0) + sum(parts[k].get("fat") or 0 for k in keys), 1)
+        m["carb"] = round((m.get("carb") or 0) + sum(parts[k].get("carb") or 0 for k in keys), 1)
+        m["setKcalEstimated"] = True
+        m["setParts"] = [f"{parts[k]['name']} {parts[k]['kcal']}" for k in keys]
+        m["setNote"] = (f"官方只给主堡 {kcal} kcal，余下按菜单 "
+                        f"{' + '.join(m['setParts'])} 估算")
+        stats["estimated"] += 1
+    return stats
+
 
 BREAKFAST_RE = re.compile(r"早餐|麦满分|粥|豆浆|早安|晨")
 OFFICE_RE = re.compile(r"咖啡|美式|拿铁|奶铁|卡布|茶|可乐|雪碧|薯条|派|麦旋风|新地|冰淇淋|圆筒|阳光柠檬")
@@ -331,8 +467,15 @@ BEAUTY_RE = re.compile(r"冰淇淋|新地|麦旋风|派|圆筒|甜品|蛋糕|草
 
 
 def classify_scenes(it: dict) -> list:
-    """给单个餐品打场景标签（可多标签）"""
+    """给单个餐品打场景标签（可多标签）
+
+    注意 `hay` 与 `hay_nocat` 的区别：**「悦己养颜」绝不能用分类名判断**。
+    菜单里有一整个分类叫「小食甜品/其他」，一匹配「甜品」两个字，薯条、鸡块、
+    酱料全被打上养颜标签，方案就会推「薯条 + 锡兰红茶」给想犒赏自己的人。
+    所以 beauty 只看餐品名与标签。
+    """
     hay = f"{it.get('name','')} {it.get('cat','')} {' '.join(it.get('tags') or [])}"
+    hay_nocat = f"{it.get('name','')} {' '.join(it.get('tags') or [])}"
     price = it.get("price", 0)
     kcal = it.get("kcal", 0)
     protein = it.get("protein", 0)
@@ -353,7 +496,7 @@ def classify_scenes(it: dict) -> list:
     elif re.search(r"500大卡", it.get("cat", "")):
         scenes.append("fitness")
 
-    if BEAUTY_RE.search(hay) and kcal <= 400:
+    if BEAUTY_RE.search(hay_nocat) and kcal <= 400:
         scenes.append("beauty")
 
     return scenes
@@ -386,7 +529,17 @@ def fallback_pick(scene_id: str, menu: list) -> list:
 
 
 def build_scene_bundles(menu: list) -> list:
-    """为每个场景生成 3 套推荐组合（预算/热量约束下枚举）"""
+    """为每个场景生成 3 套推荐方案。
+
+    第 19 轮修的三条，全部来自用户实测反馈：
+      ① **套餐不再配饮品**。四件套/三件套本身已经含饮料，再叠一杯奶铁就是重复点单
+         （图里「板烧四件套 ¥28 + 麦咖啡奶铁 ¥13.9」正是这个问题）。套餐单独成方案。
+      ② **报价一律用结算价**。四件套菜单 28 是麦金卡会员价，没卡的账号按 57 结算，
+         场景里写「合计 ¥41.90」会让人以为 42 块真能吃四件套 + 拿铁。
+      ③ **三个方案必须真的不同**。旧版会给出「板烧单品 / 板烧四件套 / 板烧三件套」配同一杯
+         奶铁 —— 同一个堡换三种包装，卡路里还完全一样（因为套餐营养只算了主堡）。
+         现在按「主品 core 名 + 件数」去重，同一主品只留一条。
+    """
     out = []
     for sc in SCENES:
         pool = [m for m in menu if sc["id"] in (m.get("scenes") or [])]
@@ -402,10 +555,17 @@ def build_scene_bundles(menu: list) -> list:
         price_max = sc.get("priceMax", 10 ** 9)
         protein_min = sc.get("proteinMin", 0)
 
-        # 场景内筛选
-        ok = [m for m in pool if m["price"] <= price_max and (m["kcal"] == 0 or m["kcal"] <= kcal_max)]
+        def sp(m):
+            return settle_price(m)
+
+        def nut(m):
+            return m.get("kcal") or 0
+
+        # 场景内筛选：价格按结算价判断，热量按补全后的值判断
+        ok = [m for m in pool
+              if sp(m) <= price_max and (nut(m) == 0 or nut(m) <= kcal_max)]
         if sc["id"] == "fitness":
-            ok = [m for m in ok if m["protein"] >= protein_min]
+            ok = [m for m in ok if (m.get("protein") or 0) >= protein_min]
         if not ok:
             ok = pool[:12]
 
@@ -414,17 +574,15 @@ def build_scene_bundles(menu: list) -> list:
             "breakfast": r"咖啡|牛奶|豆浆|果汁|茶|玉米",
             "office": r"咖啡|茶|可乐|薯|派|旋风|新地",
             "kids": r"牛奶|果汁|玉米|苹果",
-            "fitness": r"无糖|咖啡|茶|玉米|沙拉|牛奶",
+            # 健身的搭档必须低糖：奶铁 / 拿铁 / 雪顶 / 新地 不进健身方案
+            "fitness": r"无糖|美式|纯牛奶|牛奶|玉米|沙拉|茶",
             "beauty": r"咖啡|茶|冰淇淋|旋风|新地",
         }
         cre = COMPANION_RE.get(sc["id"], r"咖啡|茶|可乐|薯")
-        mains = ok
         scene_codes = {m["code"] for m in pool}
         hit = [m for m in menu if re.search(cre, m["name"])]
         # 同场景优先：搭档必须尽量来自本场景池，否则会出现「办公下午茶方案里塞一个
         # 只打了 beauty 标签的商品」——前端应用方案后在本场景菜单里根本定位不到它。
-        # 注意不能把 mains 从候选里剔除：场景里的饮品往往本身就是 main，
-        # 剔掉后会只剩场景外的商品可选（上一版就是这么错的）。
         companions = [m for m in hit if m["code"] in scene_codes] + \
                      [m for m in hit if m["code"] not in scene_codes]
         if not companions:
@@ -433,74 +591,114 @@ def build_scene_bundles(menu: list) -> list:
         # 「全是饮品」的组合不成立（会推出「红茶 + 冰咖啡」这种）
         SOLID_RE = re.compile(r"堡|卷|饭|满分|粥|蛋|薯|翅|鸡|玉米|派|沙拉|盒|盒装")
         DRINK_RE = re.compile(r"咖啡|奶铁|拿铁|美式|茶|可乐|雪碧|果汁|豆浆|牛奶|奶(?:$|[（(])|雪冰|饮品")
+        FATTY_DRINK_RE = re.compile(r"奶铁|拿铁|雪顶|新地|星冰乐|奶茶|焦糖|摩卡|朱古力")
 
-        combos, seen = [], set()
+        SWEET_RE = re.compile(r"派|冰淇淋|新地|旋风|圆筒|蛋糕|布丁|雪冰|奶茶|可可|朱古力|薯饼")
+        FRUIT_RE = re.compile(r"苹果|橙|柠檬|菠萝|芒果|草莓|葡萄|蜜桃|莓")
+        set_meals = [m for m in ok if m.get("setMeal")]
+        mains = [m for m in ok if not m.get("setMeal")]
+        combos = []
+
+        def push(items, kind):
+            total = sum(sp(x) for x in items)
+            kc = sum(x.get("kcal") or 0 for x in items)
+            pr = sum(x.get("protein") or 0 for x in items)
+            if total > price_max:
+                return
+            if kc and kc > kcal_max:
+                return
+            if protein_min and pr < protein_min:
+                return
+            # 悦己养颜：方案里必须真有一件甜品，否则会变成「薯条 + 红茶」那种下午茶答案
+            if sc["id"] == "beauty" and not any(SWEET_RE.search(x["name"]) for x in items):
+                return
+            notes = [x["setNote"] for x in items if x.get("setNote")]
+            combos.append({
+                "kind": kind,
+                "items": [{"code": x["code"], "name": x["name"],
+                           "price": round(sp(x), 2), "kcal": x.get("kcal") or 0,
+                           "protein": round(x.get("protein") or 0, 1),
+                           "memberOnly": sp(x) > x["price"] + 1e-9} for x in items],
+                "total": round(total, 2), "kcal": kc, "protein": round(pr, 1),
+                "kcalKnown": all((x.get("kcal") or 0) > 0 for x in items),
+                "kcalEstimated": any(x.get("setKcalEstimated") for x in items),
+                "estNote": notes[0] if notes else "",
+                "setCount": sum(1 for x in items if x.get("setMeal")),
+            })
+
+        # ① 套餐：本身就是一顿完整的饭（堡 + 薯条 + 饮料 [+ 派]），单独成方案
+        for m in set_meals[:8]:
+            push([m], "set")
+
+        # ② 主食 + 搭档（搭档不能是套餐，也不能是同一品类）
         for m1 in mains[:8]:
             for m2 in companions[:12]:
                 if m1["code"] == m2["code"]:
                     continue
-                # 同品类不搭（避免「玉米杯 + 苹果汁」这类两杯/两小食的组合）
                 if m1.get("cat") == m2.get("cat"):
                     continue
-                key = tuple(sorted({m1["code"], m2["code"]}))
-                if key in seen:
+                if m2.get("setMeal"):
                     continue
-                seen.add(key)
+                if sc["id"] == "fitness" and FATTY_DRINK_RE.search(m2["name"]):
+                    continue
                 items = [m1, m2]
-                total = sum(x["price"] for x in items)
-                kc = sum(x.get("kcal", 0) for x in items)
-                pr = sum(x.get("protein", 0) for x in items)
-                if total > price_max:
-                    continue
-                if kc and kc > kcal_max:
-                    continue
-                if protein_min and pr < protein_min:
-                    continue
                 if not any(SOLID_RE.search(x["name"]) for x in items):
                     continue
-                # 两份都是饮品也不成立（牛奶 + 苹果汁）
                 if all(DRINK_RE.search(x["name"]) for x in items):
                     continue
-                combos.append({
-                    "items": [{"code": x["code"], "name": x["name"], "price": x["price"],
-                               "kcal": x.get("kcal", 0)} for x in items],
-                    "total": round(total, 2), "kcal": kc,
-                    "protein": round(pr, 1),
-                    "kcalKnown": all((x.get("kcal") or 0) > 0 for x in items),
-                })
+                # 同一颗水果点两次不算两件：苹果片 + 100% 苹果汁 → 跳过
+                fruits = [{w for w in FRUIT_RE.findall(x["name"])} for x in items]
+                if fruits[0] and fruits[0] == fruits[1]:
+                    continue
+                push(items, "combo")
 
-        # 兜底：实在凑不出两件套时，退化为单品推荐
+        # 兜底：实在凑不出方案时，退化为单品推荐
         if not combos:
             for m1 in mains[:3]:
-                combos.append({
-                    "items": [{"code": m1["code"], "name": m1["name"], "price": m1["price"],
-                               "kcal": m1.get("kcal", 0)}],
-                    "total": round(m1["price"], 2), "kcal": m1.get("kcal", 0),
-                    "protein": round(m1.get("protein", 0), 1),
-                    "kcalKnown": (m1.get("kcal") or 0) > 0,
-                })
+                push([m1], "single")
 
-        # 排序：热量数据完整的优先，再按场景指标
+        # 排序：套餐优先 → 营养齐全 → 场景指标。
+        # 「套餐优先」这条是必须的：儿童套餐场景里真实的「鱼排堡开心乐园餐 ¥24」
+        # 热量待核，只按 kcalKnown 排序会被「苹果片 + 苹果汁」挤到第四位，用户看不到真套餐。
+        def kind_rank(c):
+            return {"set": 0, "combo": 1, "single": 2}.get(c["kind"], 3)
+
+        def drink_first(c):
+            """办公下午茶要「一杯喝的」当主体；甜品只是搭配。
+            不加这条，它和悦己养颜都会给「派 + 红茶」，两个场景等于没区别。"""
+            if sc["id"] != "office":
+                return 0
+            return 0 if DRINK_RE.search(c["items"][0]["name"]) else 1
+
         if sc["id"] == "fitness":
-            combos.sort(key=lambda c: (not c["kcalKnown"], -c["protein"], c["total"]))
+            combos.sort(key=lambda c: (kind_rank(c), not c["kcalKnown"], -c["protein"], c["total"]))
         else:
-            combos.sort(key=lambda c: (not c["kcalKnown"], c["kcal"] or 0, c["total"]))
+            combos.sort(key=lambda c: (kind_rank(c), drink_first(c),
+                                       not c["kcalKnown"], c["kcal"] or 0, c["total"]))
 
-        # 三个方案尽量用不同主食，避免「方案1/2/3 都是同一个派配不同咖啡」
-        ranked, used_main, used_idx = [], set(), set()
-        for idx, c in enumerate(combos):
-            mc = c["items"][0]["code"]
-            if mc in used_main:
+        # ③ 三个方案按「主品 core 名 + 件数」去重：同一主品换包装不算新方案
+        ranked, used = [], set()
+        for c in combos:
+            key = (set_core(c["items"][0]["name"]), len(c["items"]))
+            if key in used:
                 continue
-            used_main.add(mc)
-            used_idx.add(idx)
+            used.add(key)
             ranked.append(c)
             if len(ranked) == 3:
                 break
         if len(ranked) < 3:
-            for idx, c in enumerate(combos):
-                if idx in used_idx:
+            # 主品不够 3 种时（例如甜品本店只有「派」和「奶香大米派」两款），
+            # 放宽到「同一主品 + 不同搭档」，而不是硬凑出重复方案或直接少一个。
+            used_pairs = {(set_core(c["items"][0]["name"]),
+                           tuple(sorted(x["code"] for x in c["items"]))) for c in ranked}
+            for c in combos:
+                if any(c is x for x in ranked):
                     continue
+                key = (set_core(c["items"][0]["name"]),
+                       tuple(sorted(x["code"] for x in c["items"])))
+                if key in used_pairs:
+                    continue
+                used_pairs.add(key)
                 ranked.append(c)
                 if len(ranked) == 3:
                     break
@@ -750,6 +948,9 @@ def _row(items: list, origin: float, save: float, coupon: str, note: str = "", k
         "origin": round(origin, 2), "pay": round(pay, 2), "save": round(save, 2), "kind": kind,
         "savePct": round(save / origin * 100) if origin > 0 else 0,
         "kcal": kcal, "kcalKnown": known, "protein": round(protein, 1),
+        "kcalEstimated": any(i.get("setKcalEstimated") for i in items),
+        "setCount": sum(1 for i in items if i.get("setMeal")),
+        "setNote": next((i["setNote"] for i in items if i.get("setNote")), ""),
         "perYuanKcal": round(kcal / pay, 1) if pay > 0 and kcal > 0 else 0,
         "perYuanProtein": round(protein / pay, 2) if pay > 0 and protein > 0 else 0,
         "coupon": coupon, "note": note,
@@ -769,7 +970,12 @@ def _item(m: dict) -> dict:
         member = True
     return {"code": m["code"], "name": m["name"], "price": m["price"],
             "kcal": m.get("kcal") or 0, "protein": m.get("protein") or 0,
-            "origin": origin, "member": member}
+            "origin": origin, "member": member,
+            # 套餐营养的来源要能传到页面：估算值必须带 *，否则用户会当成官方数字
+            "setMeal": bool(m.get("setMeal")),
+            "setKcalEstimated": bool(m.get("setKcalEstimated")),
+            "setKcalPartial": bool(m.get("setKcalPartial")),
+            "setNote": m.get("setNote") or ""}
 
 
 def build_savings(menu: list, coupons: list) -> dict:
@@ -815,12 +1021,24 @@ def build_savings(menu: list, coupons: list) -> dict:
     drop_rows.sort(key=lambda r: (r.get("memberOnly", False), -r["savePct"], -r["save"]))
 
     # ---------- 单项：每元管饱 / 每元蛋白 ----------
-    kcal_rows = sorted([_row([_item(m)], m["price"], 0, "",
-                             f"{m['kcal']} kcal ÷ ¥{m['price']} = {m['kcal'] / m['price']:.1f}")
+    def unit_row(m, txt):
+        """单品的「每元 X」行。麦金卡商品必须按结算价算 —— 用会员价 28 去除 1059 kcal，
+        得出 37.8 kcal/元 是虚高近一倍，非会员照这个下单会当场对不上账。"""
+        sp = settle_price(m)
+        it = _item(m)
+        if sp > it["price"] + 1e-9:
+            it["price"] = sp
+            it["origin"] = sp
+            it["member"] = False
+            txt += "（按非会员结算价）"
+        return _row([it], sp, 0, "", txt)
+
+    kcal_rows = sorted([unit_row(m, f"{m['kcal']} kcal ÷ ¥{settle_price(m)} = "
+                                    f"{m['kcal'] / settle_price(m):.1f}")
                         for m in food if (m.get("kcal") or 0) > 0],
                        key=lambda r: -r["perYuanKcal"])
-    protein_rows = sorted([_row([_item(m)], m["price"], 0, "",
-                                f"{round(m['protein'], 1)}g 蛋白 ÷ ¥{m['price']} = {m['protein'] / m['price']:.2f}")
+    protein_rows = sorted([unit_row(m, f"{round(m['protein'], 1)}g 蛋白 ÷ ¥{settle_price(m)} = "
+                                       f"{m['protein'] / settle_price(m):.2f}")
                            for m in food if (m.get("protein") or 0) > 0],
                           key=lambda r: -r["perYuanProtein"])
 
@@ -829,13 +1047,17 @@ def build_savings(menu: list, coupons: list) -> dict:
     # 把两端挖成了空档：菜单最低 3 元却一个都进不了套餐榜（≤20 永远为空），
     # 最贵单品 72.5 也永远上不了 100 元档。
     # 现在全价位都生成，由下面的 budgets 分档「挑」最优 —— 预算是挑出来的，不是砍出来的。
+    # 散点池一律排除套餐型 SKU：套餐本身已经含饮品/小食，
+    # 再拿它当"主食"配一杯可乐就是重复点单（用户实测指出过「四件套 + 奶铁」）。
     mains = [m for m in food
-             if MAIN_RE.search(m["name"]) and m["cat"] not in DRINK_CATS]
-    drinks = [m for m in food if m["cat"] in DRINK_CATS]
+             if MAIN_RE.search(m["name"]) and m["cat"] not in DRINK_CATS
+             and not SET_RE.search(m["name"])]
+    drinks = [m for m in food if m["cat"] in DRINK_CATS and not SET_RE.search(m["name"])]
     sides = [m for m in food if m["cat"] not in DRINK_CATS
              and not MAIN_RE.search(m["name"]) and m["price"] <= 15
-             and not SAUCE_RE.search(m["name"])]
-    main_codes = {m["code"] for m in mains}
+             and not SAUCE_RE.search(m["name"]) and not SET_RE.search(m["name"])]
+    set_codes = {m["code"] for m in food if m.get("setMeal")}
+    main_codes = {m["code"] for m in mains} | set_codes
     drink_codes = {m["code"] for m in drinks}
     all_rows = []
 
@@ -845,18 +1067,46 @@ def build_savings(menu: list, coupons: list) -> dict:
             return best_verified_coupon(vrules, items)
         return best_coupon(rules, items)
 
-    def add(items, kind):
+    def add(items, kind, settle=False):
         """加入候选池。kcal=0（热量待核）的行照样保留 —— 旧版用 r["kcal"] > 0 一刀切，
-        等于把 55 个「待核」商品从榜单里全部除名，这也是榜单只剩 24 行的原因之一。"""
+        等于把 55 个「待核」商品从榜单里全部除名，这也是榜单只剩 24 行的原因之一。
+
+        settle=True：麦金卡商品按**结算价**记账（四件套 28 → 57），并且原价取划线价合计，
+        这样「比单点省多少」能算出来 —— 100 元以上那档如果只显示「省 ¥2（券）」，
+        用户会以为套餐白买了。
+        """
         its = [_item(m) for m in items]
-        origin = sum(i["price"] for i in items)
+        if settle:
+            # 只用**划线价**当「原价」，菜单价照旧当「实付」。
+            # 早期版本把 price 也换成结算价（四件套 28→57），结果榜单写 ¥66、
+            # 点进购物车却是 ¥37，两边对不上（实测 3 行不一致）。
+            # 会员价的披露交给 _row 里的 memberOnly + nonMemberPay —— 那套机制本来就有，
+            # 页面上也一直显示「麦金卡 N 件 · 非会员需多付 X」。
+            origin = sum((i.get("origin") or i["price"]) for i in its)
+        else:
+            origin = sum(i["price"] for i in its)
+        now_price = sum(i["price"] for i in its)
+        base_save = max(0.0, origin - now_price)
         save, cname = combo_coupon(its)
         note = " + ".join(i["name"] for i in items) + (f"，用「{cname}」" if cname else "")
-        all_rows.append(_row(its, origin, save, cname, note, kind))
+        if settle and base_save > 0.009:
+            note += f"；比单点省 ¥{base_save:.2f}"
+        if settle and any(i.get("memberCut") for i in its):
+            note += "（麦金卡商品按非会员结算价计）"
+        row = _row(its, origin, base_save + save, cname, note, kind)
+        all_rows.append(row)
+        return row
+
+    # 单独一个套餐就是一单（堡 + 薯条 + 饮料 [+ 派]），必须能被 ≤30 / ≤50 档选中：
+    # 「麦香鸡套餐 28 元」比「单点一个堡 23.5 + 一杯可乐 9.5」更值，这才是用户想要的答案。
+    for m in food:
+        if m.get("setMeal"):
+            add([m], "set", settle=True)
 
     # 单品：20 元档的答案常常就是「一个堡」，没有单品候选这档永远填不满
     for m in food:
-        add([m], "single")
+        if not m.get("setMeal"):
+            add([m], "single")
 
     # 主食 + 小食（20 元档主力：再加一杯饮料就 23.5 起了）
     cheap_sides = sorted(sides, key=lambda x: x["price"])[:6]
@@ -880,19 +1130,43 @@ def build_savings(menu: list, coupons: list) -> dict:
                 if len({a["code"], b["code"], c["code"]}) == 3:
                     add([a, b, c], "combo")
 
-    # 多人拼单：单人单份物理上到不了 100（本店最贵单品 72.5），
-    # 所以 100+ 这一档问的是「几个人怎么点」。饮品池必须带上券管的 SKU，
-    # 否则拼单永远套不上券，只能报一堆「省 0 元」的假最优。
-    coupon_drink = [m for m in drinks if any(m["code"] in r["codes"] for r in vrules)]
-    pool_drink = sorted({m["code"]: m for m in
-                         list(sorted(drinks, key=lambda x: x["price"])[:4]) + coupon_drink}.values(),
-                        key=lambda x: x["price"])[:6]
-    pool_side = sorted(sides, key=lambda x: x["price"])[:4]
-    pool_main = sorted(mains, key=lambda x: -(x.get("kcal") or 0))[:10]
-    for a, b in itertools.combinations(pool_main, 2):
-        for d1, d2 in itertools.combinations(pool_drink, 2):
-            for s1, s2 in itertools.combinations(pool_side, 2):
-                add([a, b, d1, d2, s1, s2], "multi")
+    # ---------- 100+：套餐优先的多人拼单 ----------
+    # 旧版从单品池里拼 6 件（2 堡 + 2 饮 + 2 小食），结果报出
+    # 「培根安格斯 + 芝士安格斯 + 可乐 + 美式 + 苹果片 + 派」——
+    # 6 个全是单点，同预算买套餐能多一件还更便宜，用户一眼看出「这不是套餐」。
+    #
+    # 现在把**套餐当成原子单位**，只枚举三种结构：
+    #   ① 2 个大套餐（四件套 / 双人餐 / 随心拼）—— 2 人份的标准解
+    #   ② 1 个大套餐 + 1 个单品堡补齐
+    #   ③ 3 个三件套 —— 用户原话「吃三件套买 3 个也比单点划算」，这一条必须能被选出来
+    # 排序：套餐件数占比 → 预算贴近度（越接近 100 越好）→ 省额 → 热量。
+    set_big = [m for m in food
+               if re.search(r"四件套|双人餐|随心拼|拼盘|四宫格", m["name"])
+               and not SAUCE_RE.search(m["name"])]
+    set_mid = [m for m in food if "三件套" in m["name"]]
+    plain_mains = [m for m in mains if not m.get("setMeal")]
+    multi_cand = []
+    for a, b in itertools.combinations(set_big, 2):
+        if set_core(a["name"]) == set_core(b["name"]):
+            continue
+        multi_cand.append(([a, b], 2))
+    for a in set_big:
+        for b in sorted(plain_mains, key=lambda x: -settle_price(x))[:6]:
+            multi_cand.append(([a, b], 1))
+    for trio in itertools.combinations(set_mid, 3):
+        if len({set_core(x["name"]) for x in trio}) < 3:
+            continue
+        multi_cand.append((list(trio), 3))
+
+    multi_rows = []
+    for items, sc_cnt in multi_cand:
+        row = add(items, "multi", settle=True)
+        # 100 块的档不该答成 200 块（2 份 BFF 双人餐），也不该答成 60 块
+        if row["pay"] < 100 - 1e-9 or row["pay"] > 140:
+            continue
+        coverage = sc_cnt / max(1, len(row["items"]))
+        multi_rows.append((round(coverage, 3), -abs(row["pay"] - 100), row["save"],
+                           row["kcal"], sc_cnt, row))
 
     # 注意：这里原本有一段「N 元任选 M 件 → 直接按券凑一单」的逻辑，已删除。
     # 它按券名关键字从全菜单捞商品凑数，把券不管辖的商品也算进「任选」（虚报 16 元），
@@ -925,10 +1199,21 @@ def build_savings(menu: list, coupons: list) -> dict:
         # 的两件套」—— 省是省了 13 块，但这档预算根本没被用上，用户会觉得答非所问。
         # 20 元档例外放到 0.6：这一档预算本来就小，苛求用足反而会错过「14 元鸡排 385kcal」
         # 这种每元热量最高的答案，换成 17 元的汉堡。
-        floor = max(cap * (0.6 if cap <= 20 else 0.75), prev_pay * 1.2)
+        floor = max(cap * (0.6 if cap <= 20 else 0.7), prev_pay * 1.2)
         band = [r for r in cand if r["pay"] >= floor] or cand
-        meal = [r for r in band if has_code(r, main_codes)
-                and (cap < 30 or has_code(r, drink_codes))] or band
+        # 麦金卡价不能当「这钱怎么点」的答案：四件套菜单 28、非会员结算 57，
+        # 「预算 30」档若答它，没开卡的人到结算页会直接超预算。
+        # 所以先只用「人人可用」的价，实在没有（整档都是会员价商品）再退回带标记的方案。
+        free_band = [r for r in band if not r.get("memberOnly")]
+        if free_band:
+            band = free_band
+        # 30/50 档要求「主食 + 饮品」，否则会答成一杯咖啡当午饭。
+        # 但套餐（三件套/套餐/四件套）的饮品在套餐里，数据层面没有拆出饮品 SKU，
+        # 所以 kind="set" 直接视为「有饮品」—— 否则 30 元档会漏掉
+        # 「大堡口福三件套 ¥22.9（省 24.1）」这种明显最优的答案。
+        meal = [r for r in band
+                if has_code(r, main_codes)
+                and (cap < 30 or has_code(r, drink_codes) or r.get("kind") == "set")] or band
         if not meal:
             budgets.append({"cap": cap, "row": None, "count": 0})
             continue
@@ -943,20 +1228,28 @@ def build_savings(menu: list, coupons: list) -> dict:
             "why": why,
         })
 
-    # 100+：多人拼单
-    multi = [r for r in all_rows if r["kind"] == "multi" and r["pay"] >= 100 - 1e-9]
-    if multi:
-        m100 = max(multi, key=budget_key)
-        people = max(2, sum(1 for i in m100["items"] if i["code"] in main_codes))
+    # 100+：套餐优先的多人拼单（见上方 multi_rows 的构建说明）
+    if multi_rows:
+        multi_rows.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
+        coverage, _, _, _, sc_cnt, m100 = multi_rows[0]
+        people = max(2, sc_cnt)
+        all_sets = sc_cnt == len(m100["items"])
         budgets.append({
-            "cap": 100, "row": m100, "count": len(multi), "multi": True, "people": people,
-            "need": f"{people} 人份", "why": "多人拼单：先套券，再比人均吃到的量",
+            "cap": 100, "row": m100, "count": len(multi_rows), "multi": True,
+            "people": people, "setCount": sc_cnt, "allSets": all_sets,
+            "coverage": round(coverage * 100),
+            "need": f"{people} 人份 · {sc_cnt} 个套餐",
+            "why": ("全套餐组合：同预算下比单点多吃一件，还便宜" if all_sets
+                    else f"{sc_cnt} 个套餐 + 单品补齐，套餐占大头"),
         })
 
     # ---------- 展示列表 ----------
     # 列表要让「20 块 / 30 块 / 50 块」都看得到东西，不能二十几行全挤在 40 元上下。
     # 按价位分桶各取 6 条，同一主食不重复（避免整屏都是同一个堡）。
-    combo_rows = [r for r in all_rows if r["kind"] != "multi"]
+    # 「套餐最优」榜里必须是一顿饭：只含一杯咖啡的行不该出现在这里
+    combo_rows = [r for r in all_rows
+                  if r["kind"] != "multi"
+                  and any(i["code"] in main_codes for i in r["items"])]
     picked, seen_main = [], set()
     for lo, hi in [(0, 25), (25, 35), (35, 50), (50, 1e9)]:
         n = 0
@@ -980,9 +1273,11 @@ def build_savings(menu: list, coupons: list) -> dict:
     # 只从「人人可用」的行里选：麦金卡会员价对非会员不成立，不能当今日最优解。
     # 必须在全量候选里挑（combo_rows 已被价位分桶，省最多那单可能不在里面），
     # 且必须含主食 —— 否则一张咖啡券省 9.1 元就能当「今日最优解」，不合常理。
+    # 「今日最优解」是给一个人看的一单，所以加 55 元上限 ——
+    # 不加上限时会被「堡堡随心拼（7 件任选）省 29 元」占住，72.5 元不像"今日最优"。
     public = [r for r in all_rows
               if r["kind"] != "multi" and r["save"] > 0 and not r.get("memberOnly")
-              and has_code(r, main_codes)]
+              and r["pay"] <= 55 and has_code(r, main_codes)]
     public += [r for r in drop_rows
                if not r.get("memberOnly")
                and re.search(r"套餐|四件套|三件套|随心选", r["items"][0]["name"])]
@@ -1362,6 +1657,149 @@ def parse_campaigns(raw: str) -> list:
 
 
 # =============================================================================
+# MCP Server 支持的 Tools 清单（页面右栏「MCP Tools」面板的数据源）
+# =============================================================================
+# 35 个工具全部是 tools/list 里真实存在、且在本项目里真实调用过的，
+# 不是抄官方 README（`query-promotions`、`query-survey-coupon` 官方 README 没列，
+# 但 server 里确实有）。参数名同样来自实测，照抄即可跑通。
+#
+# 页面把这份清单渲染成可折叠面板：单条复制 / 一键复制全部（Markdown）。
+# 目的很直接 —— 任何人拿到这个页面，都能看到「我接的这套 MCP 到底能干什么、怎么调」。
+MCP_TOOLS = {
+    "server": "麦当劳 MCP Server（Streamable HTTP）",
+    "count": 35,
+    "updatedAt": "2026-10-24",
+    "note": ("参数与示例均来自本项目真实调用。标 ⚠️ 的是写操作"
+             "（会真实下单 / 领券 / 取消），执行前必须经过用户确认。"),
+    "groups": [
+        {"id": "store", "name": "门店与菜单", "icon": "🏪", "items": [
+            {"name": "query-nearby-stores", "desc": "按城市 / 关键词查附近门店（到店自提、得来速）",
+             "args": "beType(1 自提 / 5 得来速)、searchType(1 收藏 / 2 按位置)；可选 city、keyword",
+             "example": 'query-nearby-stores({"beType":1,"searchType":2,"city":"深圳市","keyword":"科技园"})'},
+            {"name": "query-meals", "desc": "拉取门店当前可售菜单（分类 + 餐品 code + 标签 + 价格）",
+             "args": "storeCode、beType、orderType(1 到店 / 2 外送)",
+             "example": 'query-meals({"storeCode":"1420762","beType":1,"orderType":1})'},
+            {"name": "query-meal-detail", "desc": "查单个餐品 / 套餐的组成与可替换项（DIY 必需）",
+             "args": "storeCode、code、beType、orderType",
+             "example": 'query-meal-detail({"storeCode":"1420762","code":"9900000890","beType":1,"orderType":1})'},
+            {"name": "query-meal-assistance", "desc": "查套餐可选配 / 加价换购项",
+             "args": "storeCode、code、beType、orderType",
+             "example": 'query-meal-assistance({"storeCode":"1420762","code":"9900000890","beType":1,"orderType":1})'},
+            {"name": "list-nutrition-foods", "desc": "能量 / 蛋白质 / 脂肪 / 碳水 / 钠 / 钙（约 158 条）",
+             "args": "无",
+             "example": 'list-nutrition-foods({})'},
+            {"name": "now-time-info", "desc": "服务器当前时间与门店营业状态（判断能不能下单）",
+             "args": "无",
+             "example": 'now-time-info({})'},
+        ]},
+        {"id": "coupon", "name": "优惠券", "icon": "🎟️", "items": [
+            {"name": "auto-bind-coupons", "desc": "⚠️ 一键领取当前全部可领券（写操作）",
+             "args": "无",
+             "example": 'auto-bind-coupons({})'},
+            {"name": "query-store-coupons", "desc": "查门店可用券，含真实适用 SKU（`products[].productCode`）",
+             "args": "storeCode、beType、orderType",
+             "example": 'query-store-coupons({"storeCode":"1420762","beType":1,"orderType":1})'},
+            {"name": "query-my-coupons", "desc": "查账号卡包里的券（**不校验门店/渠道**）",
+             "args": "可选 page(≤5)、pageSize(≤200)",
+             "example": 'query-my-coupons({"page":1,"pageSize":200})'},
+            {"name": "available-coupons", "desc": "可领券列表，带 couponStatus（HAVING_RECEIVE=已领）",
+             "args": "无",
+             "example": 'available-coupons({})'},
+            {"name": "query-survey-coupon", "desc": "问卷券（填问卷可领）",
+             "args": "无",
+             "example": 'query-survey-coupon({})'},
+        ]},
+        {"id": "trade", "name": "核价与下单", "icon": "🧾", "items": [
+            {"name": "calculate-price", "desc": "⚠️ 带券核价：商品金额 + 配送费 − 优惠 = 应付；返回 takeWayList",
+             "args": "storeCode、beType、orderType、items[]{productCode,quantity,couponId?,couponCode?}",
+             "example": 'calculate-price({"storeCode":"1420762","beType":1,"orderType":1,'
+                        '"items":[{"productCode":"1406","quantity":1,'
+                        '"couponId":"<couponId>","couponCode":"<couponCode>"}]})'},
+            {"name": "create-order", "desc": "⚠️ 创建订单，返回订单详情与官方支付链接",
+             "args": "storeCode、orderType、beType、items[]；takeWayCode 取自 calculate-price；"
+                     "外送需 addressId；可选 needTableware、remark(≤50 字)",
+             "example": 'create-order({"storeCode":"1420762","beType":1,"orderType":1,'
+                        '"takeWayCode":"eat-in","items":[{"productCode":"1406","quantity":1}]})'},
+            {"name": "query-order", "desc": "查单笔订单详情与状态",
+             "args": "orderId",
+             "example": 'query-order({"orderId":"<orderId>"})'},
+            {"name": "order-list", "desc": "查历史订单列表",
+             "args": "可选 page、pageSize",
+             "example": 'order-list({"page":1,"pageSize":10})'},
+            {"name": "cancel-order", "desc": "⚠️ 取消订单",
+             "args": "orderId、cancelReasonCode(1 改主意 / 2 重复下单 / 3 点错 / 4 地址电话错 / 5 时间选错 / -1 其它)",
+             "example": 'cancel-order({"orderId":"<orderId>","cancelReasonCode":1})'},
+        ]},
+        {"id": "delivery", "name": "外送（麦乐送）", "icon": "🛵", "items": [
+            {"name": "delivery-query-addresses", "desc": "外送地址列表（只有地址，没有门店信息）",
+             "args": "无",
+             "example": 'delivery-query-addresses({})'},
+            {"name": "delivery-query-stores", "desc": "按地址查可配送门店，返回 storeCode + **beCode** + 配送费/起送",
+             "args": "addressId、beType(2 麦乐送 / 6 团餐)",
+             "example": 'delivery-query-stores({"addressId":"<addressId>","beType":2})'},
+            {"name": "delivery-create-address", "desc": "⚠️ 新建配送地址，返回 addressId",
+             "args": "address、addressDetail、city、contactName、phone(11 位纯数字)；可选 gender",
+             "example": 'delivery-create-address({"address":"深圳市南山区科技园","addressDetail":"1 栋 101",'
+                        '"city":"深圳市","contactName":"张三","phone":"13800138000"})'},
+        ]},
+        {"id": "member", "name": "会员 · 积分 · 商城", "icon": "🎁", "items": [
+            {"name": "query-my-account", "desc": "账号信息与积分余额",
+             "args": "无",
+             "example": 'query-my-account({})'},
+            {"name": "mall-points-products", "desc": "积分商城商品列表（可按 catRuleIds 筛选）",
+             "args": "可选 catRuleIds、page",
+             "example": 'mall-points-products({"page":1})'},
+            {"name": "mall-product-detail", "desc": "积分商品详情",
+             "args": "productId",
+             "example": 'mall-product-detail({"productId":"<productId>"})'},
+            {"name": "mall-create-order", "desc": "⚠️ 积分兑换下单（shopId=2；多商品必须分别下单并排队）",
+             "args": "shopId=2、productId、quantity",
+             "example": 'mall-create-order({"shopId":2,"productId":"<productId>","quantity":1})'},
+            {"name": "mall-order-list", "desc": "积分订单列表",
+             "args": "可选 page、pageSize",
+             "example": 'mall-order-list({"page":1})'},
+            {"name": "mall-order-detail", "desc": "积分订单详情",
+             "args": "orderId",
+             "example": 'mall-order-detail({"orderId":"<orderId>"})'},
+        ]},
+        {"id": "campaign", "name": "活动 · 抽奖 · 团餐", "icon": "🎯", "items": [
+            {"name": "query-promotions", "desc": "门店满减 / 满折规则（现用于团餐场景）",
+             "args": "storeCode、beType(6)、orderType(2)",
+             "example": 'query-promotions({"storeCode":"1420762","beType":6,"orderType":2})'},
+            {"name": "campaign-calendar", "desc": "当月活动日历（1+1、随心配等）",
+             "args": "可选 specifiedDate(yyyy-MM-dd)",
+             "example": 'campaign-calendar({"specifiedDate":"2026-10-24"})'},
+            {"name": "query-lottery-info", "desc": "抽奖活动信息与剩余次数",
+             "args": "无",
+             "example": 'query-lottery-info({})'},
+            {"name": "draw-lottery", "desc": "⚠️ 抽奖（消耗次数，结果不可撤销）",
+             "args": "无",
+             "example": 'draw-lottery({})'},
+            {"name": "query-my-prizes", "desc": "我的奖品与核销状态",
+             "args": "无",
+             "example": 'query-my-prizes({})'},
+            {"name": "query-party-city", "desc": "团餐可下单城市",
+             "args": "无",
+             "example": 'query-party-city({})'},
+            {"name": "query-party-store", "desc": "城市下的团餐门店",
+             "args": "cityId",
+             "example": 'query-party-store({"cityId":"<cityId>"})'},
+            {"name": "query-party-store-date", "desc": "团餐门店可预约日期",
+             "args": "storeCode",
+             "example": 'query-party-store-date({"storeCode":"<storeCode>"})'},
+            {"name": "query-party-store-session", "desc": "团餐门店可预约时段",
+             "args": "storeCode、date",
+             "example": 'query-party-store-session({"storeCode":"<storeCode>","date":"2026-10-26"})'},
+            {"name": "party-order-create", "desc": "⚠️ 团餐下单（shopId=5）",
+             "args": "shopId=5、storeCode、date、session、items[]、contactName、phone",
+             "example": 'party-order-create({"shopId":5,"storeCode":"<storeCode>",'
+                        '"date":"2026-10-26","session":"<session>"})'},
+        ]},
+    ],
+}
+
+
+# =============================================================================
 # 主流程
 # =============================================================================
 def _load_cache() -> dict:
@@ -1427,12 +1865,18 @@ def rank_from_cache(also_scenes: bool = False):
     """
     payload = _load_cache()
     menu = payload.get("menu") or []
+    # 先补套餐营养（只算主堡 → 加上薯条/可乐/派），场景筛选与榜单排序都吃这个值
+    set_stats = enrich_set_nutrition(menu)
+    print(f"      套餐营养: 共 {set_stats['sets']} 个套餐，"
+          f"补全 {set_stats['estimated']} / 官方整份 {set_stats['official']} / "
+          f"构成不明 {set_stats['partial']} / 无数据 {set_stats['unknown']}")
     if also_scenes:
         for m in menu:
             m["scenes"] = classify_scenes(m)
         payload["scenes"] = build_scene_bundles(menu)
         payload["scenesRebuiltAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     payload["savings"] = build_savings(menu, payload.get("coupons") or [])
+    payload["tools"] = MCP_TOOLS
     path = _write_cache(payload)
 
     print(f"已离线重算省钱榜单并写回: {path}")
@@ -1456,11 +1900,13 @@ def repick_from_cache():
     """
     payload = _load_cache()
     menu = payload.get("menu") or []
+    enrich_set_nutrition(menu)
     for m in menu:
         m["scenes"] = classify_scenes(m)
     payload["scenes"] = build_scene_bundles(menu)
     payload["scenesRebuiltAt"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     payload["scenesRebuildNote"] = "离线重算：数据仍为原快照，仅按新规则重选组合"
+    payload["tools"] = MCP_TOOLS
     _write_cache(payload)
 
     print(f"已离线重算场景组合并写回: {os.path.join(ROOT, 'assets', 'data.js')}")
