@@ -21,6 +21,8 @@ if [[ -z "$TOKEN" ]]; then
   echo "用法: export MCD_MCP_TOKEN='你的Token' && $0 <toolName> '<JSON 参数>'" >&2
   exit 1
 fi
+# 容错: Token 里带不带 "Bearer " 前缀都能跑（否则会拼成 "Bearer Bearer xxx" → 401）
+TOKEN="${TOKEN#Bearer }"; TOKEN="${TOKEN#bearer }"
 
 if [[ $# -lt 1 ]]; then
   echo "用法: $0 <toolName> '[JSON 参数]'" >&2
