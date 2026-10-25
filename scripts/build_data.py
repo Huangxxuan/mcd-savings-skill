@@ -25,17 +25,71 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime
 
 MCP_URL = "https://mcp.mcd.cn"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 这些状态码是「重试有意义」的：网关抖动 / 限流 / 上游超时
+TRANSIENT_HTTP = {408, 425, 429, 500, 502, 503, 504}
 
 
 # =============================================================================
 # MCP 调用
 # =============================================================================
+def _norm_token(token: str) -> str:
+    """容错：允许用户把 `Bearer xxx` 整段贴进 MCD_MCP_TOKEN。
+
+    本函数只负责去掉重复前缀 —— 脚本自己会加 `Bearer `，用户也带一个就会
+    变成 `Bearer Bearer xxx`，服务端直接 401「当前鉴权码不存在或已失效」，
+    排查成本极高（2026-10-25 实测踩到）。
+    """
+    t = (token or "").strip()
+    while t.lower().startswith("bearer "):
+        t = t[7:].strip()
+    return t
+
+
+def _post_with_retry(req, tool: str, fatal: bool = False, tries: int = 3):
+    """带指数退避的 POST。
+
+    只对「网络抖动 / 5xx / 429」重试；4xx（尤其 401 鉴权失败）立刻返回，
+    重试再多次也没用，只会让用户多等。实测这台机器访问 mcp.mcd.cn 偶尔会
+    出现连接重置，重试一次就过去了 —— 一次抖动不该让整份快照作废。
+    """
+    last = ""
+    for i in range(tries):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "ignore")[:300]
+            if e.code == 401:
+                msg = ("[MCP] HTTP 401 鉴权失败：" + detail.strip() + "\n"
+                       "       检查 MCD_MCP_TOKEN：应为「原始 Token」，不要带 Bearer 前缀"
+                       "（脚本会自己拼 Bearer）；也可能是 Token 已过期，重新获取后再试。")
+                if fatal:
+                    raise SystemExit(msg)
+                print(msg.splitlines()[0])
+                return {}
+            last = f"HTTP {e.code}：{detail}"
+            if e.code not in TRANSIENT_HTTP:
+                break
+        except (urllib.error.URLError, TimeoutError, ValueError) as e:
+            last = f"{type(e).__name__}: {e}"
+        if i < tries - 1:
+            wait = 2 ** i
+            print(f"[MCP] {tool} 第 {i + 1} 次失败（{last}），{wait}s 后重试…")
+            time.sleep(wait)
+    msg = f"[MCP] {tool} 请求失败：{last}"
+    if fatal:
+        raise SystemExit(msg)
+    print(msg)
+    return {}
+
+
 def mcp_call(tool: str, arguments: dict, token: str) -> str:
     """调用 MCP tools/call，返回 content[0].text"""
     payload = {
@@ -47,17 +101,13 @@ def mcp_call(tool: str, arguments: dict, token: str) -> str:
         MCP_URL,
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {_norm_token(token)}",
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
         },
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"[MCP] HTTP {e.code}：{e.read().decode('utf-8','ignore')[:300]}")
+    body = _post_with_retry(req, tool, fatal=True)
     if "error" in body:
         raise SystemExit(f"[MCP] 工具 {tool} 调用失败：{body['error']}")
     content = body.get("result", {}).get("content", [])
@@ -86,11 +136,8 @@ def mcp_call_obj(tool: str, arguments: dict, token: str) -> dict:
         },
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        print(f"[MCP] {tool} HTTP {e.code}，已跳过")
+    body = _post_with_retry(req, tool, fatal=False)
+    if not body:
         return {}
     if "error" in body:
         print(f"[MCP] {tool} 调用失败：{str(body['error'])[:200]}")
@@ -322,6 +369,18 @@ SCENES = [
     {"id": "beauty", "name": "悦己养颜餐", "icon": "🌸",
      "desc": "犒赏自己的小甜头 · 目标 ≤ 400 kcal", "kcalMax": 400, "priceMax": 35},
 ]
+
+# 场景池为空时的兜底说明（写进 data.js 的 scenes[].fallbackNote，页面直接显示）。
+# 兜底不是错，但必须让用户看懂「为什么这个场景下没有专属商品」——
+# 最典型的是早餐：麦当劳早餐只卖到约 10:30，正餐时段的菜单里根本没有早餐 SKU。
+FALLBACK_NOTE = {
+    "breakfast": "早餐供应时段（约 07:00–10:30）已过，当前菜单没有早餐 SKU；"
+                 "以下是按「≤ 450 kcal 主食」给的替代，想看真早餐请在早上重跑一次快照",
+    "office": "下午茶专属品不足，已按「一杯喝的 + 一份小食」兜底",
+    "kids": "儿童套餐当前不可售，已按「小件 + 无糖饮」兜底",
+    "fitness": "高蛋白单品不足，已按「蛋白 ≥ 15g 且 ≤ 550 kcal」兜底",
+    "beauty": "甜品小食不足，已按「甜品 / 饮品」兜底",
+}
 
 # =============================================================================
 # 套餐型 SKU：营养与价格的口径纠正（第 19 轮）
@@ -714,7 +773,11 @@ def build_scene_bundles(menu: list) -> list:
                         m["sceneFallback"] = True
         count_now = sum(1 for m in menu if sc["id"] in (m.get("scenes") or []))
 
-        out.append({**sc, "count": count_now, "bundles": combos[:3], "fallback": is_fallback})
+        # 兜底时要把「为什么兜底」说清楚。只说「当前时段无专属商品」等于没解释：
+        # 用户看到「健康早餐」下面摆着板烧鸡腿堡，会以为我们算错了 —— 其实是
+        # 麦当劳早餐只卖到约 10:30，正餐时段根本没有早餐 SKU 可卖。
+        out.append({**sc, "count": count_now, "bundles": combos[:3], "fallback": is_fallback,
+                    "fallbackNote": FALLBACK_NOTE.get(sc["id"], "") if is_fallback else ""})
     return out
 
 
@@ -1848,6 +1911,16 @@ def sanitize_snapshot(payload: dict) -> dict:
 
 def _write_cache(payload: dict):
     sanitize_snapshot(payload)
+    # 与上一份快照比对菜单条数：本次抓取若明显偏少（部分分类失败 / 已过营业时段），
+    # 覆盖会让页面凭空少一半餐品。时段差异是正常现象，所以只告警不阻塞。
+    try:
+        prev = _load_cache()
+        pm, nm = len(prev.get("menu") or []), len(payload.get("menu") or [])
+        if pm >= 20 and nm < pm * 0.6:
+            print(f"⚠️  菜单条数从 {pm} 降到 {nm}（<60%）：可能抓取不完整或当前是早餐/夜宵时段，"
+                  f"已照常写入，需要完整菜单请换到正餐时段重跑。")
+    except Exception:
+        pass
     path = os.path.join(ROOT, "assets", "data.js")
     with open(path, "w", encoding="utf-8") as f:
         f.write("/* 由 scripts/build_data.py 从麦当劳 MCP 真实返回生成，请勿手改 */\n")
@@ -2276,6 +2349,20 @@ def main():
             item["scenes"] = classify_scenes(item)
             menu_out.append(item)
 
+    # 空菜单守卫：非营业时间 query-meals 会返回 600057「门店可能已关闭或不在营业时间」，
+    # 菜单 0 条。旧版本不看这个直接写文件，会把上一份完整快照覆盖成空菜单
+    # （2026-10-25 00:02 实测踩到，112 餐品被刷成 0 条）。宁可报错退出，也不能写坏文件。
+    if not menu_out:
+        raise SystemExit("菜单为 0 条（门店可能未营业 / 接口异常），已中止写入，assets/data.js 保持原样")
+
+    # 套餐营养补全必须在「打场景标签」与「生成场景组合」之前：
+    # 官方只给主堡的热量（板烧四件套 391 == 板烧单品 391），不补配餐的话
+    # 场景排序会把 1059 kcal 的四件套当成 391 kcal 的高蛋白餐。
+    set_stats = enrich_set_nutrition(menu_out)
+    print(f"[6a] 套餐营养: {set_stats['sets']} 个套餐，补全 {set_stats['estimated']} / "
+          f"官方整份 {set_stats['official']} / 构成不明 {set_stats['partial']} / "
+          f"无数据 {set_stats['unknown']}")
+
     # 场景化：给每个餐品打标签，并为每个场景生成推荐组合
     for m in menu_out:
         m["scenes"] = classify_scenes(m)
@@ -2373,6 +2460,11 @@ def main():
           + ("" if delivery_addr_count
              else "（没填地址：先在页面填收货地址，再重跑本脚本即可拉到外送门店与真实配送费）"))
 
+    # 省钱榜单 / MCP 工具清单必须由联网流程一并产出。
+    # 旧版本只在 --rank / --repick 里写这两个字段，导致「按文档跑一次 build_data.py」
+    # 得到的 data.js 没有榜单也没有 Tools 面板 —— 页面最关键的两块直接空白。
+    savings_out = build_savings(menu_out, coupons_out)
+
     payload = {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "store": {"code": store_code, "name": store_name},
@@ -2389,12 +2481,23 @@ def main():
         "orders": orders_out,
         "campaigns": campaigns,
         "scenes": scenes_out,
+        "scenesRebuiltAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "reminders": build_reminders(my_coupons, available, account, lottery, prizes, campaigns,
                                      claimed_titles=known_titles, codes_map=codes_map,
                                      approx_map=approx_map),
+        "savings": savings_out,
+        "tools": MCP_TOOLS,
     }
 
     out = _write_cache(payload)
+    hero = savings_out.get("hero") or {}
+    if hero:
+        print("[6d] 今日最优解: " + " + ".join(i["name"] for i in hero["items"])
+              + f" → 原价 ¥{hero['origin']} / 实付 ¥{hero['pay']} / 省 ¥{hero['save']}")
+    for b in savings_out.get("budgets") or []:
+        r = b["row"]
+        print(f"      ≤¥{b['cap']} → ¥{r['pay']}（省 ¥{r['save']}）"
+              + " + ".join(i["name"] for i in r["items"]))
     print(f"已写入: {out}")
 
 
