@@ -1642,11 +1642,43 @@ function parseCoupon(c) {
   if (m) return { type: "payPrice", value: parseFloat(m[1]), label: m[1] + "元购", payPrice: parseFloat(m[1]) };
   return { type: "unknown", value: 0, label: "可用券" };
 }
+/* 套餐热量的四种状态（2026-10-25 修，勿退化）：
+   ① 精确   —— 官方给了整份热量，直接显示数字
+   ② ≈ 估算 —— 官方只给主堡，我们按「主堡 + 薯条 + 可乐(+派)」补算，前缀 ≈ / 后缀 *
+   ③ ? 构成待确认 —— 官方给了数字，但套餐构成不明（随心选 / 双人餐 / 拼盘 / 七件任选），
+      这个数字很可能只含主品。必须打 ?，绝不当精确值展示。
+   ④ 热量待核 —— 官方没给数字（构成不明的标「构成待确认」）
+   漏掉 ③ 的后果很实际：吉士汉堡包套餐 kcal=294 被标了 partial，
+   旧代码却把它渲染成精确值；健身场景下「300 kcal 套餐」其实是只算了主堡的低估值。 */
+function isPartialKcal(it) {
+  if (!it) return false;
+  if (it.setKcalPartial || it.kcalPartial) return true;
+  /* 榜单/方案行本身不带 partial 标记，从子项推导 */
+  if (Array.isArray(it.items)) {
+    return it.items.some(function (x) { return x && (x.setKcalPartial || x.kcalPartial); });
+  }
+  /* 结算舱的汇总对象是 lines[{item}] */
+  if (Array.isArray(it.lines)) {
+    return it.lines.some(function (l) { return l && l.item && (l.item.setKcalPartial || l.item.kcalPartial); });
+  }
+  return false;
+}
+function kcalMark(it) {
+  /* 数字前缀：只有「估算」才用 ≈；构成待确认走后缀 ?，避免两个含义挤在前面 */
+  return (!isPartialKcal(it) && it.kcalEstimated) ? "≈" : "";
+}
+function kcalSuffix(it) {
+  return isPartialKcal(it)
+    ? '<i class="est" title="官方未标注套餐构成，此数字可能只含主品，实际更高">?</i>' : "";
+}
+function kcalNa(it) {
+  return isPartialKcal(it) ? "构成待确认" : "热量待核";
+}
 function fmtKcal(it) {
   var k = it.kcal || 0;
-  if (!k) return '<span class="kcal na">热量待核</span>';
+  if (!k) return '<span class="kcal na">' + kcalNa(it) + '</span>';
   var cls = k <= 300 ? " low" : (k >= 550 ? " high" : "");
-  return '<span class="kcal' + cls + '">🔥 ' + (it.kcalEstimated ? "≈" : "") + k + " kcal</span>";
+  return '<span class="kcal' + cls + '">🔥 ' + kcalMark(it) + k + " kcal" + kcalSuffix(it) + "</span>";
 }
 
 /* ---------- 计价 ---------- */
@@ -1861,9 +1893,10 @@ function bundleHtml(b, i, prefix) {
      带 * 才不会让人当成官方数字（用户明确问过「这个卡路里准不准」）。 */
   var kcal;
   if (b.kcal > 0) {
-    kcal = b.kcal + " kcal" + (b.kcalEstimated ? "*" : "") + " · 蛋白 " + b.protein + "g";
+    kcal = kcalMark(b) + b.kcal + " kcal" + (b.kcalEstimated ? "*" : "") + kcalSuffix(b) +
+      " · 蛋白 " + b.protein + "g";
   } else {
-    kcal = '<i class="unk">热量待核</i>';
+    kcal = '<i class="unk">' + kcalNa(b) + '</i>';
   }
   var kind = b.kind === "set" ? "套餐" : (b.kind === "single" ? "单品" : "组合");
   var tip = b.kind === "set" ? "套餐已含薯条与饮料，不用再加饮品"
@@ -2738,7 +2771,7 @@ function renderGap(r) {
       return '<div class="gapitem" data-code="' + m.code + '" tabindex="0" role="button">' +
         '<span class="gn">' + m.name + '</span>' +
         '<span class="gp">' + money(m.price) + '</span>' +
-        '<span class="gk">' + (m.kcal ? (m.kcalEstimated ? "≈" : "") + m.kcal : "—") + '</span></div>';
+        '<span class="gk">' + (m.kcal ? kcalMark(m) + m.kcal + kcalSuffix(m) : "—") + '</span></div>';
     }).join("");
   }
   box.innerHTML = inner + '</div>';
@@ -2995,8 +3028,9 @@ function rankData() {
 function rankRowHtml(r, i, boardId) {
   var names = r.items.map(function (x) { return x.name; }).join(" + ");
   var meta = [];
-  if (r.kcal > 0) meta.push("🔥 " + r.kcal + " kcal" + (r.kcalKnown ? "" : "（含待核）"));
-  else meta.push("热量待核");
+  if (r.kcal > 0) meta.push("🔥 " + kcalMark(r) + r.kcal + " kcal" +
+    (r.kcalKnown ? "" : "（含待核）") + kcalSuffix(r));
+  else meta.push(kcalNa(r));
   if (r.perYuanKcal > 0) meta.push(r.perYuanKcal + " kcal/元");
   if (r.perYuanProtein > 0) meta.push(r.perYuanProtein + " g蛋白/元");
   /* 券失效的行写明是哪张券、为什么失效，金额已经换成「不用券的现价」 */
@@ -3120,8 +3154,9 @@ function budgetCards(bs, active) {
           (r.items.length > setCnt ? ' + ' + (r.items.length - setCnt) + ' 件单品' : '') + '</span>'
         : '<span class="bd-comp none">单品组合</span>';
       var nutTxt = r.kcal > 0
-        ? '　·　' + r.kcal + ' kcal' + (r.kcalEstimated ? '<i class="est">*</i>' : "")
-        : '　·　<i class="unk">热量待核</i>';
+        ? '　·　' + kcalMark(r) + r.kcal + ' kcal' +
+          (r.kcalEstimated ? '<i class="est">*</i>' : "") + kcalSuffix(r)
+        : '　·　<i class="unk">' + kcalNa(r) + '</i>';
       return '<div class="bd-card" data-bdapply="' + b.cap + '" tabindex="0" role="button" ' +
         'title="点击把这一单放进结算舱' + (r.setNote ? '\n' + r.setNote : '') + '">' +
         '<div class="bd-hd"><span class="bd-cap">' + capTxt + '</span>' +
@@ -3419,8 +3454,10 @@ function render() {
       ? "参考划线价"
       : (r.fee > 0 ? "商品(不含配送)" : "商品");
   }
-  $("#sKcal").textContent = r.kcal > 0
-    ? r.kcal + " kcal"
+  /* 构成待确认的套餐会让汇总值偏低，这里必须带 ?，否则结算舱给出一个
+     看起来精确、实际只算了主品的总热量 */
+  $("#sKcal").innerHTML = r.kcal > 0
+    ? (kcalMark(r) + r.kcal + (isPartialKcal(r) ? '<i class="est">?</i>' : "") + " kcal")
     : (r.lines.length ? "部分待核" : "0 kcal");
 
   var target = state.kcalBudget > 0 ? state.kcalBudget : 667;
@@ -3428,7 +3465,9 @@ function render() {
   $("#kcalBar").style.width = pct + "%";
   /* 有商品缺官方热量时如实标注，避免「总热量 0 kcal」被误读成真的没热量 */
   var unknownN = r.lines.filter(function (l) { return !(l.item.kcal > 0); }).length;
-  var kcalTxt = r.kcal > 0 ? r.kcal + " kcal" : (r.lines.length ? "待核" : "0 kcal");
+  var kcalTxt = r.kcal > 0
+    ? kcalMark(r) + r.kcal + " kcal" + (isPartialKcal(r) ? "?" : "")
+    : (r.lines.length ? "待核" : "0 kcal");
   if (unknownN && r.lines.length) kcalTxt += "（" + unknownN + " 项无官方数据）";
   $("#kcalText").textContent = "总热量 " + kcalTxt + " / 预算 " + target;
   $("#macroText").textContent = "蛋白 " + r.protein + "g · 脂肪 " + r.fat + "g · 碳水 " + r.carb + "g";
@@ -3514,7 +3553,7 @@ function renderDIY() {
   var picks = diyPicks(state.kcalBudget);
   $("#smDIY").innerHTML = picks.map(function (m) {
     return '<button class="chip" data-diy="' + m.code + '">' + m.name + " · " +
-      ((m.kcalEstimated ? "≈" : "") + m.kcal) + " kcal</button>";
+      kcalMark(m) + m.kcal + " kcal" + kcalSuffix(m) + "</button>";
   }).join("");
 }
 
@@ -3612,7 +3651,7 @@ function showBlessing() {
   var r = compute();
   $("#blessPay").textContent = money(r.pay);
   $("#blessSave").textContent = money(r.save);
-  $("#blessKcal").textContent = r.kcal + " kcal";
+  $("#blessKcal").textContent = kcalMark(r) + r.kcal + " kcal" + (isPartialKcal(r) ? "?" : "");
   $("#blessDate").textContent = "—— " + new Date().toLocaleDateString("zh-CN", {
     year: "numeric", month: "long", day: "numeric", weekday: "long"
   });
@@ -4086,7 +4125,9 @@ function showShakeResult(it) {
   var box = $("#shakeResult");
   if (!box) return;
   var b = shakeBlessing();
-  var kcalTxt = it.kcal > 0 ? ((it.kcalEstimated ? "≈" : "") + it.kcal + " kcal") : "热量待核";
+  var kcalTxt = it.kcal > 0
+    ? (kcalMark(it) + it.kcal + " kcal" + kcalSuffix(it))
+    : kcalNa(it);
   var warn = [];
   if (it.memberPrice && it.origin > it.price) warn.push("麦金卡价 · 非会员 " + money(it.origin));
   if (it.couponOnly) warn.push("券专属 SKU");
@@ -4172,7 +4213,8 @@ function shareShake() {
   var it = shake.item;
   if (!it) { toast("先摇一次再晒单"); return; }
   var txt = "🎰 我在「麦麦摇摇乐」摇到了：" + it.name + "\n" +
-    money(it.price) + " · " + (it.kcal > 0 ? it.kcal + " kcal" : "热量待核") +
+    money(it.price) + " · " +
+    (it.kcal > 0 ? kcalMark(it) + it.kcal + " kcal" + (isPartialKcal(it) ? "?" : "") : kcalNa(it)) +
     (it.cat ? " · " + it.cat : "") + "\n" +
     "今日签：" + (shake.luck || SHAKE_LUCK[0]) + "\n\n" +
     "—— 麦麦省钱点单助手 · 麦当劳 MCP 实时数据";
