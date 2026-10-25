@@ -95,17 +95,29 @@ create-order               → orderType=2、beType=2，必须带 addressId 与 
 > 另一个坑：外送菜单里 103/115 条 `canWithOrder=false`，但核价与下单都正常，
 > **不能拿这个字段过滤商品**（否则菜单只剩 12 个）。
 
-**门店卡（当前门店 + 导航 + 切店）**
+**门店（按用户位置搜索 + 当前门店 + 导航）**
 ```
-query-nearby-stores  → 5 家附近门店（id / 名称 / 地址 / 距离米数 / 营业时间 / businessStatus）
-                       ⚠️ latitude / longitude 实测返回 0.0，拿不到坐标 → 导航只能用
-                       高德「搜索」URI（keyword=店名+地址），不能做坐标打点
-query-meals          → 只对「快照门店」深抓菜单；其余门店只有导航能力
+query-nearby-stores({"beType":1,"searchType":2,"city":"深圳市","keyword":"前海颐都大厦"})
+                     → 5 家门店（storeCode / storeName / address / distance(米) /
+                        businessStatus / 起止营业时间 / reservationTimeOptions）
+                       · searchType=1 = 收藏门店（与用户位置无关，不要用）
+                       · searchType=2 = 按位置搜索，distance 相对 keyword 计算
+                       · keyword 必填：只给 searchType=2 不给 keyword 会返回 0 家
+                       ⚠️ latitude / longitude 实测恒为 0.0 → 导航只能用高德
+                       「搜索」URI（keyword=店名+地址），做不了坐标打点
+query-meals          → 只对「当前门店」（默认=最近一家）深抓菜单；其余门店只有导航能力
+build_data.py --city 深圳市 --near "前海颐都大厦" --area 前海
+                     → 按位置重抓（门店列表 / 距离 / 菜单 / 券 / 核价 / 榜单一起换）
 build_data.py --store-code / --store-name
-                     → 换店重抓（菜单 / 券 / 核价 / 榜单一起换），页面据此生成切店指令
+                     → 指定门店重抓（该店会单独标记，不冒充「附近」）
 ```
 > 因此门店面板不提供「点击切换」：切了菜单也不变，属于假交互。当前门店标
 > `✅ 菜单已抓取 · 价格以此店为准`，其余标 `未抓菜单 · 仅供参考`。
+>
+> **位置与隐私**：快照只写 `location = {city, area, count, nearestM, fetchedAt}`，
+> `--near` 的原文（用户住址）**不落盘**；页面输入的位置只存 `localStorage['mcd_loc_v1']`。
+> 实测距离：前海颐都大厦 → 前海印里 128 m / 前海世茂 296 m；科技园 → 同方信息港 403 m；
+> 王府井 → 北京新东安 146 m（证明 distance 确实相对 keyword，不是固定值）。
 
 **凑单补差**
 ```
@@ -210,7 +222,8 @@ query-meals（现价 currentPrice + 划线价 originalPrice + kcal/protein）
 |---|---|
 | 工具总数 | **35 个**（比官方 README 工具表多出 `query-promotions`、`query-survey-coupon` 等） |
 | 鉴权 | Bearer Token 生效，返回 200 |
-| `query-nearby-stores`（深圳·科技园，beType=1，searchType=2） | ✅ 返回 5 家门店，含 storeCode / 地址 / distance(米) / 营业时间 / 预约时段 |
+| `query-nearby-stores`（beType=1，searchType=2，keyword=前海颐都大厦） | ✅ 返回 5 家门店，含 storeCode / 地址 / distance(米) / 营业时间 / 预约时段；换 keyword 距离随之变化（科技园→同方 403 m，前海→印里 128 m） |
+| `query-store-coupons`（storeCode=1420819，orderType=1，beType=1） | ✅ 6 张券，每张带 `products[].productCode`（券的真实适用 SKU） |
 | `query-meals`（storeCode=1420762，beType=1，orderType=1） | ✅ 返回 15 个分类、108 条分类-餐品记录；同一餐品会出现在多个分类，按编码去重后为 **100 个餐品**（含分类、编码、现价/划线价、标签、图片、优惠类型） |
 | `query-store-coupons` | ✅ 返回 5 张可用券（领取后），含 couponId / couponCode / 有效期 / 适用商品编码 |
 | `list-nutrition-foods` | ✅ 返回 158 条营养数据（紧凑文本格式） |
