@@ -219,6 +219,9 @@ CSS 3D（perspective + preserve-3d 卡片、祝福卡 rotateY 翻转）、五大
   远端全历史用 `git clone --mirror`（58 次提交 / 94 个历史对象，含已删除文件的旧版本）。
 - **结论：0 命中。** 工作区 16 文件、本地历史 76 blob、远端 94 blob 全部干净；
   `mcp-config.example.json` 只有 `Bearer ${MCD_MCP_TOKEN}` 占位符。
+  > ⚠️ **口径更正（第 23 轮）**：这里的「0 命中」**仅指密钥类**（MCP Token / GitHub PAT）。
+  > 当时**没有**覆盖「位置与联系信息」这一类——而第 23 轮正是在这里查出了真实楼宇名与手机号。
+  > 详见本文件「第 23 轮（下）：仓库全面审查」的「一次自我修正」小节。
 - **但查到两处「不是 Token、同样不该公开」**：`account.accountId`（29 位麦享会会员号）明文在 `data.js`；
   `myCoupons[].couponId / couponCode`（10 张券的核销凭证）也在里面。
 - **修法**：`build_data.py` 新增 `sanitize_snapshot()`，挂在唯一写出口 `_write_cache()` 上
@@ -654,13 +657,15 @@ JS 对 id 的 82 处引用 **0 缺失**、Python 与内联 JS 编译通过；隐
 
 用 `git clone --mirror` 对远端全历史 144 个 blob 重扫后，真实结果如下：
 
-| 命中项 | 出现位置 | 定性 | 处理 |
+> 下表**刻意用掩码**记录命中项——审计记录里复述一遍原始值，等于换个地方再泄漏一次。
+
+| 命中项（掩码） | 出现位置 | 定性 | 处理 |
 |---|---|---|---|
-| `18616646686` | `order-assistant.html` 外送地址表单 placeholder | ⚠️ 疑似真实手机号 | 改为通用示例号 `13800138000` |
-| `港城街 99 号前海颐都大厦` | `workbuddy.md` 第 22 轮记录 | ⚠️ **精确门牌号** | 改为「（用户提供的精确地址）」 |
-| `前海颐都大厦`（当示例用） × 11 | `README` / `SKILL` / `MCP_INTEGRATION` / HTML / `build_data.py` / `workbuddy.md` | ⚠️ 公开暴露所在楼宇 | 全部改为 `<你的地址 / 地标>` 占位符 |
+| 11 位手机号 `186****6686` | `order-assistant.html` 外送地址表单 placeholder | ⚠️ 疑似真实手机号 | 改为通用示例号 `13800138000` |
+| 精确门牌号（某街道 + 门牌号 + 楼宇名） | `workbuddy.md` 第 22 轮记录 | ⚠️ **精确到门牌** | 改为「（用户提供的精确地址）」 |
+| 楼宇名（当作 `--near` 示例用）× 11 处 | `README` / `SKILL` / `MCP_INTEGRATION` / HTML / `build_data.py` / `workbuddy.md` | ⚠️ 公开暴露所在楼宇 | 全部改为 `<你的地址 / 地标>` 占位符 |
 | `13800138000` | `data.js` / `workbuddy.md` | ✅ 通用占位号，无害 | 保留 |
-| `/Users/huang` | `CONTEST_SUBMIT.md`（**仅在 git 历史里**） | ⚠️ 本机用户名 | 赛后 `git filter-repo` 清理 |
+| 本机绝对路径 `/Users/<用户名>` | `CONTEST_SUBMIT.md`（**仅在 git 历史里**） | ⚠️ 本机用户名 | 赛后 `git filter-repo` 清理 |
 
 **改完后全量重扫：15 个 tracked 文件，0 命中。**
 
