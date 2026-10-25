@@ -1396,7 +1396,7 @@ body {
         <label>性别
           <select id="afGender"><option>先生</option><option>女士</option></select>
         </label>
-        <label>手机号<input id="afPhone" inputmode="numeric" maxlength="11" placeholder="18616646686" autocomplete="tel" /></label>
+        <label>手机号<input id="afPhone" inputmode="numeric" maxlength="11" placeholder="13800138000" autocomplete="tel" /></label>
         <label class="full">配送地址<input id="afAddr" placeholder="科技园科苑路 8 号 同方信息港" autocomplete="street-address" /></label>
         <label class="full">门牌号<input id="afDetail" placeholder="A 座 1502" /></label>
       </div>
@@ -2467,7 +2467,7 @@ function maskPhone(p) {
 }
 
 /* ---------- 我的位置（到店自取门店的依据） ----------
-   踩过的坑：快照默认用 keyword=科技园 抓门店，用户站在前海颐都大厦打开页面，
+   踩过的坑：快照默认用 keyword=科技园 抓门店，用户站在另一个位置打开页面，
    看到的却是科技园那 5 家店、距离也是相对科技园算的 —— 门店卡再漂亮也是误导，
    照着点单会跑去几公里外的店取餐。
    所以页面必须做两件事：① 说清「这份门店列表是按哪儿搜的」；
@@ -2517,7 +2517,7 @@ function locBox() {
   }
   h += '<div class="loc-form">' +
     '<input id="locCity" class="loc-in city" value="' + escHtml(city) + '" placeholder="城市" aria-label="城市">' +
-    '<input id="locKw" class="loc-in" value="' + escHtml(kw) + '" placeholder="你的地址 / 楼宇 / 地标，如：前海颐都大厦" aria-label="位置关键词">' +
+    '<input id="locKw" class="loc-in" value="' + escHtml(kw) + '" placeholder="你的地址 / 楼宇 / 地标" aria-label="位置关键词">' +
     '<button class="mini-btn" data-loc-cmd="1">📋 生成重抓指令</button>' +
     '</div>' +
     '<div class="loc-note">位置只存在本机浏览器，不进快照、不上传。' +
@@ -3935,7 +3935,7 @@ document.addEventListener("click", function (e) {
     var city = cEl ? String(cEl.value || "").trim() : "";
     var kw = kEl ? String(kEl.value || "").trim() : "";
     if (!kw) {
-      toast("先填一个地址或地标（如「前海颐都大厦」），我才能按它找附近门店");
+      toast("先填一个地址或地标，我才能按它找附近门店");
       if (kEl) kEl.focus();
       return;
     }
