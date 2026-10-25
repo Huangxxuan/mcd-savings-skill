@@ -362,7 +362,9 @@ python3 scripts/build_data.py --rank
    → 地图功能必须自建：用高德 Web 服务「地理编码」把 `address` 转坐标，或直接用地址关键字跳转高德/百度网页导航。**不要假设 MCP 会给坐标。**
 3. **营养数据是紧凑文本，不是 JSON 数组**
    格式：`data` 为字符串，形如 `[160]{productName,nutritionDescription,energyKj,energyKcal,protein,fat,carbohydrate,sodium,calcium}:\n  猪柳麦满分,null,1288,308,...`
-   → 需按行按逗号解析，并用**餐品名模糊匹配**挂到菜单上。匹配分三档：精确/包含（可信）→ 去掉规格词（中杯/大杯/热/冰/™）后核心名一致（打 `≈`）→ 2-gram Jaccard ≥ 0.45（打 `≈`）。实测 100 个餐品匹配 60 条（53 可信 + 7 估算），其余 40 个显示「热量待核」而**不要编造**。
+   → 需按行按逗号解析，并用**餐品名模糊匹配**挂到菜单上。匹配分三档：精确/包含（可信）→ 去掉规格词（中杯/大杯/热/冰/™）后核心名一致（打 `≈`）→ 2-gram Jaccard ≥ 0.45（打 `≈`）。
+   **基线（2026-10-25 10:30 正餐快照）**：114 个餐品匹配 64 条（58 可信 + 6 估算），其余 50 个显示「热量待核」而**不要编造**。
+   注意这个数会随时段和菜单变动，**每次重跑都要以脚本实际输出为准，不要沿用旧数字**。
 4. **券接口与菜单接口是两套商品编码**（最容易踩的坑）
    `query-store-coupons` / `query-my-coupons` 返回的 `productCode` 形如 `9900000119`，而 `query-meals` 返回的菜单编码是 `507411`（麦咖啡™美式）。**按编码直接匹配必然全部落空**，导致自动用券永不生效、立省恒为 ¥0。
    → 必须先尝试编码直配，失败后用**券标题/描述中的商品名**回退匹配菜单名（去掉「中杯/大杯」等规格词后互相包含），并把命中的菜单编码写回券的 `applyTo`。
@@ -466,6 +468,8 @@ python3 scripts/build_data.py --rank
       （`verified_coupon_rules(..., only_valid=True)`），否则 `data.js` 里存的券后价仍然是过期券的结论，
       前端只能靠 `rankRowLive()` 逐行打补丁改现价 —— 那是兜底，不是修复。
       实测过滤前后：8 张券从「6 张能算」降到「4 张能算」，`券后最省` 从 6 条降到 4 条。
+      （2026-10-25 10:30 快照口径：9 张券，其中 4 张现在能用 —— 这个数每次重跑都会变，
+      以页面券面板横幅里的 `N / M 张现在能用` 为准。）
 20. **「不错过」板块的每条提醒都要能解释自己**
     板块只提示三件事：快过期的券、能领没领的券、今日活动/积分。
     可点性规则：能定位到商品 → 点击在菜单高亮；待领券 → 跳券面板；
@@ -541,6 +545,33 @@ python3 scripts/build_data.py --rank
     早期把四件套的价格换成非会员结算价（28→57），榜单写 ¥66、点进购物车却是 ¥37。
     → `settle` 只用来算「原价（划线价合计）」以得出「比单点省多少」，**实付仍用菜单价**；
     会员价的披露交给 `memberOnly` + `nonMemberPay`（页面 HUD 一直显示「非会员需多付 X」）。
+33. **「按文档跑一次 build_data.py」得到的页面是残的**（真实 bug，2026-10-25 发现）
+    联网主流程 `main()` 只组装门店/菜单/券/提醒，`savings` 与 `tools` 只写在 `--rank` / `--repick`
+    这两条离线分支里。后果：照 README 跑一次 → data.js 没有省钱榜单、没有 MCP Tools 面板，
+    套餐营养也没补配餐（`enrich_set_nutrition` 同样只在离线分支里调）。
+    → `main()` 现在会在生成场景组合**之前**调 `enrich_set_nutrition()`，
+      payload 里一并写 `savings` / `tools` / `scenesRebuiltAt`。
+      **验收口径**：任意一次正常联网跑完，`data.js` 顶层必须同时有 `menu` `scenes` `savings` `tools`。
+34. **非营业时间会把快照刷成空菜单**
+    凌晨 `query-meals` 返回 600057「门店可能已关闭或不在营业时间」→ 菜单 0 条，脚本照样写文件。
+    已在 `main()` 加空菜单守卫（0 条直接 `SystemExit`，不动旧快照）；
+    `_write_cache()` 另外比对上一份快照，菜单条数掉到 60% 以下时告警（早餐/夜宵时段属正常，不阻塞）。
+    另外注意：**早餐时段（约 10:30 前）菜单只有麦满分/松饼/营养卷，没有三件套/四件套** ——
+    这时跑出来的省钱榜单没有套餐可拼，要正餐时段重跑才是完整菜单。
+35. **Token 带不带 `Bearer ` 前缀必须都能跑**（实测踩到，误导性极强）
+    `MCD_MCP_TOKEN` 里贴了 `Bearer xxx`，脚本再拼一次就变成 `Bearer Bearer xxx`，
+    服务端返回 401「当前鉴权码不存在或已失效」—— 看起来像 Token 过期，实际是拼错。
+    → `_norm_token()` 去重前缀；`mcp_call.sh` 同样处理。401 单独给出这句提示。
+    顺带给 `_post_with_retry()` 加了 3 次指数退避，只对网络抖动 / 5xx / 429 重试（4xx 立即返回）。
+36. **GitHub Pages 会把带 YAML front matter 的 `SKILL.md` 渲染成 `SKILL.html`**
+    所以线上 `SKILL.md` 一直 404、`SKILL.html` 却是 200 —— 不是没同步，是 Jekyll 干的。
+    → 仓库根目录放一个空的 `.nojekyll`，Pages 改为原样静态返回，`SKILL.md` 才拿得到。
+    **不要为了修 404 去删 SKILL.md 的 front matter**：`name` / `description` 是 Skill 被发现的前提。
+37. **CSS 单列布局写 `1fr` 会把整页撑宽**
+    `grid-template-columns: 1fr` 等价于 `minmax(auto, 1fr)`，列宽下限是内容的 min-content。
+    页里有一个 571px 宽的块 → 500px 视口下 `documentElement.scrollWidth` 变成 591，
+    而 `body{overflow-x:hidden}` 会把右边内容**静默裁掉、连滚都滚不到**（旧版 390px 截图就是这个）。
+    → 媒体查询里一律写 `minmax(0, 1fr)` 并给子项 `min-width: 0`；实测 390 视口 scrollWidth 从 571 回到 390。
 
 ## 后续计划
 
