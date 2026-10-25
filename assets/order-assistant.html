@@ -487,6 +487,33 @@ body {
   border-left: 2px solid var(--line-strong); background: rgba(255,255,255,.02);
 }
 .storecap b { color: var(--text); }
+/* 位置卡：到店自取门店的依据。输入框必须在页内（webview 里 prompt 会被静默拦掉） */
+.locbox {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: rgba(255,255,255,.02); padding: 9px 10px; margin: 8px 0;
+}
+.loc-hd { font-family: var(--num); font-size: 10.5px; color: var(--muted); line-height: 1.6; }
+.loc-hd b { color: var(--acc); }
+.loc-sub { font-family: var(--num); font-size: 10px; color: var(--text); margin-top: 4px; line-height: 1.6; }
+.loc-sub b { color: var(--acc); }
+.loc-sub.warn { color: var(--warn); }
+.loc-time { color: var(--muted); margin-left: 6px; }
+.loc-form { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.loc-in {
+  flex: 1 1 150px; min-width: 0; padding: 6px 8px; font-size: 11px;
+  font-family: var(--num); color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--r-sm); outline: none;
+}
+.loc-in.city { flex: 0 0 92px; }
+.loc-in:focus { border-color: var(--acc); }
+.loc-form .mini-btn { flex: 0 0 auto; }
+.loc-note { font-family: var(--num); font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-top: 6px; }
+.store .sdist { color: var(--acc); }
+.snear {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 100px;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  color: #1a1206; background: linear-gradient(135deg, var(--acc), #ffb02e);
+}
 .dcheck {
   font-family: var(--num); font-size: 10px; line-height: 1.7; color: var(--muted);
   border: 1px dashed var(--line-strong); border-radius: var(--r-sm);
@@ -2040,7 +2067,14 @@ function couponTimeState(c) {
   if (!w) return { ok: true };
   var now = Date.now();
   if (now > w.end) return { ok: false, phase: "expired", why: "已过期（有效期至 " + w.to + "）" };
-  if (now < w.start) return { ok: false, phase: "pending", why: "尚未生效（" + w.from + " 起可用）" };
+  if (now < w.start) {
+    /* 券可能是「明天 10:30」才生效，只写到日期会让用户以为今天过了零点就能用。
+       卡包接口给了 tradeStartDateTime 就用它，精确到分钟。 */
+    var sdt = String(c.tradeStartDateTime || "");
+    var hm = sdt.match(/\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})/);
+    var when = hm ? (w.from + " " + hm[1]) : (w.from + " 00:00");
+    return { ok: false, phase: "pending", why: "尚未生效（" + when + " 起可用）" };
+  }
   return { ok: true };
 }
 
@@ -2048,8 +2082,8 @@ function couponList() {
   var out = [], byKey = {};
   // 需要跨来源合并的字段：能决定「能不能用、能省多少」的全部带上
   var MERGE = ["applyTo", "skus", "code", "valid", "discountValue", "discountDesc",
-    "beTypes", "orderTypes", "tradeEndDate", "couponId", "totalAvailableCount",
-    "realOk", "realDiscount", "realPay", "realOrig", "realMsg"];
+    "beTypes", "orderTypes", "tradeEndDate", "tradeStartDateTime", "couponId",
+    "totalAvailableCount", "realOk", "realDiscount", "realPay", "realOrig", "realMsg"];
   function add(c) {
     var k = ckey(c.name);
     if (!k) return;
@@ -2060,8 +2094,8 @@ function couponList() {
          盖掉 —— 明明有券可用，页面却报「已过期」。 */
       var he = couponSpan(hit), ce = couponSpan(c);
       if (ce && (!he || ce.end > he.end)) {
-        ["valid", "tradeEndDate", "code", "couponId", "realOk", "realDiscount",
-          "realPay", "realOrig", "realMsg", "skus"].forEach(function (f) {
+        ["valid", "tradeEndDate", "tradeStartDateTime", "code", "couponId", "realOk",
+          "realDiscount", "realPay", "realOrig", "realMsg", "skus"].forEach(function (f) {
           if (c[f] !== undefined && c[f] !== null && c[f] !== "") hit[f] = c[f];
         });
       }
@@ -2088,6 +2122,7 @@ function couponList() {
       discountValue: m.discountValue, discountDesc: m.discountDesc || "",
       beTypes: m.beTypes || [], orderTypes: m.orderTypes || [],
       tradeEndDate: m.tradeEndDate || "",
+      tradeStartDateTime: m.tradeStartDateTime || "",
       totalAvailableCount: m.totalAvailableCount,
       ifFreeCoupon: !!m.ifFreeCoupon, tags: m.tags || [],
       skus: m.skus || [],
@@ -2156,7 +2191,7 @@ function couponCalcState(c) {
   }
   if (c.realOk === null || c.realOk === undefined) {
     if (c.inMine || c.inStore) {
-      return { ok: false, why: c.realMsg || "未能在门店券里找到适用商品，需在结算页核销" };
+      return { ok: false, why: c.realMsg || "这张券本店核不了价（多为未到使用时间 / 渠道不适配 / 本店不参与）" };
     }
   }
   var sc = couponSceneOk(c);
@@ -2220,7 +2255,7 @@ function dataSourceNote() {
   var bits = [];
   if (pending) bits.push(pending + " 张未生效");
   if (expired) bits.push(expired + " 张已过期");
-  if (noCalc > 0) bits.push(noCalc + " 张接口不支持核价");
+  if (noCalc > 0) bits.push(noCalc + " 张有明确不可用原因");
   return '<div class="dsrc">' +
     '<div class="dsrc-warn">这是快照账号 ' + acc + ' 的券，不是你的</div>' +
     '<div class="dsrc-stats">' +
@@ -2299,6 +2334,21 @@ function couponNowTag(ts, st) {
   return "无法核价";
 }
 
+/* 渠道适用性：券面 beTypes 决定它能在哪儿核销（1 到店 / 2 外送 / 5 得来速）。
+   用户明确要求「确保券能用于外送或到店自取」——所以每张券都要自报渠道，
+   而不是等核销失败才知道。实测「人气麦旋风买一送一」beTypes=[4]，
+   到店与外送都不含，属于「看得见但两个渠道都用不了」。 */
+function couponChannelTag(c) {
+  var bt = c.beTypes || [];
+  if (!bt.length) return "";
+  var can = [];
+  if (bt.indexOf(1) >= 0) can.push("到店");
+  if (bt.indexOf(2) >= 0) can.push("外送");
+  if (bt.indexOf(5) >= 0) can.push("得来速");
+  if (!can.length) return "限其他渠道 beTypes=" + bt.join("/");
+  return "可用：" + can.join(" / ");
+}
+
 function couponRow(c, subtotal) {
   var st = couponCalcState(c);
   var ts = couponTimeState(c);
@@ -2310,6 +2360,8 @@ function couponRow(c, subtotal) {
   var tags = [];
   var hn = couponNowTag(ts, st);
   if (hn) tags.push(hn);
+  var ch = couponChannelTag(c);
+  if (ch) tags.push(ch);
   if (c.inMine) tags.push("我的卡包");
   if (c.inStore) tags.push("门店券");
   if (c.claimed && (c.inMine || c.inStore)) tags.push("已领取");
@@ -2381,6 +2433,67 @@ function maskPhone(p) {
   return String(p || "").replace(/^(\d{3})\d{4}(\d{4})$/, "$1****$2");
 }
 
+/* ---------- 我的位置（到店自取门店的依据） ----------
+   踩过的坑：快照默认用 keyword=科技园 抓门店，用户站在前海颐都大厦打开页面，
+   看到的却是科技园那 5 家店、距离也是相对科技园算的 —— 门店卡再漂亮也是误导，
+   照着点单会跑去几公里外的店取餐。
+   所以页面必须做两件事：① 说清「这份门店列表是按哪儿搜的」；
+   ② 让用户能改位置并给出重抓命令。位置只存本机，不上传、不写进快照。 */
+function loadLoc() {
+  try {
+    var raw = localStorage.getItem("mcd_loc_v1");
+    if (!raw) return null;
+    var o = JSON.parse(raw);
+    if (o && o.keyword) return o;
+  } catch (e) {}
+  return null;
+}
+function saveLoc(o) {
+  state.loc = o;
+  try { localStorage.setItem("mcd_loc_v1", JSON.stringify(o)); } catch (e) {}
+}
+/* 距离：有真实米数就按米/公里显示，没有就退回快照里的 km */
+function distText(s) {
+  var m = Number(s && s.distM);
+  if (isFinite(m) && m > 0) return m < 1000 ? (m + " m") : (Math.round(m / 100) / 10 + " km");
+  return (s && s.dist) ? (s.dist + " km") : "";
+}
+function locCmd(city, kw) {
+  var area = (D.location && D.location.area) || "";
+  return 'python3 scripts/build_data.py --city "' + (city || "深圳市") + '" --near "' + kw + '"' +
+    (area ? ' --area "' + area + '"' : "");
+}
+/* 位置卡：说明当前门店列表的依据 + 一键生成重抓指令 */
+function locBox() {
+  var L = D.location || {};
+  var loc = state.loc || null;
+  var a = state.addr || null;
+  var city = (loc && loc.city) || (a && a.city) || L.city || "深圳市";
+  /* 预填：优先用户上次填的位置，其次收货地址（一个地址两用，不用填两遍） */
+  var kw = (loc && loc.keyword) || (a ? ((a.address || "") + (a.addressDetail || "")) : "") || "";
+  var at = L.fetchedAt ? String(L.fetchedAt).slice(5, 16) : "";
+  var h = '<div class="locbox">' +
+    '<div class="loc-hd">📍 这张门店列表按<b>你的位置</b>搜出来的</div>';
+  if (L.count) {
+    h += '<div class="loc-sub">快照：<b>' + escHtml(L.city || "") + (L.area ? " " + escHtml(L.area) : "") +
+      '</b> 附近 <b>' + L.count + '</b> 家' +
+      (L.nearestM ? '，最近 <b>' + L.nearestM + ' m</b>' : '') +
+      (at ? '<span class="loc-time">抓取于 ' + escHtml(at) + '</span>' : '') + '</div>';
+  } else {
+    h += '<div class="loc-sub warn">这次快照没记录搜索位置，门店列表可能不是你附近的 —— 换个位置重抓一次。</div>';
+  }
+  h += '<div class="loc-form">' +
+    '<input id="locCity" class="loc-in city" value="' + escHtml(city) + '" placeholder="城市" aria-label="城市">' +
+    '<input id="locKw" class="loc-in" value="' + escHtml(kw) + '" placeholder="你的地址 / 楼宇 / 地标，如：前海颐都大厦" aria-label="位置关键词">' +
+    '<button class="mini-btn" data-loc-cmd="1">📋 生成重抓指令</button>' +
+    '</div>' +
+    '<div class="loc-note">位置只存在本机浏览器，不进快照、不上传。' +
+    '改完复制指令让 AI 执行一次，门店/距离/菜单/券会一起变成你附近的（菜单只抓最近一家）。</div>' +
+    '</div>';
+  return h;
+}
+
+
 /* 地址存本机：这是用户自己的手机号与门牌号，不上传任何服务器。
    页面只负责收集，建档与下单由 Agent 调 delivery-create-address 完成。 */
 function loadAddr() {
@@ -2451,7 +2564,14 @@ function renderStores() {
        · 想换店 → 复制切店指令重跑一次（会重抓菜单、券、核价、榜单）。 */
   var list, activeId, kindTxt;
   if (pickup) {
-    list = D.stores || [];
+    /* 按距离升序：distance 是 MCP 相对「用户给的位置」返回的真实米数。
+       快照在 build 时已排过，这里再排一次，防止手改 / 旧快照缺字段。 */
+    list = (D.stores || []).slice().sort(function (x, y) {
+      var dx = Number(x.distM), dy = Number(y.distM);
+      if (!isFinite(dx)) dx = Number(x.dist) * 1000 || 1e9;
+      if (!isFinite(dy)) dy = Number(y.dist) * 1000 || 1e9;
+      return dx - dy;
+    });
     activeId = snapCode;
     kindTxt = "到店自取";
   } else {
@@ -2462,8 +2582,12 @@ function renderStores() {
 
   var block = '';
   if (pickup) {
-    block += '<div class="storecap">菜单只抓了<b>快照门店</b>一家。' +
-      '其他门店可以导航过去，但价格与券要重抓才会准。</div>';
+    /* 先摆「这些店是按哪儿搜的」，否则用户以为列表 = 自己附近（老版就是这么误导的） */
+    block += locBox();
+    var act = list.filter(function (x) { return x.id === activeId; })[0];
+    block += '<div class="storecap">菜单只抓了<b>' +
+      escHtml((act && act.name) || "最近一家") + '</b> 一家（价格 / 券 / 榜单都以它为准）。' +
+      '其余门店可导航过去，但价格要重抓才会准 —— 换店点「切店指令」。</div>';
   } else if (!(dl.stores || []).length) {
     block += '<div class="fhint" style="margin-top:10px;line-height:1.8">' +
       (dl.addressCount
@@ -2478,7 +2602,7 @@ function renderStores() {
       '</b>，配送费来自 calculate-price 实测。</div>';
   }
 
-  block += list.map(function (s) {
+  block += list.map(function (s, i) {
     var isActive = s.id === activeId;
     var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || "")) +
       "&src=mcd-savings&coordinate=gaode&callnative=1";
@@ -2493,9 +2617,14 @@ function renderStores() {
         : "配送费 " + money(fee) + (free !== null ? " · 满 " + money(free) + " 免配送" : "") +
           (min !== null ? " · 起送 " + money(min) : ""));
     var meta = [];
-    if (s.dist) meta.push(s.dist + " km");
+    /* 距离是第一优先信息：用户找的就是「最近哪家」。米数优先，避免 0.13 km 这种反直觉写法 */
+    var dt = distText(s);
+    if (dt) meta.push('<b class="sdist">' + escHtml(dt) + '</b>');
+    if (s.offLocation) meta.push("不在该位置附近");
     if (s.hours) meta.push(escHtml(s.hours));
     if (s.beCode) meta.push("beCode " + escHtml(s.beCode));
+    var near = (pickup && i === 0 && (s.distM || s.dist))
+      ? '<span class="snear">离你最近</span>' : "";
 
     var badge = isActive
       ? '<span class="sbadge on">✅ 菜单已抓取 · 价格以此店为准</span>'
@@ -2509,7 +2638,7 @@ function renderStores() {
       '</div>';
 
     return '<div class="store' + (isActive ? " on" : " idle") + '">' +
-      '<div class="sname">' + escHtml(s.name) + '</div>' +
+      '<div class="sname">' + escHtml(s.name) + near + '</div>' +
       '<div class="smeta">' + (meta.join(" · ") || "") + " " + status +
       (s.addr ? '<br>' + escHtml(s.addr) : "") + '<br><span class="sfee">' + dline + '</span></div>' +
       badge + acts +
@@ -2893,21 +3022,46 @@ function rankRowHtml(r, i, boardId) {
    用户会觉得榜单在骗人。所以按当前时间复核：券失效的行改用「不用券的现价合计」，
    并沉到队尾，保证前面几行都是今天真能付的价。 */
 function rankRowLive(r) {
-  if (!r || !r.coupon) return r;
-  var k = ckey(r.coupon), hit = null;
-  couponList().forEach(function (c) { if (!hit && ckey(c.name) === k) hit = c; });
-  if (!hit) return r;                    // 券已不在快照里，无从判断，保持原样
-  var ts = couponTimeState(hit);
-  if (ts.ok) return r;
-  var pay = (r.items || []).reduce(function (s, x) { return s + (x.price || 0); }, 0);
-  var c = {};
-  for (var f in r) c[f] = r[f];
-  c.pay = Math.round(pay * 100) / 100;
-  c.save = 0;
-  c.couponStale = r.coupon;
-  c.staleWhy = ts.why;
-  c.coupon = "";
-  return c;
+  if (!r) return r;
+  if (r.coupon) {
+    var k = ckey(r.coupon), hit = null;
+    couponList().forEach(function (c) { if (!hit && ckey(c.name) === k) hit = c; });
+    if (!hit) return r;                    // 券已不在快照里，无从判断，保持原样
+    var ts = couponTimeState(hit);
+    if (ts.ok) return r;
+    var pay0 = (r.items || []).reduce(function (s, x) { return s + (x.price || 0); }, 0);
+    var c0 = {};
+    for (var f0 in r) c0[f0] = r[f0];
+    c0.pay = Math.round(pay0 * 100) / 100;
+    c0.save = 0;
+    c0.couponStale = r.coupon;
+    c0.staleWhy = ts.why;
+    c0.coupon = "";
+    return c0;
+  }
+  /* 没标券的行也要算「点击后到底多少钱」。
+     实测踩到：官方直降榜「麦咖啡™美式 ¥11.9」点下去自动用 9.9 券变 ¥9.9，
+     榜单和结算两个数字，用户第一反应是「你们到底哪个是对的」。
+     这里把「单件商品 + 单 SKU 券」的情况提前算进榜单，保证
+     榜单显示 = 点击后金额（宁可少赚一句解释，也不能给两个价格）。 */
+  var items = r.items || [];
+  if (items.length !== 1) return r;
+  var code = items[0].code, best = null;
+  moneyCoupons().forEach(function (c) {
+    var sk = (c.skus || []).map(function (s) { return s.code || s; });
+    if (sk.length !== 1 || sk[0] !== code) return;
+    if (!(c.realPay > 0)) return;
+    if (!best || c.realPay < best.realPay) best = c;
+  });
+  if (!best) return r;
+  var c1 = {};
+  for (var f1 in r) c1[f1] = r[f1];
+  c1.pay = Math.round(best.realPay * 100) / 100;
+  c1.save = Math.round(((r.origin || c1.pay) - c1.pay) * 100) / 100;
+  c1.savePct = r.origin ? Math.round(c1.save / r.origin * 100) : r.savePct;
+  c1.coupon = best.name;
+  c1.note = (r.note ? r.note + "　" : "") + "券后价（" + best.name + "）";
+  return c1;
 }
 function rankRowsOf(board) {
   var rows = (board.rows || []).map(rankRowLive);
@@ -3734,6 +3888,31 @@ document.addEventListener("click", function (e) {
     return;
   }
 
+  /* 位置：把「城市 + 地址/地标」变成一条可执行的重抓指令。
+     用户抱怨的就是「门店跟我位置无关」——所以这条指令是第一公民，不是彩蛋。 */
+  var locBtn = e.target.closest("[data-loc-cmd]");
+  if (locBtn) {
+    var cEl = $("#locCity"), kEl = $("#locKw");
+    var city = cEl ? String(cEl.value || "").trim() : "";
+    var kw = kEl ? String(kEl.value || "").trim() : "";
+    if (!kw) {
+      toast("先填一个地址或地标（如「前海颐都大厦」），我才能按它找附近门店");
+      if (kEl) kEl.focus();
+      return;
+    }
+    saveLoc({ city: city || "深圳市", keyword: kw });
+    var cmdL = 'MCD_MCP_TOKEN=你的Token ' + locCmd(city, kw);
+    copyText(cmdL).then(function (how) {
+      if (how === "manual") {
+        showCmd(cmdL, "已全选位置重抓命令，按 ⌘/Ctrl + C 复制；" +
+          "在仓库根目录跑一次，门店列表 / 距离 / 菜单 / 券都会变成你附近的。");
+        return;
+      }
+      toast("位置已存本机 · 重抓指令已复制（跑一次即生效）");
+    });
+    return;
+  }
+
   /* 门店：不再有「点击切换」。未抓菜单的门店只提供导航 / 复制地址 / 切店指令三件事。 */
   var navc = e.target.closest("[data-navcopy]");
   if (navc) {
@@ -4072,7 +4251,14 @@ function buildOrderCmd(r) {
 
   if (r.fulfill === "pickup") {
     var storeCode = r.store ? (r.store.id || r.store.code || "") : "";
-    if (r.store) parts.push("门店：" + r.store.name + "（storeCode=" + storeCode + "）");
+    if (r.store) {
+      /* 门店必须带上「离你多远 + 地址」：用户真实点单时唯一能自查的依据。
+         只给一个 storeCode，人肉根本判断不出这家是不是自己要走过去的那家。 */
+      var dTxt = distText(r.store);
+      parts.push("门店：" + r.store.name + "（storeCode=" + storeCode + "）" +
+        (dTxt ? "，距我约 " + dTxt : "") +
+        (r.store.addr ? "，地址 " + r.store.addr : ""));
+    }
     parts.push("就餐方式：到店自取（orderType=1，beType=1）");
     parts.push("取餐方式 takeWayCode 用 calculate-price 返回的 takeWayList（本店为 eat-in 堂食 / locker-out 外带）");
   } else {
@@ -4240,11 +4426,15 @@ document.addEventListener("keydown", function (e) {
 /* ---------- 初始化 ---------- */
 (function init() {
   state.addr = loadAddr();
+  state.loc = loadLoc();
   /* 两套菜单：_homeMenu 是到店快照，delivery.menu 是外送门店自己的菜单。
      默认自取，所以 D.menu 先指向到店那套（切外送时整池换掉）。 */
   D._homeMenu = D.menu;
   if (D.menu.length && D.menu[0].cat) state.cat = D.menu[0].cat;
-  if (D.stores.length) state.storeId = D.stores[0].id;
+  /* 当前门店必须锁定「菜单真正被抓住的那家」（D.store.code），
+     不能取列表第一行：列表是按距离排的，第一行不一定等于快照门店，
+     一旦不一致，页面就会拿 A 店的价格去生成 B 店的 storeCode 点单指令。 */
+  state.storeId = (D.store && D.store.code) || (D.stores[0] || {}).id;
 
   var store = D.store || {};
   $("#hdrStore").textContent = "🏪 " + (store.name || "未选择门店");
