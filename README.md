@@ -409,7 +409,7 @@ MCD_MCP_TOKEN=你的Token python3 scripts/build_data.py --store-code 1420659 --s
 
 ```bash
 # 按你所在的位置重抓（门店列表 / 距离 / 菜单 / 券 / 榜单一起换）
-python3 scripts/build_data.py --city "深圳市" --near "前海颐都大厦" --area "前海"
+python3 scripts/build_data.py --city "深圳市" --near "<你的地址 / 地标>" --area "前海"
 ```
 
 页面「📍 门店」面板里有位置输入框，填完点「📋 生成重抓指令」，把命令粘给 AI 跑一次即可。
