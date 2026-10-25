@@ -622,9 +622,12 @@ def build_scene_bundles(menu: list) -> list:
         def nut(m):
             return m.get("kcal") or 0
 
-        # 场景内筛选：价格按结算价判断，热量按补全后的值判断
+        # 场景内筛选：价格按结算价判断，热量按补全后的值判断。
+        # 兜底场景（如 13:26 点开「健康早餐」，本店根本没有早餐 SKU）不吃热量上限：
+        # 兜底池本身就是妥协出来的，再按热量砍一刀就只剩 2 个方案，
+        # 页面「3 套推荐」变成 2 条，用户会以为功能坏了。
         ok = [m for m in pool
-              if sp(m) <= price_max and (nut(m) == 0 or nut(m) <= kcal_max)]
+              if sp(m) <= price_max and (is_fallback or nut(m) == 0 or nut(m) <= kcal_max)]
         if sc["id"] == "fitness":
             ok = [m for m in ok if (m.get("protein") or 0) >= protein_min]
         if not ok:
@@ -649,8 +652,12 @@ def build_scene_bundles(menu: list) -> list:
         if not companions:
             companions = menu[:10]
 
-        # 「全是饮品」的组合不成立（会推出「红茶 + 冰咖啡」这种）
-        SOLID_RE = re.compile(r"堡|卷|饭|满分|粥|蛋|薯|翅|鸡|玉米|派|沙拉|盒|盒装")
+        # 「全是饮品」的组合不成立（会推出「红茶 + 冰咖啡」这种）。
+        # 注意：冰淇淋 / 新地 / 麦旋风 / 圆筒 / 蛋糕 也是「能吃的东西」，必须算固体，
+        # 否则悦己养颜场景里只有「派」能过这一关 —— 实测就退化成
+        # 「派+鲜萃咖啡 / 派+美式 / 派+浓缩」三个同主品方案（用户会认为没做完）。
+        SOLID_RE = re.compile(r"堡|卷|饭|满分|粥|蛋|薯|翅|鸡|玉米|派|沙拉|盒|盒装|"
+                              r"冰淇淋|甜筒|圆筒|新地|旋风|蛋糕|布丁|雪冰|薯饼")
         DRINK_RE = re.compile(r"咖啡|奶铁|拿铁|美式|茶|可乐|雪碧|果汁|豆浆|牛奶|奶(?:$|[（(])|雪冰|饮品")
         FATTY_DRINK_RE = re.compile(r"奶铁|拿铁|雪顶|新地|星冰乐|奶茶|焦糖|摩卡|朱古力")
 
@@ -666,7 +673,8 @@ def build_scene_bundles(menu: list) -> list:
             pr = sum(x.get("protein") or 0 for x in items)
             if total > price_max:
                 return
-            if kc and kc > kcal_max:
+            # 兜底场景不吃热量上限（同上面的候选筛选），否则「早餐」只剩 2 个方案
+            if kc and kc > kcal_max and not is_fallback:
                 return
             if protein_min and pr < protein_min:
                 return
@@ -713,9 +721,11 @@ def build_scene_bundles(menu: list) -> list:
                     continue
                 push(items, "combo")
 
-        # 兜底：实在凑不出方案时，退化为单品推荐
+        # 兜底：实在凑不出方案时，退化为单品推荐。
+        # 多给几个候选（[:6] 而不是 [:3]）：前几个常因价格上限被 push 丢掉，
+        # 只取 3 个时「早餐」就只剩 2 条方案，页面「3 套推荐」对不上。
         if not combos:
-            for m1 in mains[:3]:
+            for m1 in mains[:6]:
                 push([m1], "single")
 
         # 排序：套餐优先 → 营养齐全 → 场景指标。
@@ -1595,6 +1605,38 @@ def parse_available(raw: str) -> list:
     return out
 
 
+def coupon_unusable_reason(m: dict, now=None) -> str:
+    """这张卡包券为什么核不出价 —— 不能一律写「需在结算页核销」。
+
+    实测三类原因，页面必须分开说，否则用户只会得出「券坏了」这个结论：
+      1. **未到使用时间**：「11.9 元麦辣鸡腿堡」tradeStartDateTime=2026-10-26 10:30，
+         今天 10-25 打开当然是「不能用」，但它是**明天就能用**，不是坏了；
+      2. **本渠道不可用**：「人气麦旋风买一送一」beTypes=[4]（非 1 到店 / 2 外送），
+         到店与外卖都核不了；
+      3. **本店没有这张券**：门店券列表里查不到 → 本店不参与 / 券已下架，换店再看。
+    enable / unavailableType 是麦当劳自己的结论，能读到就优先采信。
+    """
+    now = now or datetime.now()
+    sdt = str(m.get("tradeStartDateTime") or "")
+    if sdt:
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                if datetime.strptime(sdt, fmt) > now:
+                    return f"未到使用时间（{sdt[:16]} 起可用）"
+                break
+            except Exception:
+                continue
+    bt = [x for x in (m.get("beTypes") or [])]
+    if bt and 1 not in bt and 2 not in bt:
+        return (f"本渠道不可用（券面限定 beTypes={'/'.join(str(x) for x in bt)}："
+                f"既不是到店 1 也不是外送 2）")
+    if m.get("enable") in (0, "0"):
+        return str(m.get("disableBtnText") or "券当前不可用（enable=0）")
+    if m.get("unavailableType") not in (None, 0, "0"):
+        return str(m.get("disableBtnText") or f"券当前不可用（unavailableType={m.get('unavailableType')}）")
+    return "本店门店券列表里没有这张券（可能本店不参与，换家店或到结算页试）"
+
+
 def parse_my_coupons(raw: str) -> list:
     """解析 query-my-coupons（我的卡包）。
        结构化 JSON 里每个券都带 id / code / discountInfo / beTypes / orderTypes /
@@ -1630,8 +1672,18 @@ def parse_my_coupons(raw: str) -> list:
                 "discountTypeText": str(di.get("discountTypeText") or ""),
                 "tradeEndDate": str(c.get("tradeEndDate") or ""),
                 "tradeStartDate": str(c.get("tradeStartDate") or ""),
+                # 精确到时分秒：券可能「明天 10:30 才生效」，只按日期判会误报「今天能用」
+                "tradeStartDateTime": str(c.get("tradeStartDateTime") or ""),
+                "tradeEndDateTime": str(c.get("tradeEndDateTime") or ""),
+                "tradeTimePeriods": c.get("tradeTimePeriods") or [],
+                "isAllTradeTime": c.get("isAllTradeTime"),
                 "orderTypes": c.get("orderTypes") or [],
                 "beTypes": c.get("beTypes") or [],
+                # enable / unavailableType 是麦当劳自己给的「能不能用」结论，优先采信：
+                # 11.9 元麦辣鸡腿堡 enable=0 + unavailableType=1 + disableBtnText「当前渠道不可用」
+                "enable": c.get("enable"),
+                "unavailableType": c.get("unavailableType"),
+                "disableBtnText": str(c.get("disableBtnText") or ""),
                 "ifFreeCoupon": bool(c.get("ifFreeCoupon")),
                 "appliedCategory": c.get("appliedCategory"),
                 "totalCount": to_int(c.get("totalCount")),
@@ -2191,7 +2243,12 @@ def build_menu(cats, meal_map, nutri, delivery=False):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="深圳市")
-    ap.add_argument("--keyword", default="科技园")
+    ap.add_argument("--keyword", "--near", dest="keyword", default="科技园",
+                    help="用户所在位置（地址 / 地标 / 商圈）。到店自取门店列表按这个位置搜索，"
+                         "距离也相对它计算。例：--near \"前海颐都大厦\"")
+    ap.add_argument("--area", default="",
+                    help="公开快照里展示的粗略位置标签（如「前海」）。不填则不写。"
+                         "精确地址文本绝不写进快照，避免把用户住址提交到公开仓库。")
     ap.add_argument("--store-code", default="")
     ap.add_argument("--store-name", default="")
     ap.add_argument("--claim", action="store_true",
@@ -2245,48 +2302,80 @@ def main():
             print("[0/6] 一键领券: 已执行（未解析到统计）")
 
     # ---- 1. 定位门店 ----
+    # 门店列表必须按「用户给的位置」搜（searchType=2），不能用默认的收藏门店（searchType=1）。
+    # 踩过的坑：快照一直用 keyword=科技园，于是用户站在前海颐都大厦打开页面，看到的却是
+    # 科技园那 5 家店 —— 门店卡再漂亮也是误导，照着点单会跑到几公里外的店去取餐。
+    # 距离字段 distance 是**相对 keyword 位置**的真实米数（实测：科技园→同方 403m，
+    # 前海颐都大厦→前海印里 128m，王府井→新东安 146m），所以排序与展示都用它。
     stores_out = []
+    nearby_raw = mcp_call("query-nearby-stores",
+                          {"beType": 1, "searchType": 2, "city": args.city,
+                           "keyword": args.keyword},
+                          token)
+    for st in (((extract_json(nearby_raw) or {}).get("data")) or []):
+        dist_m = to_int(st.get("distance"))
+        row = {
+            "id": str(st.get("storeCode", "")),
+            "name": st.get("storeName", ""),
+            "addr": st.get("address", ""),
+            "distM": dist_m,
+            "dist": round(dist_m / 1000.0, 2),
+            "hours": f"{st.get('businessStartTime','')}-{st.get('businessEndTime','')}",
+            "open": bool(st.get("businessStatus")),
+            "lat": st.get("latitude") or 0,
+            "lng": st.get("longitude") or 0,
+        }
+        # 配送费 / 起送门槛 / 免配送门槛：门店接口若返回就带上，不返回就不写。
+        # 前端只认这些真实字段，缺字段时不计配送费（并在界面标注「以结算页为准」），
+        # 绝不硬编码一个「6 元」让用户误以为那就是最终要付的钱。
+        fee = pick_num(st, ("deliveryFee", "shippingFee", "deliveryPrice", "freight"))
+        mino = pick_num(st, ("minOrderPrice", "minPrice", "startPrice", "minOrder"))
+        freeo = pick_num(st, ("freeDeliveryPrice", "freeShippingPrice", "freeFeeOver"))
+        if fee is not None and fee > 0:
+            row["fee"] = fee
+        if mino is not None and mino > 0:
+            row["min"] = mino
+        if freeo is not None and freeo > 0:
+            row["freeOver"] = freeo
+        stores_out.append(row)
+    stores_out.sort(key=lambda s: s.get("distM") or 999999)
+
     store_code, store_name = args.store_code, args.store_name
     if not store_code:
-        raw = mcp_call("query-nearby-stores",
-                       {"beType": 1, "searchType": 2, "city": args.city, "keyword": args.keyword},
-                       token)
-        data = ((extract_json(raw) or {}).get("data")) or []
-        for st in data:
-            row = {
-                "id": str(st.get("storeCode", "")),
-                "name": st.get("storeName", ""),
-                "addr": st.get("address", ""),
-                "dist": round((st.get("distance") or 0) / 1000, 2),
-                "hours": f"{st.get('businessStartTime','')}-{st.get('businessEndTime','')}",
-                "open": bool(st.get("businessStatus")),
-                "lat": st.get("latitude") or 0,
-                "lng": st.get("longitude") or 0,
-            }
-            # 配送费 / 起送门槛 / 免配送门槛：门店接口若返回就带上，不返回就不写。
-            # 前端只认这些真实字段，缺字段时不计配送费（并在界面标注「以结算页为准」），
-            # 绝不硬编码一个「6 元」让用户误以为那就是最终要付的钱。
-            fee = pick_num(st, ("deliveryFee", "shippingFee", "deliveryPrice", "freight"))
-            mino = pick_num(st, ("minOrderPrice", "minPrice", "startPrice", "minOrder"))
-            freeo = pick_num(st, ("freeDeliveryPrice", "freeShippingPrice", "freeFeeOver"))
-            if fee is not None and fee > 0:
-                row["fee"] = fee
-            if mino is not None and mino > 0:
-                row["min"] = mino
-            if freeo is not None and freeo > 0:
-                row["freeOver"] = freeo
-            stores_out.append(row)
         if not stores_out:
-            raise SystemExit("未查询到附近门店，请更换城市或关键词")
+            raise SystemExit(f"未查询到「{args.keyword}」附近的门店，请换城市或换地址关键词")
+        # 默认取离用户最近的一家（列表已按距离升序）
         store_code, store_name = stores_out[0]["id"], stores_out[0]["name"]
-        n_fee = sum(1 for s in stores_out if "fee" in s)
-        print(f"[1/6] 门店配送字段: {n_fee}/{len(stores_out)} 家返回了配送费"
-              f"（未返回的按「以结算页为准」处理，不臆造）")
+        print(f"[1/6] 门店列表按位置「{args.keyword}」搜索，共 {len(stores_out)} 家；"
+              f"菜单抓最近一家：{store_name}（{stores_out[0]['distM']} m）")
     else:
-        stores_out.append({"id": store_code, "name": store_name or store_code, "addr": "",
-                           "dist": 0, "hours": "", "open": True, "lat": 0, "lng": 0})
+        hit = [s for s in stores_out if s["id"] == store_code]
+        if hit:
+            store_name = store_name or hit[0]["name"]
+            print(f"[1/6] 门店列表按位置「{args.keyword}」搜索，共 {len(stores_out)} 家；"
+                  f"菜单抓指定门店：{store_name}（距该位置 {hit[0]['distM']} m）")
+        else:
+            # 指定了一家不在该位置附近的门店：仍按指定店抓菜单，但列表里要把它标出来，
+            # 否则用户会以为列表第一行就是他要下单的店。
+            stores_out.append({"id": store_code, "name": store_name or store_code, "addr": "",
+                               "distM": None, "dist": 0, "hours": "", "open": True,
+                               "lat": 0, "lng": 0, "offLocation": True})
+            print(f"[1/6] 指定门店 {store_code} 不在「{args.keyword}」的搜索结果里，"
+                  f"菜单按指定门店抓取，列表中已单独标记")
+    n_fee = sum(1 for s in stores_out if "fee" in s)
+    print(f"[1/6] 门店配送字段: {n_fee}/{len(stores_out)} 家返回了配送费"
+          f"（未返回的按「以结算页为准」处理，不臆造）")
 
-    print(f"[1/6] 门店: {store_name} ({store_code})，共 {len(stores_out)} 家")
+    # 位置上下文：页面要能说清「这份门店列表是按哪儿搜的」。
+    # 精确地址文本不写入快照（用户明确要求隐私），只保留城市 + 粗略区域 + 家数 + 时间。
+    location = {
+        "city": args.city,
+        "area": args.area or "",
+        "count": len(stores_out),
+        "nearestM": stores_out[0].get("distM") if stores_out and not stores_out[0].get("offLocation") else None,
+        "fetchedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "note": "门店按你填写的位置关键词实时搜索；关键词原文不写入快照（隐私）",
+    }
 
     # ---- 2. 菜单 ----
     raw = mcp_call("query-meals", {"storeCode": store_code, "beType": 1, "orderType": 1}, token)
@@ -2426,12 +2515,16 @@ def main():
         claimed_cnt += bool(a["claimed"])
 
     # ---- 卡包券的真实核价结果 ----
-    # query-my-coupons 不返回适用商品，所以用同标题的门店券核价结果回填；
-    # 匹配不上的（如「人气麦旋风买一送一」beTypes=[4]、「新人 7 折」）标记为
-    # 「未验证」，页面据此显示「需在结算页核销」，绝不假装能省。
+    # query-my-coupons **不返回适用商品**，所以要用「同一张券」在门店券里的核价结果回填。
+    # 匹配优先级：couponId（权威）> 标题。
+    # 踩过的坑：只按标题匹配时，「1024“码”力翻倍」在 10:30 生效边界上没被抓到，
+    # 页面就写「未能在门店券里找到适用商品，需在结算页核销」，而它其实能用
+    # （龙焰鸡腿堡两件套 ¥35.00 → ¥20.48，到店自取实测）。卡包的 id 与门店券的
+    # couponId 是同一个值，按 id 匹配就不会漏。
+    real_by_id = {c.get("id"): c for c in coupons_out if c.get("id")}
     real_by_title = {c.get("name", ""): c for c in coupons_out}
     for m in my_coupons:
-        src = real_by_title.get(m.get("name", ""))
+        src = real_by_id.get(m.get("couponId") or "") or real_by_title.get(m.get("name", ""))
         if src and src.get("realOk") is not None:
             m["realOk"] = src.get("realOk")
             m["realDiscount"] = src.get("realDiscount")
@@ -2439,16 +2532,21 @@ def main():
             m["realOrig"] = src.get("realOrig")
             m["realMsg"] = src.get("realMsg", "")
             m["skus"] = src.get("skus")
+            m["matchedBy"] = "id" if real_by_id.get(m.get("couponId") or "") else "title"
         else:
             m["realOk"] = None
             m["realDiscount"] = None
             m["realPay"] = None
             m["realOrig"] = None
-            m["realMsg"] = "未能在门店券里找到适用商品，需在结算页核销"
+            m["realMsg"] = coupon_unusable_reason(m)
             m["skus"] = []
+            m["matchedBy"] = ""
     n_verified = sum(1 for m in my_coupons if m.get("realOk") is not None)
     print(f"[5a] 卡包券核价: {n_verified}/{len(my_coupons)} 张已验证"
-          + (f"，{len(my_coupons) - n_verified} 张需结算页核销" if len(my_coupons) > n_verified else ""))
+          + (f"，{len(my_coupons) - n_verified} 张有明确不可用原因" if len(my_coupons) > n_verified else ""))
+    for m in my_coupons:
+        if m.get("realOk") is None:
+            print(f"      · {m.get('name')} → {m.get('realMsg')}")
 
     # 提醒点击 → 菜单选品映射（券标题 → 菜单编码）。
     # 优先级必须是：券自带 SKU > 门店券 applyTo > 标题精确匹配 > 2-gram 近似匹配。
@@ -2613,6 +2711,9 @@ def main():
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "store": {"code": store_code, "name": store_name},
         "stores": stores_out,
+        # 门店列表是按「哪个位置」搜出来的 —— 页面必须能说清，否则用户以为列表跟自己的位置有关。
+        # 只存城市 + 粗略区域 + 家数 + 最近距离，精确地址文本不落盘（隐私）。
+        "location": location,
         "deliveryAddressCount": delivery_addr_count,
         "deliveryStores": delivery_stores,
         "delivery": delivery,
