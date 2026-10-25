@@ -397,7 +397,9 @@ FALLBACK_NOTE = {
 #    板烧四件套 菜单 28 / 划线 57，非会员按 57 收（calculate-price 实测）。
 #    所以场景方案里「四件套 ¥28 + 奶铁 ¥13.9 = ¥41.9」对没开卡的账号是假的，
 #    真实要付 ¥70.9。凡对外报价，一律用结算价，会员价只作为「有卡还能再省」的附注。
-SET_RE = re.compile(r"两件套|四件套|三件套|套餐|乐园餐|随心选|双人餐|随心拼|拼盘|四宫格|七件任选")
+# 注意「3件套」这种阿拉伯数字写法：只有券专属 SKU 用（麦辣鸡腿堡3件套），
+# 漏掉它会把套餐当成主食，进而拼出「三件套 + 一杯饮料」的两杯饮料怪单。
+SET_RE = re.compile(r"[0-9一二三四五六七八九十]件套|套餐|乐园餐|随心选|双人餐|随心拼|拼盘|四宫格|七件任选")
 SET_SUFFIX_RE = re.compile(r"(两件套|四件套|三件套|套餐|乐园餐|随心选|双人餐|随心拼|四宫格小食盘双人餐)$|（\d+件任选）$")
 # 配餐基准：只用菜单里真实存在、且官方给了营养值的条目，不臆造数字
 SET_PART_KEYS = ("fries", "coke", "pie")
@@ -1274,8 +1276,19 @@ def build_savings(menu: list, coupons: list) -> dict:
         # 但套餐（三件套/套餐/四件套）的饮品在套餐里，数据层面没有拆出饮品 SKU，
         # 所以 kind="set" 直接视为「有饮品」—— 否则 30 元档会漏掉
         # 「大堡口福三件套 ¥22.9（省 24.1）」这种明显最优的答案。
+        # 套餐已含饮料（三件套/四件套都有可乐），再单加一杯饮品等于重复点单。
+        # 实测 ≤¥50 档曾给出「麦辣鸡腿堡3件套 ¥46 + 阳光橙麦炫酷 ¥13」——
+        # 两杯饮料一单，且套餐热量还没算进去，属于「凑预算凑出来的怪单」。
+        def redundant_drink(r):
+            names = [i["name"] for i in r["items"]]
+            has_set = any(SET_RE.search(n) for n in names)
+            extra_drinks = sum(1 for i, n in zip(r["items"], names)
+                               if i["code"] in drink_codes and not SET_RE.search(n))
+            return has_set and extra_drinks >= 1
+
         meal = [r for r in band
-                if has_code(r, main_codes)
+                if not redundant_drink(r)
+                and has_code(r, main_codes)
                 and (cap < 30 or has_code(r, drink_codes) or r.get("kind") == "set")] or band
         if not meal:
             budgets.append({"cap": cap, "row": None, "count": 0})
@@ -1803,7 +1816,7 @@ MCP_TOOLS = {
             {"name": "delivery-create-address", "desc": "⚠️ 新建配送地址，返回 addressId",
              "args": "address、addressDetail、city、contactName、phone(11 位纯数字)；可选 gender",
              "example": 'delivery-create-address({"address":"深圳市南山区科技园","addressDetail":"1 栋 101",'
-                        '"city":"深圳市","contactName":"张三","phone":"13800138000"})'},
+                        '"city":"深圳市","contactName":"<联系人>","phone":"<手机号>"})'},
         ]},
         {"id": "member", "name": "会员 · 积分 · 商城", "icon": "🎁", "items": [
             {"name": "query-my-account", "desc": "账号信息与积分余额",
@@ -1906,6 +1919,23 @@ def sanitize_snapshot(payload: dict) -> dict:
         if isinstance(c, dict):
             c.pop("couponId", None)
             c.pop("couponCode", None)
+    # 外送链路：收货地址属个人隐私，快照里只允许留「可配送门店 + 真实金额」。
+    # （2026-10-25 用户接入了真实测试地址，明确要求不得上传，这里做强制剥离，
+    #   即使上游以后给 delivery 塞了地址字段，也不会写字面量出去。）
+    PII_KEYS = ("addressId", "address", "fullAddress", "addressDetail", "contactName",
+                "phone", "mobile", "city", "addresses", "addr", "contact")
+    dl = payload.get("delivery")
+    if isinstance(dl, dict):
+        for k in PII_KEYS:
+            dl.pop(k, None)
+        for st in (dl.get("stores") or []):
+            if isinstance(st, dict):
+                for k in PII_KEYS:
+                    st.pop(k, None)
+    for st in (payload.get("deliveryStores") or []):
+        if isinstance(st, dict):
+            for k in PII_KEYS:
+                st.pop(k, None)
     return payload
 
 
@@ -1995,6 +2025,169 @@ def repick_from_cache():
               f" [{tag}] 跨场景商品 {outside} 件")
 
 
+def fetch_delivery(token, nutri):
+    """抓外送链路：地址 → 可配送门店 → 外送门店菜单 → 真实配送费。
+
+    单独成函数有两个原因：
+      1. 换收货地址后只需刷新外送部分（--delivery-only），不必重抓整份菜单；
+      2. 这段有三个易踩的坑（见下），独立出来才能单独验证。
+
+    三个坑（2026-10-25 实测，全部踩过）：
+      ① delivery-query-stores 的 data 是**列表**。旧代码按 dict 写 d.get(...)，
+         直接抛 AttributeError 被 except 吞掉 → 账号里明明有地址，外送门店也永远 0 家。
+      ② 外送门店的菜单是**独立一份**：板烧到店货号 1406 ¥23.5、外送货号 901406 ¥27。
+         拿外送订单套到店菜单会低报价，甚至出现「商品 0 元、只收 6 元配送费」。
+      ③ 配送费不在门店对象里，只能靠 calculate-price 的 deliveryPrice 实测（600 = ¥6）。
+
+    隐私：addressId 只在本次调用内使用，返回结构里不含任何地址 / 联系人 / 电话。
+    """
+    delivery = {
+        "ok": False, "reason": "", "fetchedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "addressCount": 0, "stores": [], "menu": [], "menuCount": 0,
+        "fee": None, "packFee": None, "min": None, "freeOver": None, "probe": None,
+        "note": "详细地址 / 联系人 / 电话 / addressId 一律不写入快照（只保留门店与金额）",
+    }
+    try:
+        ad = mcp_call_obj("delivery-query-addresses", {}, token)
+        addrs = ((ad.get("data") or {}).get("addresses")) or []
+        delivery["addressCount"] = len(addrs)
+        if not addrs:
+            delivery["reason"] = ("账号下没有收货地址：页面填一次（存本机），"
+                                  "AI 会调 delivery-create-address 建档")
+            return delivery
+        addr_id = addrs[0].get("addressId")    # 只在本次抓取内使用，绝不落盘
+        ds = mcp_call_obj("delivery-query-stores", {"beType": 2, "addressId": addr_id}, token)
+        raw_ds = ds.get("data")
+        if isinstance(raw_ds, dict):
+            raw_ds = (raw_ds.get("stores") or raw_ds.get("storeList")
+                      or raw_ds.get("storeInfos") or raw_ds.get("list") or [])
+        for st in (raw_ds if isinstance(raw_ds, list) else [])[:6]:
+            if not isinstance(st, dict):
+                continue
+            sid = str(st.get("storeCode") or st.get("code") or st.get("storeId") or "")
+            if not sid:
+                continue
+            hrs = f"{st.get('businessStartTime') or ''}-{st.get('businessEndTime') or ''}"
+            delivery["stores"].append({
+                "id": sid,
+                "beCode": str(st.get("beCode") or ""),
+                "name": st.get("storeName") or st.get("name") or "麦当劳外送门店",
+                "hours": hrs.strip("-"),
+                "open": st.get("businessStatus", True) is not False,
+                "fee": None,
+            })
+        if not delivery["stores"]:
+            delivery["reason"] = "该地址查不到可配送门店（可能超出配送范围）"
+            return delivery
+
+        first = delivery["stores"][0]
+        # 外送菜单：beType=2 / orderType=2，且必须带 beCode，否则 60006。
+        rawm = mcp_call("query-meals", {"storeCode": first["id"], "beType": 2,
+                                        "orderType": 2, "beCode": first["beCode"]}, token)
+        md = ((extract_json(rawm) or {}).get("data")) or {}
+        dmenu = build_menu(md.get("categories") or [], md.get("meals") or {}, nutri,
+                           delivery=True)
+        if dmenu:
+            enrich_set_nutrition(dmenu)    # 套餐同样只给主堡热量，这里一起补
+            delivery["menu"] = dmenu
+            delivery["menuCount"] = len(dmenu)
+            delivery["ok"] = True
+        else:
+            delivery["reason"] = "外送门店菜单为空（可能不在配送时段）"
+
+        # 真实配送费：每家外送店各核价一次，只买一件最便宜的非酱料商品。
+        # 商品在该店不可售时接口返回 productPrice=0（只收配送费）→ 换下一个候选再试。
+        probe_pool = [x for x in dmenu
+                      if x.get("price") and not x.get("couponOnly")
+                      and "酱" not in x["name"]]
+        probe_pool.sort(key=lambda x: x["price"])
+        probes = probe_pool[:6]
+        for s in delivery["stores"]:
+            for probe_item in probes:
+                try:
+                    cp = mcp_call_obj("calculate-price", {
+                        "storeCode": s["id"], "beCode": s["beCode"],
+                        "orderType": 2, "beType": 2,
+                        "items": [{"productCode": probe_item["code"], "quantity": 1}],
+                    }, token)
+                except Exception:
+                    continue
+                if not cp.get("success"):
+                    continue
+                dd = cp.get("data") or {}
+                prod = round(to_float(dd.get("productPrice")) / 100.0, 2)
+                if prod <= 0:
+                    continue          # 该商品在这家外送店不可售，换下一个
+                fee = round(to_float(dd.get("deliveryPrice")) / 100.0, 2)
+                pack = 0.0
+                for row in (dd.get("productList") or []):
+                    if "打包" in str(row.get("productName") or ""):
+                        pack = round(to_float(row.get("subtotal")) / 100.0, 2)
+                s["fee"] = fee
+                if delivery["probe"] is None:
+                    delivery["fee"] = fee
+                    delivery["packFee"] = pack
+                    delivery["probe"] = {
+                        "code": probe_item["code"], "name": probe_item["name"],
+                        "storeId": s["id"], "beCode": s["beCode"],
+                        "menuPrice": probe_item["price"], "productPrice": prod,
+                        "deliveryFee": fee, "packFee": pack,
+                        "pay": round(to_float(dd.get("price")) / 100.0, 2),
+                    }
+                break
+    except Exception as e:
+        delivery["reason"] = f"抓取异常：{e}"
+    return delivery
+
+
+def build_menu(cats, meal_map, nutri, delivery=False):
+    """把 query-meals 的 categories/meals 归一化成菜单行。
+
+    到店（beType=1）与外送（beType=2）必须走同一套归一化，否则两边字段口径
+    会漂移（外送菜单实测是独立一份：板烧到店货号 1406 ¥23.5、外送货号
+    901406 ¥27，价格与货号都不同，直接套用到店菜单会低报价）。
+    """
+    out, seen = [], set()
+    for cat in cats:
+        cname = (cat.get("name") or "").replace("\n", "").strip()
+        for m in (cat.get("meals") or []):
+            code = str(m.get("code") or "")
+            if not code or code in seen:
+                continue
+            seen.add(code)
+            d = meal_map.get(code) or {}
+            name = d.get("name") or code
+            n = match_nutrition(name, nutri) or {}
+            raw_tags = m.get("tags") or []
+            flat_tags = [str(t) for t in raw_tags]
+            # 关键：菜单 currentPrice 有两种口径
+            #   ① 普通商品 = 直接购买价（calculate-price 的 productPrice 与之一致）
+            #   ② 带「麦金卡」标签的商品 = 付费会员卡价；没有该权益的账号核价会按
+            #      originalPrice 收（实测 28 → 57、62.9 → 122.5），必须单独标记，
+            #      否则页面显示的应付金额会低于真实结算价，属于「算错钱」。
+            is_member_price = any("麦金卡" in t for t in flat_tags)
+            item = {
+                "code": code, "name": name, "cat": cname,
+                "price": to_float(d.get("currentPrice")),
+                "origin": to_float(d.get("originalPrice")),
+                "memberPrice": is_member_price,
+                "kcal": to_int(n.get("energyKcal")),
+                "kcalEstimated": bool(n.get("kcalEstimated")),
+                "protein": round(to_float(n.get("protein")), 1),
+                "fat": round(to_float(n.get("fat")), 1),
+                "carb": round(to_float(n.get("carb")), 1),
+                "sodium": to_int(n.get("sodium")),
+                "image": d.get("image") or "",
+                "tags": raw_tags,
+                "discountType": d.get("discountType"),
+            }
+            if delivery:
+                item["deliveryOnly"] = True
+            item["scenes"] = classify_scenes(item)
+            out.append(item)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="深圳市")
@@ -2007,6 +2200,8 @@ def main():
                     help="离线重算场景组合（不联网，只用现有 assets/data.js 快照）")
     ap.add_argument("--rank", action="store_true",
                     help="离线重算省钱榜单（不联网，只用现有 assets/data.js 快照）")
+    ap.add_argument("--delivery-only", action="store_true",
+                    help="只刷新外送部分（地址 / 可配送门店 / 外送菜单 / 配送费），不动到店菜单与榜单")
     args = ap.parse_args()
 
     if args.rank:
@@ -2015,6 +2210,26 @@ def main():
 
     if args.repick:
         repick_from_cache()
+        return
+
+    if args.delivery_only:
+        payload = _load_cache()
+        token = os.environ.get("MCD_MCP_TOKEN", "")
+        if not token:
+            raise SystemExit("错误: 未设置环境变量 MCD_MCP_TOKEN")
+        token = _norm_token(token)
+        raw_n = mcp_call("list-nutrition-foods", {}, token)
+        nutri = parse_nutrition(raw_n)
+        dl = fetch_delivery(token, nutri)
+        payload["delivery"] = dl
+        payload["deliveryStores"] = dl["stores"]
+        payload["deliveryAddressCount"] = dl["addressCount"]
+        print(f"[外送] 地址 {dl['addressCount']} 个 / 门店 {len(dl['stores'])} 家 / "
+              f"菜单 {dl['menuCount']} 条 / 配送费 "
+              + (f"¥{dl['fee']}" if dl["fee"] is not None else "未取到")
+              + ("" if dl["ok"] else f"（{dl['reason']}）"))
+        out = _write_cache(payload)
+        print(f"已写回外送数据: {out}")
         return
 
     token = os.environ.get("MCD_MCP_TOKEN", "")
@@ -2312,42 +2527,8 @@ def main():
     print(f"[5/6] 提醒源: 卡包券 {len(my_coupons)} / 可领券 {len(available)}（其中已领 {claimed_cnt}）/ 积分 {account.get('availablePoint','0')} / 奖品 {len(prizes)} / 活动 {len(campaigns)}")
 
     # ---- 6. 组装 ----
-    menu_out, seen = [], set()
-    for cat in cats:
-        cname = (cat.get("name") or "").replace("\n", "").strip()
-        for m in (cat.get("meals") or []):
-            code = str(m.get("code") or "")
-            if not code or code in seen:
-                continue
-            seen.add(code)
-            d = meal_map.get(code) or {}
-            name = d.get("name") or code
-            n = match_nutrition(name, nutri) or {}
-            raw_tags = m.get("tags") or []
-            flat_tags = [str(t) for t in raw_tags]
-            # 关键：菜单 currentPrice 有两种口径
-            #   ① 普通商品 = 直接购买价（calculate-price 的 productPrice 与之一致）
-            #   ② 带「麦金卡」标签的商品 = 付费会员卡价；没有该权益的账号核价会按
-            #      originalPrice 收（实测 28 → 57、62.9 → 122.5），必须单独标记，
-            #      否则页面显示的应付金额会低于真实结算价，属于「算错钱」。
-            is_member_price = any("麦金卡" in t for t in flat_tags)
-            item = {
-                "code": code, "name": name, "cat": cname,
-                "price": to_float(d.get("currentPrice")),
-                "origin": to_float(d.get("originalPrice")),
-                "memberPrice": is_member_price,
-                "kcal": to_int(n.get("energyKcal")),
-                "kcalEstimated": bool(n.get("kcalEstimated")),
-                "protein": round(to_float(n.get("protein")), 1),
-                "fat": round(to_float(n.get("fat")), 1),
-                "carb": round(to_float(n.get("carb")), 1),
-                "sodium": to_int(n.get("sodium")),
-                "image": d.get("image") or "",
-                "tags": raw_tags,
-                "discountType": d.get("discountType"),
-            }
-            item["scenes"] = classify_scenes(item)
-            menu_out.append(item)
+    menu_out = build_menu(cats, meal_map, nutri)
+    seen = {m["code"] for m in menu_out}
 
     # 空菜单守卫：非营业时间 query-meals 会返回 600057「门店可能已关闭或不在营业时间」，
     # 菜单 0 条。旧版本不看这个直接写文件，会把上一份完整快照覆盖成空菜单
@@ -2415,50 +2596,13 @@ def main():
         tag = "兜底" if s.get("fallback") else "命中"
         print(f"      {s['icon']} {s['name']}: {s['count']} 品 / {len(s['bundles'])} 组合 [{tag}]")
 
-    # 外送链路：delivery-query-stores 必须带 addressId，所以先看账号有没有收货地址。
-    # 没有地址 → deliveryStores=[]，页面提示「先填收货地址」；
-    # 有地址 → 把可配送门店连同 beCode / 配送费 / 起送门槛一起抓下来。
-    # 这一步以前完全没做，导致 data.js 里没有外送 beCode，页面只能永远写
-    # 「配送费以结算页为准」—— 不是接口不给，是我们从来没问。
-    delivery_addr_count = 0
-    delivery_stores = []
-    try:
-        ad = mcp_call_obj("delivery-query-addresses", {}, token)
-        addrs = ((ad.get("data") or {}).get("addresses")) or []
-        delivery_addr_count = len(addrs)
-        addr_id = (addrs[0].get("addressId") if addrs else None)
-        if addr_id:
-            ds = mcp_call_obj("delivery-query-stores", {"beType": 2, "addressId": addr_id}, token)
-            d = ds.get("data") or {}
-            raw_ds = (d.get("stores") or d.get("storeList")
-                      or d.get("storeInfos") or d.get("list") or [])
-            for st in raw_ds[:12]:
-                if not isinstance(st, dict):
-                    continue
-                sid = str(st.get("storeCode") or st.get("code") or st.get("storeId") or "")
-                if not sid:
-                    continue
-                dist = pick_num(st, ("distance", "dist", "distanceValue"))
-                if dist is not None and dist > 50:   # 接口单位可能是米
-                    dist = round(dist / 1000, 2)
-                delivery_stores.append({
-                    "id": sid,
-                    "name": st.get("storeName") or st.get("name") or "麦当劳外送门店",
-                    "addr": st.get("address") or st.get("storeAddress") or "",
-                    "dist": dist if dist is not None else 0,
-                    "hours": st.get("businessTime") or st.get("openTime") or "",
-                    "open": st.get("isOpen", True) is not False,
-                    "beCode": str(st.get("beCode") or ""),
-                    "fee": pick_num(st, ("deliveryFee", "shippingFee", "deliveryPrice", "fee")),
-                    "min": pick_num(st, ("minOrderPrice", "minOrder", "startPrice", "min")),
-                    "freeOver": pick_num(st, ("freeDeliveryPrice", "freeShippingPrice",
-                                              "freeFeeOver", "freeOver")),
-                })
-    except Exception as e:
-        print(f"[6c] 外送门店抓取跳过：{e}")
-    print(f"[6c] 外送地址 {delivery_addr_count} 个 / 可配送门店 {len(delivery_stores)} 家"
-          + ("" if delivery_addr_count
-             else "（没填地址：先在页面填收货地址，再重跑本脚本即可拉到外送门店与真实配送费）"))
+    delivery = fetch_delivery(token, nutri)
+    delivery_stores = delivery["stores"]
+    delivery_addr_count = delivery["addressCount"]
+    print(f"[6c] 外送: 地址 {delivery_addr_count} 个 / 门店 {len(delivery_stores)} 家 / "
+          f"菜单 {delivery['menuCount']} 条 / 配送费 "
+          + (f"¥{delivery['fee']}" if delivery["fee"] is not None else "未取到")
+          + ("" if delivery["ok"] else f"（{delivery['reason']}）"))
 
     # 省钱榜单 / MCP 工具清单必须由联网流程一并产出。
     # 旧版本只在 --rank / --repick 里写这两个字段，导致「按文档跑一次 build_data.py」
@@ -2471,6 +2615,7 @@ def main():
         "stores": stores_out,
         "deliveryAddressCount": delivery_addr_count,
         "deliveryStores": delivery_stores,
+        "delivery": delivery,
         "menu": menu_out,
         "coupons": coupons_out,
         "myCoupons": my_coupons,

@@ -463,13 +463,47 @@ body {
 .store .sfee { color: var(--acc); font-weight: 700; }
 .store {
   border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px;
-  margin-bottom: 8px; cursor: pointer; background: var(--surface-2);
+  margin-bottom: 8px; background: var(--surface-2);
   transition: all var(--dur-1) ease;
 }
-.store:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
+.store:hover { box-shadow: var(--shadow-2); border-color: var(--line-strong); }
 .store.on { border-color: var(--acc); background: linear-gradient(140deg, rgba(255,199,44,.13), rgba(255,199,44,.03)); }
+/* 未抓菜单的门店不是可选项：虚线 + 降透明度，避免又被理解成「点一下能切」 */
+.store.idle { border-style: dashed; opacity: .82; }
 .store .sname { font-size: 12px; font-weight: 700; line-height: 1.4; }
 .store .smeta { font-family: var(--num); font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+.sbadge {
+  display: inline-block; margin-top: 7px; font-family: var(--mono);
+  font-size: 9.5px; letter-spacing: .02em; padding: 2px 7px; border-radius: 100px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.sbadge.on { border-color: rgba(37,208,122,.55); color: var(--ok); background: rgba(37,208,122,.08); }
+.store .sacts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+.store .sacts .nav-btn { margin-top: 0; }
+.store .sacts .mini-btn { margin-left: 0; }
+.storecap {
+  font-family: var(--num); font-size: 10px; color: var(--muted);
+  line-height: 1.65; padding: 8px 9px; margin: 8px 0;
+  border-left: 2px solid var(--line-strong); background: rgba(255,255,255,.02);
+}
+.storecap b { color: var(--text); }
+.dcheck {
+  font-family: var(--num); font-size: 10px; line-height: 1.7; color: var(--muted);
+  border: 1px dashed var(--line-strong); border-radius: var(--r-sm);
+  padding: 8px 9px; margin-top: 9px;
+}
+.dcheck b { color: var(--acc); }
+.dcheck.warn { border-color: rgba(255,138,44,.5); color: var(--warn); }
+.snote {
+  font-family: var(--mono); font-size: 9.5px; color: var(--muted);
+  margin-top: 9px; line-height: 1.7; border-top: 1px dashed var(--line); padding-top: 7px;
+}
+.modebanner {
+  font-family: var(--num); font-size: 11px; line-height: 1.75; color: var(--warn);
+  border: 1px dashed rgba(255,138,44,.55); border-radius: var(--r-md);
+  background: rgba(255,138,44,.07); padding: 10px 12px; margin-bottom: 12px;
+}
+.modebanner b { color: var(--acc); }
 .nav-btn {
   display: inline-block; margin-top: 6px; font-family: var(--mono); font-size: 10.5px;
   font-weight: 700; background: var(--acc); color: var(--bg); padding: 5px 9px;
@@ -634,6 +668,9 @@ body {
 .rem.info { border-left-color: var(--hud); background: rgba(0,229,255,.06); }
 .rem .ri { font-size: 14px; line-height: 1.3; }
 .rem .rbody { flex: 1; min-width: 0; }
+/* .rt / .rd 是 <span>（inline）：inline 元素上 overflow/text-overflow 不生效，
+   长提醒会把 .remlist 撑出横向滚动条（窄屏特别明显）。改成 block 才能省略号截断。 */
+.rem .rt, .rem .rd { display: block; }
 .rem .rt {
   font-size: 11.5px; font-weight: 700; line-height: 1.35;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1112,6 +1149,10 @@ body {
         <div id="shakeResult"></div>
       </section>
 
+      <!-- 外送模式下这两块（场景 / 榜单）仍是到店口径，必须在最上面说清楚，
+           否则用户会拿外送订单去套到店价格，差 3.5 元/件这种差价就是这么来的。 -->
+      <div class="modebanner" id="modeBanner" style="display:none"></div>
+
       <section class="panel reveal d1">
         <h2><span class="idx">01</span> 选择场景 <span class="tag">// 点场景卡打开推荐设置</span></h2>
         <div class="scenes" id="scenes"></div>
@@ -1158,7 +1199,7 @@ body {
       </section>
 
       <section class="panel reveal d2">
-        <h2>📍 门店 <span class="tag">// 点击切换</span></h2>
+        <h2>📍 门店 <span class="tag">// 当前门店 · 其余可导航</span></h2>
         <div id="stores"></div>
       </section>
 
@@ -1427,6 +1468,56 @@ function itemByCode(c) {
   for (var i = 0; i < D.menu.length; i++) if (D.menu[i].code === c) return D.menu[i];
   return null;
 }
+
+/* ---------- 到店 / 外送 两套菜单 ----------
+   外送门店的菜单是**独立一份**，货号和价格都与到店不同（2026-10-25 实测：
+   板烧到店 1406 ¥23.5 / 外送 901406 ¥27；麦旋风 16.5 / 17.0）。
+   所以外送模式必须整池换掉，不能沿用 D.menu 的价格去算外送单 ——
+   否则会出现「页面 ¥23.5、结算 ¥27」这种算错钱的问题。 */
+function DL() { return D.delivery || {}; }
+function deliveryMenu() {
+  var m = DL().menu || [];
+  return m.length ? m : null;
+}
+function menuIsDelivery() {
+  return state.fulfill === "delivery" && !!deliveryMenu();
+}
+/* 切池时把不属于这一池的商品清掉：两套货号不通用，混在一起会算出不存在的组合 */
+function applyMenuPool() {
+  if (!D._homeMenu) D._homeMenu = D.menu;
+  var want = menuIsDelivery() ? deliveryMenu() : D._homeMenu;
+  if (!want || D.menu === want) return 0;
+  D.menu = want;
+  var removed = 0;
+  state.members.forEach(function (m) {
+    Object.keys(m.items).forEach(function (c) {
+      if (!itemByCode(c)) { delete m.items[c]; removed++; }
+    });
+  });
+  var hasCat = want.some(function (x) { return x.cat === state.cat; });
+  state.cat = hasCat ? state.cat : ((want[0] && want[0].cat) || "");
+  state.scene = "all";
+  return removed;
+}
+/* 榜单 / 场景 / 摇摇乐都是「到店口径」算出来的（券与套餐都按到店门店核价）。
+   在外送模式下点它们会让金额对不上，所以先切回自取再执行。
+   返回是否发生了切换 —— 由调用方把原因拼进它自己的 toast，
+   否则「已切回自取」会被后一条「已按…点单」立刻覆盖，用户看不到解释。 */
+function ensurePickupFor() {
+  if (state.fulfill === "pickup") return false;
+  state.fulfill = "pickup";
+  applyMenuPool();
+  render();
+  return true;
+}
+var BACK_TXT = "（已从外送切回「到店自取」口径）";
+function updateHdrStat() {
+  var el = $("#hdrStat");
+  if (!el) return;
+  var withKcal = D.menu.filter(function (m) { return (m.kcal || 0) > 0; }).length;
+  el.textContent = D.menu.length + " 品 · " + withKcal + " 条热量" +
+    (menuIsDelivery() ? " · 外送菜单" : "");
+}
 function toast(msg) {
   var t = $("#toast");
   if (!t) { return; }
@@ -1668,7 +1759,10 @@ function compute() {
   var feeFree = freeOver > 0 && listTotal >= freeOver;
   var fee = (listTotal <= 0 || feeFree) ? 0 : feeBase;
   var feeToFree = (freeOver > 0 && listTotal > 0 && !feeFree) ? (freeOver - listTotal) : 0;
-  var pay = goodsPay + fee;
+  /* 打包服务费：外送订单由 calculate-price 单独返回（本店实测 ¥0 = 免收），
+     有值就必须计入应付，否则又是一笔「算少了」的钱。 */
+  var packFee = (!pickup && listTotal > 0) ? (Number(DL().packFee) || 0) : 0;
+  var pay = goodsPay + fee + packFee;
   return {
     lines: lines,
     origin: originTotal,          // 划线原价合计（用于展示「原价」）
@@ -1677,7 +1771,7 @@ function compute() {
     kcal: kcal, protein: Math.round(p * 10) / 10, fat: Math.round(f * 10) / 10,
     carb: Math.round(cb * 10) / 10, sodium: sodium,
     goodsPay: goodsPay,
-    fee: fee, pay: pay,
+    fee: fee, packFee: packFee, pay: pay,
     pickup: pickup,
     feeEstimated: feeEstimated,              // 配送费是否来自预估值（门店未提供）
     feeFree: feeFree,                        // 是否已触发免配送
@@ -2306,6 +2400,9 @@ function saveAddr(a) {
 function renderStores() {
   var pickup = state.fulfill === "pickup";
   var a = state.addr || null;
+  var dl = DL();
+  var snapCode = (D.store && D.store.code) || "";
+  var snapName = (D.store && D.store.name) || "";
 
   /* 履约方式放在最上面：这一项直接决定有没有配送费、有没有起送门槛，
      比选哪家店更影响最终金额，不放到最显眼的位置用户就会算错账。 */
@@ -2315,50 +2412,76 @@ function renderStores() {
     '</div>' +
     '<div class="fhint">' + (pickup
       ? "自取：免配送费、无起送门槛，合计就是商品金额。"
-      : (a
-        ? "外送：地址填在下面就行，AI 会自动调 delivery-create-address 建档并下单，不用去麦当劳 App。"
-        : "外送：先填一次收货地址（存在本机），之后点单 AI 会自动建档、选可配送门店、核价、下单。")) +
+      : "外送：地址填在下面就行，AI 会自动调 delivery-create-address 建档并下单，不用去麦当劳 App。") +
     '</div>';
 
-  /* 外送地址卡：绝不写「请去 App 添加地址」——那是上一版最劝退的一句话，
-     而 delivery-create-address 本来就是我们自己能调的接口。 */
+  /* 外送地址卡：绝不写「请去 App 添加地址」——而 delivery-create-address
+     本来就是我们自己能调的接口。 */
   if (!pickup) {
     if (a) {
       head += '<div class="addrbox has">' +
-        '<div class="addr-line">📍 <b>' + a.contactName + '</b>' +
-        (a.gender ? " " + a.gender : "") + ' · <span class="aph">' + maskPhone(a.phone) + '</span></div>' +
-        '<div class="addr-sub">' + a.city + ' ' + a.address + ' ' + a.addressDetail + '</div>' +
+        '<div class="addr-line">📍 <b>' + escHtml(a.contactName) + '</b>' +
+        (a.gender ? " " + escHtml(a.gender) : "") + ' · <span class="aph">' + maskPhone(a.phone) + '</span></div>' +
+        '<div class="addr-sub">' + escHtml(a.city) + " " + escHtml(a.address) + " " + escHtml(a.addressDetail) + '</div>' +
         '<div class="addr-act">' +
         '<button class="btn ghost" data-addr-edit="1">改地址</button>' +
         '<button class="btn" data-addr-cmd="1">生成外送指令</button>' +
         '</div></div>';
     } else {
+      /* 快照里的外送门店是用「另一个地址」抓的（账号侧已有 N 个），
+         但本机没存地址 —— 不能简单写「还没有收货地址」，那样和下面的门店列表自相矛盾。 */
       head += '<div class="addrbox">' +
-        '<div class="addr-line">还没有收货地址</div>' +
-        '<div class="addr-sub">填一次就存在本机浏览器里；点单时 AI 会拿它调 delivery-create-address 建档。</div>' +
+        '<div class="addr-line">本机还没填收货地址' +
+        ((DL().addressCount || 0) > 0 ? '（快照用的是账号里另存的 ' + DL().addressCount + ' 个地址之一）' : '') +
+        '</div>' +
+        '<div class="addr-sub">填一次就存在本机浏览器里；点单时 AI 会拿它调 delivery-create-address 建档。' +
+        '换成你的地址后，下面的门店与配送费要重跑一次才会变成你的（点「改地址」保存即可）。</div>' +
         '<div class="addr-act"><button class="btn" data-addr-edit="1">+ 填写收货地址</button></div>' +
         '</div>';
     }
   }
 
-  /* 外送用 delivery-query-stores 的门店（带 beCode 与真实配送费）。
-     拿不到外送门店时**不要**把到店门店顶上来充数 —— 两套编码不通用，
-     用户会以为「外送也能点这家店」，实际下单必失败。宁可空着说清楚。 */
-  var hasDelivery = !pickup && (D.deliveryStores || []).length;
-  var pool = (!pickup && hasDelivery) ? D.deliveryStores : D.stores;
-
-  if (!pickup && !hasDelivery) {
-    $("#stores").innerHTML = head +
-      '<div class="fhint" style="margin-top:10px;line-height:1.8">' +
-      '可配送门店要按地址查，<b style="color:var(--acc)">填完地址点「生成外送指令」</b>后，' +
-      'AI 会调 delivery-query-stores 拉回真实门店（含 beCode 与配送费）。' +
-      '<br>在那之前这里不列到店门店 —— 到店和外送是两套门店编码，混用会下单失败。' +
-      '</div>';
-    return;
+  /* ---------- 门店列表 ----------
+     上一版这里是「📍 门店 // 点击切换」，点一下弹「已切换门店」——但菜单、
+     券、榜单全都来自快照那一家的数据，切了等于没切，属于**骗人**。
+     现在按事实展示：
+       · 只有 1 家店的菜单被真正抓下来（到店 1 家 / 外送 1 家，两套编码不通用）；
+       · 这家叫「当前门店」，标出菜单已抓取，并且是价格 / 券 / 榜单的唯一依据；
+       · 其余门店只提供「导航到店」和「复制地址」，不再假装可选；
+       · 想换店 → 复制切店指令重跑一次（会重抓菜单、券、核价、榜单）。 */
+  var list, activeId, kindTxt;
+  if (pickup) {
+    list = D.stores || [];
+    activeId = snapCode;
+    kindTxt = "到店自取";
+  } else {
+    list = dl.stores || [];
+    activeId = (dl.probe && dl.probe.storeId) || (list[0] && list[0].id) || "";
+    kindTxt = "外送到家";
   }
 
-  $("#stores").innerHTML = head + pool.map(function (s) {
-    var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || ""));
+  var block = '';
+  if (pickup) {
+    block += '<div class="storecap">菜单只抓了<b>快照门店</b>一家。' +
+      '其他门店可以导航过去，但价格与券要重抓才会准。</div>';
+  } else if (!(dl.stores || []).length) {
+    block += '<div class="fhint" style="margin-top:10px;line-height:1.8">' +
+      (dl.addressCount
+        ? '这个地址查不到可配送门店（可能超出配送范围），换个地址试试。'
+        : '可配送门店要按地址查。<b style="color:var(--acc)">填完地址点「生成外送指令」</b>后，' +
+          'AI 会调 delivery-query-stores 拉回真实门店（含 beCode 与配送费）。') +
+      '<br>在那之前这里不列到店门店 —— 到店和外送是两套门店编码，混用会下单失败。' +
+      '</div>';
+  } else {
+    block += '<div class="storecap">外送门店由<b>收货地址</b>决定（本页记录 ' + (dl.addressCount || 0) +
+      ' 个地址）。菜单已抓的是<b>' + escHtml((list.filter(function (x) { return x.id === activeId; })[0] || {}).name || "首家门店") +
+      '</b>，配送费来自 calculate-price 实测。</div>';
+  }
+
+  block += list.map(function (s) {
+    var isActive = s.id === activeId;
+    var url = "https://uri.amap.com/search?keyword=" + encodeURIComponent(s.name + " " + (s.addr || "")) +
+      "&src=mcd-savings&coordinate=gaode&callnative=1";
     var status = s.open === false
       ? '<b style="color:var(--danger)">休息中</b>'
       : (s.open ? '<b style="color:var(--ok)">营业中</b>' : "");
@@ -2371,19 +2494,46 @@ function renderStores() {
           (min !== null ? " · 起送 " + money(min) : ""));
     var meta = [];
     if (s.dist) meta.push(s.dist + " km");
-    if (s.hours) meta.push(s.hours);
-    if (s.beCode) meta.push("beCode " + s.beCode);
-    return '<div class="store' + (s.id === state.storeId ? " on" : "") +
-      '" data-sid="' + s.id + '" tabindex="0" role="radio" aria-checked="' +
-      (s.id === state.storeId ? "true" : "false") + '">' +
-      '<div class="sname">' + s.name + '</div>' +
+    if (s.hours) meta.push(escHtml(s.hours));
+    if (s.beCode) meta.push("beCode " + escHtml(s.beCode));
+
+    var badge = isActive
+      ? '<span class="sbadge on">✅ 菜单已抓取 · 价格以此店为准</span>'
+      : '<span class="sbadge">未抓菜单 · 仅供参考</span>';
+    var acts = '<div class="sacts">' +
+      '<a class="nav-btn" href="' + url + '" target="_blank" rel="noopener">🧭 导航到店</a>' +
+      '<button class="mini-btn" data-navcopy="' + escHtml(s.name + " " + (s.addr || "")) + '">📋 复制地址</button>' +
+      (isActive ? "" :
+        '<button class="mini-btn" data-switchcmd="' + escHtml(s.id) + '" data-switchname="' +
+          escHtml(s.name) + '">🔁 切店指令</button>') +
+      '</div>';
+
+    return '<div class="store' + (isActive ? " on" : " idle") + '">' +
+      '<div class="sname">' + escHtml(s.name) + '</div>' +
       '<div class="smeta">' + (meta.join(" · ") || "") + " " + status +
-      (s.addr ? '<br>' + s.addr : "") + '<br><span class="sfee">' + dline + '</span></div>' +
-      (pickup ? '<a class="nav-btn" href="' + url + '" target="_blank" rel="noopener">🧭 导航到店</a>' : '') +
+      (s.addr ? '<br>' + escHtml(s.addr) : "") + '<br><span class="sfee">' + dline + '</span></div>' +
+      badge + acts +
       '</div>';
   }).join("");
-}
 
+  /* 外送链路体检：把「抓没抓到、抓到什么」写在面板里，而不是让用户猜 */
+  if (!pickup && dl.ok) {
+    block += '<div class="dcheck">外送链路已实测：<b>' + (dl.menuCount || 0) + '</b> 个外送商品 · 配送费 ' +
+      (dl.fee !== null && dl.fee !== undefined ? money(dl.fee) : "未取到") +
+      (dl.packFee > 0 ? " · 打包费 " + money(dl.packFee) : "") +
+      '<br>外送货号与到店不同（同一份餐可能更贵），本页已按外送菜单计价。' +
+      (dl.probe ? '<br>探测：' + escHtml(dl.probe.name) + " 菜单 " + money(dl.probe.menuPrice) +
+        " + 配送 " + money(dl.probe.deliveryFee) + " = " + money(dl.probe.pay) + "（calculate-price 实测）" : "") +
+      '</div>';
+  } else if (!pickup && dl.reason) {
+    block += '<div class="dcheck warn">外送未就绪：' + escHtml(dl.reason) + '</div>';
+  }
+
+  block += '<div class="snote">数据抓取于 ' + escHtml(D.generatedAt || "未知") +
+    '｜当前：' + kindTxt + '｜换店需重跑抓取（点「切店指令」复制命令）。</div>';
+
+  $("#stores").innerHTML = head + block;
+}
 /* ---------- 地址表单 ---------- */
 function openAddrModal() {
   var a = state.addr || {};
@@ -3005,6 +3155,8 @@ function renderDock(r) {
         (r.discountLabel ? ' · ' + r.discountLabel : '') + '</span><b>−' + money(r.discount) + '</b></div>'
       : '<div class="dmrow"><span>券抵扣</span><b style="color:var(--muted);font-weight:400">未使用券</b></div>') +
     '<div class="dmrow' + (feeWarn ? ' warn' : '') + '"><span>配送费</span><b>' + feeTxt + '</b></div>' +
+    (r.packFee > 0
+      ? '<div class="dmrow"><span>打包服务费</span><b>' + money(r.packFee) + '</b></div>' : '') +
     (r.gap > 0
       ? '<div class="dmrow warn"><span>起送门槛</span><b>还差 ' + money(r.gap) + '</b></div>' : '') +
     (r.feeToFree > 0
@@ -3052,12 +3204,30 @@ function toggleDock() {
   if (d.classList.contains("open")) closeDock(); else openDock();
 }
 
+function renderModeBanner() {
+  var el = $("#modeBanner");
+  if (!el) return;
+  if (!menuIsDelivery()) { el.style.display = "none"; el.innerHTML = ""; return; }
+  var probe = DL().probe || {};
+  el.style.display = "";
+  el.innerHTML = "⚠ 已切到<b>外送到家</b>：菜单与价格已换成外送门店（" + D.menu.length +
+    " 个商品）。<b>下方「场景推荐」与「省钱榜单」仍是到店自取口径</b>" +
+    "（券、套餐、组合都按到店门店核价），点任意一行会自动切回自取再点单。" +
+    (probe.name ? "<br>差价示例：" + escHtml(probe.name) + " 到店 " +
+      money((D._homeMenu || []).filter(function (x) { return x.name === probe.name; })
+        .map(function (x) { return x.price; })[0] || 0) + " / 外送 " + money(probe.menuPrice) +
+      "；配送费 " + money(probe.deliveryFee) + "（calculate-price 实测）" : "");
+}
+
 function render() {
   var r = compute();
   renderScenes(); renderReminders(); renderBundles();
   renderRank(); renderTools();
   renderCats(); renderItems(); renderCoupons();
-  renderStores(); renderGap(r); renderCart(r); renderOrders();
+  renderStores(); renderGap(r); renderCart(r); renderOrders(); renderModeBanner();
+  /* 页头门店名跟着「当前计价门店」走：外送模式下到店门店名会误导。 */
+  var hs = $("#hdrStore");
+  if (hs && r.store && r.store.name) hs.textContent = "🏪 " + r.store.name;
 
   $("#sOrigin").textContent = money(r.origin);
   $("#sSave").textContent = money(r.save);
@@ -3400,27 +3570,32 @@ document.addEventListener("click", function (e) {
   /* 预算分档卡：直接按这一档的最优解点单 */
   var bd = e.target.closest("[data-bdapply]");
   if (bd) {
+    var back1 = ensurePickupFor();
     var bcap = Number(bd.dataset.bdapply);
     var svb = rankData() || {};
     var bhit = (svb.budgets || []).filter(function (x) { return x.cap === bcap; })[0];
     if (bhit && bhit.row) {
-      applyRankRow(bhit.row, "已按「" + (bhit.multi ? "≥" : "≤") + "¥" + bcap + "」点单");
+      applyRankRow(bhit.row, "已按「" + (bhit.multi ? "≥" : "≤") + "¥" + bcap + "」点单" +
+        (back1 ? BACK_TXT : ""));
     }
     return;
   }
   var ra = e.target.closest("[data-rankapply]");
   if (ra) {
+    var back2 = ensurePickupFor();
     var sv0 = rankData();
-    if (sv0 && sv0.hero) applyRankRow(rankRowLive(sv0.hero), "已按今日最优解点单");
+    if (sv0 && sv0.hero) applyRankRow(rankRowLive(sv0.hero), "已按今日最优解点单" + (back2 ? BACK_TXT : ""));
     return;
   }
   var rrow = e.target.closest(".rank-row[data-rank]");
   if (rrow) {
+    var back3 = ensurePickupFor();
     var seg = rrow.dataset.rank.split(":");
     var bd = rankBoardOf(seg[0]);
     if (bd) {
       var pick = rankRowsOf(bd)[Number(seg[1])];
-      applyRankRow(pick, "已按「" + bd.name + "」第 " + (Number(seg[1]) + 1) + " 名点单");
+      applyRankRow(pick, "已按「" + bd.name + "」第 " + (Number(seg[1]) + 1) + " 名点单" +
+        (back3 ? BACK_TXT : ""));
     }
     return;
   }
@@ -3439,6 +3614,7 @@ document.addEventListener("click", function (e) {
 
   var bd = e.target.closest(".bundle");
   if (bd) {
+    var back4 = ensurePickupFor();
     var raw = bd.dataset.bundle;
     var inModal = raw.charAt(0) === "#";
     var idx = Number(inModal ? raw.slice(1) : raw);
@@ -3451,8 +3627,8 @@ document.addEventListener("click", function (e) {
       render();
       if (inModal) $("#sceneModal").classList.remove("show");
       var sw = syncMenuToSelection(b.items.map(function (x) { return x.code; }));
-      toast(sw ? "已应用方案 " + (idx + 1) + " · 含跨场景商品，已切到全部菜单并高亮"
-        : "已应用方案 " + (idx + 1) + "，菜单已同步高亮");
+      toast((sw ? "已应用方案 " + (idx + 1) + " · 含跨场景商品，已切到全部菜单并高亮"
+        : "已应用方案 " + (idx + 1) + "，菜单已同步高亮") + (back4 ? BACK_TXT : ""));
     }
     return;
   }
@@ -3538,22 +3714,56 @@ document.addEventListener("click", function (e) {
     return;
   }
 
-  /* 履约方式切换：改完立即重算全部金额（含 HUD、起送、分享文案） */
+  /* 履约方式切换：改完立即换菜单池 + 重算全部金额（含 HUD、起送、分享文案）。
+     外送必须整池换成外送门店的菜单：外送货号与价格和到店不是一套
+     （板烧 1406 ¥23.5 vs 901406 ¥27），沿用旧池会算错钱。 */
   var fv = e.target.closest("[data-fulfill]");
   if (fv) {
     var mode = fv.dataset.fulfill;
     if (mode === state.fulfill) return;
     state.fulfill = mode;
+    var dropped = applyMenuPool();
     render();
-    toast(mode === "pickup" ? "已切到店自取：免配送费、无起送门槛" : "已切外送到家：配送费以结算页为准");
+    updateHdrStat();
+    var dm = menuIsDelivery();
+    toast(mode === "pickup"
+      ? "已切到店自取：免配送费、无起送门槛"
+      : (dm ? "已切外送到家：菜单换成外送门店的 " + D.menu.length + " 个商品（含配送费）"
+            : "已切外送到家：配送费以结算页为准"));
+    if (dropped) toast("有 " + dropped + " 件商品在另一套菜单里没有对应货号，已移除");
     return;
   }
 
+  /* 门店：不再有「点击切换」。未抓菜单的门店只提供导航 / 复制地址 / 切店指令三件事。 */
+  var navc = e.target.closest("[data-navcopy]");
+  if (navc) {
+    var atxt = navc.dataset.navcopy || "";
+    copyText(atxt).then(function (how) {
+      if (how === "manual") { showCmd(atxt, "已全选门店名与地址，按 ⌘/Ctrl + C 即可复制。"); return; }
+      toast("门店名与地址已复制");
+    });
+    return;
+  }
+  var swc = e.target.closest("[data-switchcmd]");
+  if (swc) {
+    var sid = swc.dataset.switchcmd || "";
+    var sname = swc.dataset.switchname || "";
+    var cmd2 = "MCD_MCP_TOKEN=你的Token python3 scripts/build_data.py --store-code " + sid +
+      ' --store-name "' + sname + '"';
+    copyText(cmd2).then(function (how) {
+      if (how === "manual") {
+        showCmd(cmd2, "已全选切店命令，按 ⌘/Ctrl + C 复制；在仓库根目录跑一次即换成这家店的菜单 / 券 / 榜单。");
+        return;
+      }
+      toast("切店指令已复制 · 跑一次仓库脚本即可换店");
+    });
+    return;
+  }
   var st = e.target.closest(".store");
-  if (st && !e.target.closest(".nav-btn")) {
-    state.storeId = st.dataset.sid;
-    renderStores();
-    toast("已切换门店");
+  if (st) {
+    toast(st.classList.contains("on")
+      ? "这就是当前门店：价格 / 券 / 榜单都按它算（导航请点「导航到店」）"
+      : "本页只抓了一家店的菜单（价格 / 券 / 榜单都按它算）；换店请点「切店指令」复制命令重跑");
     return;
   }
 
@@ -3877,6 +4087,11 @@ function buildOrderCmd(r) {
         "，配送地址=" + a.address + "，门牌号=" + a.addressDetail);
       parts.push("建档拿到 addressId 后，调 delivery-query-stores(addressId, beType=2) 取可配送门店的 storeCode 与 beCode，" +
         "不要用页面当前选的门店编码（那是到店体系）");
+      if (r.store && r.store.beCode) {
+        parts.push("可配送门店（本页按已保存地址实测，若地址不同请重新 delivery-query-stores）：" +
+          r.store.name + "（storeCode=" + (r.store.id || "") + "，beCode=" + r.store.beCode +
+          "，配送费 " + money(r.fee) + (r.packFee > 0 ? "，打包费 " + money(r.packFee) : "") + "）");
+      }
       parts.push("再用 orderType=2、beType=2 调 calculate-price 核价（配送费与起送门槛以它返回为准），" +
         "最后 create-order 必须带 addressId 与 beCode，remark 可填「无接触配送」");
     } else {
@@ -3896,21 +4111,6 @@ function buildOrderCmd(r) {
   return cmd;
 }
 
-/* 复制点单指令：HUD 与结算舱共用同一段实现，避免两个入口行为不一致 */
-function copyOrderCmd() {
-  var r = compute();
-  if (!r.lines.length) { toast("先选几个产品再复制指令"); return; }
-  var txt = buildOrderCmd(r);
-  copyText(txt).then(function (how) {
-    if (how === "manual") {
-      showCmd(txt, "当前环境无法自动写入剪贴板（浏览器限制），已自动全选，按 ⌘/Ctrl + C 即可复制。");
-      toast("已生成指令，请手动复制");
-    } else {
-      showCmd(txt, "已复制到剪贴板 ✓（方式：" + how + "，如未生效请手动全选复制）");
-      toast("点单指令已复制");
-    }
-  });
-}
 /* 复制点单指令：只剩结算舱一个入口（HUD 那份已删），不会再出现两个按钮做同一件事 */
 function copyOrderCmd() {
   var r = compute();
@@ -4040,13 +4240,15 @@ document.addEventListener("keydown", function (e) {
 /* ---------- 初始化 ---------- */
 (function init() {
   state.addr = loadAddr();
+  /* 两套菜单：_homeMenu 是到店快照，delivery.menu 是外送门店自己的菜单。
+     默认自取，所以 D.menu 先指向到店那套（切外送时整池换掉）。 */
+  D._homeMenu = D.menu;
   if (D.menu.length && D.menu[0].cat) state.cat = D.menu[0].cat;
   if (D.stores.length) state.storeId = D.stores[0].id;
 
   var store = D.store || {};
-  var withKcal = D.menu.filter(function (m) { return (m.kcal || 0) > 0; }).length;
   $("#hdrStore").textContent = "🏪 " + (store.name || "未选择门店");
-  $("#hdrStat").textContent = D.menu.length + " 品 · " + withKcal + " 条热量";
+  updateHdrStat();
   syncAutoBtn();
   render();
   initReels();

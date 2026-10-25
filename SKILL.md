@@ -53,8 +53,11 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
    配送地址（路名门牌）/ 门牌号（楼栋房号）
  → delivery-create-address(city, contactName, gender, phone, address, addressDetail)
  → 拿到 addressId
- → delivery-query-stores(addressId, beType=2)  取 storeCode + beCode + 配送费/起送门槛
+ → delivery-query-stores(addressId, beType=2)  取 storeCode + beCode（**data 是列表**；这里没有配送费）
+ → query-meals(storeCode, beType=2, orderType=2, beCode)  ← 必须重抓外送菜单！
+    外送货号与到店不同（板烧 1406 ¥23.5 / 901406 ¥27），套用会算错价
  → calculate-price(orderType=2, beType=2, storeCode, beCode, items)
+    配送费取返回的 deliveryPrice（分），打包费取 productList 里的「打包服务费」
  → 把金额念给用户确认
  → create-order(orderType=2, beType=2, storeCode, beCode, addressId, items, remark)
  → 给支付链接
@@ -69,6 +72,8 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
    `eat-in` 堂食 / `locker-out` 外带）。
 3. 配送费、起送门槛、免配送门槛 **只认接口返回的字段**。接口没给就写「以结算页为准」，
    永远不要按「6 元」之类的经验值补一个数字 —— 算错一次用户就再也不信这个工具。
+   （`delivery-query-stores` 本身不带这两项，配送费要用 `calculate-price` 的 `deliveryPrice` 实测。）
+4. **外送菜单必须用外送门店重抓**（`beType=2` / `orderType=2` / 带 `beCode`）。
 4. 用户只给了模糊地址（「我家」「公司」）时，问一次完整地址即可；拿到后**存下来**，
    下次直接复用，别每次都重问。
 
@@ -81,6 +86,8 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
 1. 调用 `auto-bind-coupons` 一键领取当前所有可领券（写操作，需用户明确同意；
    实测返回「总计 X 张 / 成功 X 张 / 失败 0 张」及每张券的 couponId、couponCode）。
    - 命令行等价：`MCD_MCP_TOKEN=… python3 scripts/build_data.py --claim`（先领券再重建快照）。
+   - 只刷新外送（换地址 / 只想知道配送费）：`python3 scripts/build_data.py --delivery-only`，
+     不动到店菜单与榜单，产出 `delivery.{stores,menu,fee,probe}`。
 2. 调用 `available-coupons` 读取券列表——**该接口自带「状态：已领取 / 未领取」字段**，
    优先采用该字段判定领取状态；接口未给状态时再回退到「标题出现在
    `query-my-coupons` / `query-store-coupons` 中」。
@@ -572,6 +579,36 @@ python3 scripts/build_data.py --rank
     页里有一个 571px 宽的块 → 500px 视口下 `documentElement.scrollWidth` 变成 591，
     而 `body{overflow-x:hidden}` 会把右边内容**静默裁掉、连滚都滚不到**（旧版 390px 截图就是这个）。
     → 媒体查询里一律写 `minmax(0, 1fr)` 并给子项 `min-width: 0`；实测 390 视口 scrollWidth 从 571 回到 390。
+38. **`delivery-query-stores` 的 `data` 是列表，不是对象**（2026-10-25，P0）
+    旧代码写成 `d = ds.get("data") or {}` 再 `d.get("stores")`，列表没有 `.get()` →
+    抛 `AttributeError` → 被 `except` 吞掉 → **账号里明明有地址，`deliveryStores` 永远是 `[]`**，
+    页面就永远提示「填完地址后拉门店」。→ 现在同时兼容 dict 与 list，
+    并且 `except` 里必须把原因写进 `delivery.reason`，页面直接显示，不再静默。
+39. **外送门店的菜单是独立一份，货号和价格都不同**
+    板烧到店 `1406` ¥23.5 / 外送 `901406` ¥27；苹果片 ¥7.0 / ¥7.5。
+    → 切外送时整池换成 `delivery.menu`（`D._homeMenu` 存到店那套），
+    池外货号一律从购物车清掉并提示。**绝不能用外送订单套到店货号**：
+    `calculate-price` 会返回 `productPrice=0, deliveryPrice=600`，
+    即「商品 0 元、只收 6 元配送费」，账全错。
+40. **配送费只能从 `calculate-price` 的 `deliveryPrice` 拿**
+    `delivery-query-stores` 只给 `storeCode` / `beCode` / 营业时间，**没有配送费与起送门槛**。
+    → 每家外送店各核价一次（买一件最便宜的非酱料商品），读 `deliveryPrice`（分）+ `productList`
+    里的「打包服务费」；商品在该店不可售时 `productPrice=0`，换下一个候选再试。
+41. **`canWithOrder: false` 不等于「不能下单」**
+    外送菜单 115 条里 103 条 `canWithOrder=false`，但 `901406` 照样核价成功、照样能下单。
+    → 不能拿这个字段过滤商品（否则菜单只剩 12 个）；它更像「当前时段不可点」的标记。
+42. **`N件套` 的阿拉伯数字写法会漏掉套餐识别**
+    券专属 SKU「麦辣鸡腿堡3件套」写成 `3件套`，`SET_RE` 只认「三件套」→ 被当成主食，
+    于是拼出「麦辣鸡腿堡3件套 ¥46 + 阳光橙麦炫酷 ¥13」这种**两杯饮料**的怪单。
+    → `SET_RE` 改为 `[0-9一二三四五六七八九十]件套`；预算档另加 `redundant_drink()` 兜底
+    （同行既有套餐又有单点饮品 → 直接排除），实测 `≤¥50` 从 ¥35.9 的怪单变成
+    「"苹"水相"鱼"套餐 ¥36.0」。
+43. **门店卡不能假装能切换**
+    旧版标题写「📍 门店 // 点击切换」，点一下弹「已切换门店」，但菜单 / 券 / 榜单全是快照那一家的，
+    切了等于没切 —— 这比没有这个功能更伤信任。
+    → 只深抓一家店，当前门店标 `✅ 菜单已抓取 · 价格以此店为准`，其余标 `未抓菜单 · 仅供参考`，
+    只给导航与复制地址；换店走 `🔁 切店指令`（复制 `--store-code` 命令重跑）。
+    点未抓菜单的门店卡也必须给 toast 说明，不能静默。
 
 ## 后续计划
 

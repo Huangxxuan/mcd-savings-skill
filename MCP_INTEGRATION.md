@@ -75,13 +75,37 @@
 ```
 delivery-query-addresses   → 先看账号有没有地址（新账号通常是空数组）
 delivery-create-address    → 没有就用用户给的 6 个字段建档，返回 addressId
-delivery-query-stores      → 按 addressId + beType=2 取可配送门店的 storeCode 与 beCode，
-                             顺便拿到真实配送费 / 起送门槛 / 免配送门槛
-calculate-price            → orderType=2、beType=2 核价（配送费以它返回为准）
+delivery-query-stores      → 按 addressId + beType=2 取可配送门店的 storeCode 与 beCode
+                             ⚠️ 返回的 data 是**列表**；这里**没有**配送费 / 起送门槛
+query-meals(beType=2, orderType=2, beCode)
+                           → 必须重抓外送门店自己的菜单：外送货号与价格和到店不是一套
+                             （板烧到店 1406 ¥23.5 / 外送 901406 ¥27；苹果片 ¥7.0 / ¥7.5）
+calculate-price            → orderType=2、beType=2 核价；配送费取 data.deliveryPrice（单位：分），
+                             打包费取 data.productList 里「打包服务费」那一行的 subtotal
 create-order               → orderType=2、beType=2，必须带 addressId 与 beCode
 ```
 > 关键：`beCode` 只能来自 `delivery-query-stores`。`delivery-query-addresses` 只返回地址列表，
 > 从它取 beCode 会拿到空值，下单直接失败；到店与外送是两套门店编码体系，不能混用。
+>
+> 实测（2026-10-25，地址在深圳前海）：3 家可配送门店（`1420819` beCode `142081902` /
+> `1420566` / `1421164`），外送菜单 115 个商品，配送费 `deliveryPrice=600` → ¥6.00，
+> 打包服务费 ¥0（免收）。若拿外送订单套用**到店货号**，接口返回
+> `productPrice=0, deliveryPrice=600`——商品 0 元、只收 6 元，账全错。
+>
+> 另一个坑：外送菜单里 103/115 条 `canWithOrder=false`，但核价与下单都正常，
+> **不能拿这个字段过滤商品**（否则菜单只剩 12 个）。
+
+**门店卡（当前门店 + 导航 + 切店）**
+```
+query-nearby-stores  → 5 家附近门店（id / 名称 / 地址 / 距离米数 / 营业时间 / businessStatus）
+                       ⚠️ latitude / longitude 实测返回 0.0，拿不到坐标 → 导航只能用
+                       高德「搜索」URI（keyword=店名+地址），不能做坐标打点
+query-meals          → 只对「快照门店」深抓菜单；其余门店只有导航能力
+build_data.py --store-code / --store-name
+                     → 换店重抓（菜单 / 券 / 核价 / 榜单一起换），页面据此生成切店指令
+```
+> 因此门店面板不提供「点击切换」：切了菜单也不变，属于假交互。当前门店标
+> `✅ 菜单已抓取 · 价格以此店为准`，其余标 `未抓菜单 · 仅供参考`。
 
 **凑单补差**
 ```
