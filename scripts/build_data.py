@@ -2245,7 +2245,7 @@ def main():
     ap.add_argument("--city", default="深圳市")
     ap.add_argument("--keyword", "--near", dest="keyword", default="科技园",
                     help="用户所在位置（地址 / 地标 / 商圈）。到店自取门店列表按这个位置搜索，"
-                         "距离也相对它计算。例：--near \"前海颐都大厦\"")
+                         "距离也相对它计算。例：--near \"<你的地址 / 地标>\"")
     ap.add_argument("--area", default="",
                     help="公开快照里展示的粗略位置标签（如「前海」）。不填则不写。"
                          "精确地址文本绝不写进快照，避免把用户住址提交到公开仓库。")
@@ -2303,10 +2303,10 @@ def main():
 
     # ---- 1. 定位门店 ----
     # 门店列表必须按「用户给的位置」搜（searchType=2），不能用默认的收藏门店（searchType=1）。
-    # 踩过的坑：快照一直用 keyword=科技园，于是用户站在前海颐都大厦打开页面，看到的却是
+    # 踩过的坑：快照一直用 keyword=科技园，于是用户站在另一个位置打开页面，看到的却是
     # 科技园那 5 家店 —— 门店卡再漂亮也是误导，照着点单会跑到几公里外的店去取餐。
     # 距离字段 distance 是**相对 keyword 位置**的真实米数（实测：科技园→同方 403m，
-    # 前海颐都大厦→前海印里 128m，王府井→新东安 146m），所以排序与展示都用它。
+    # 用户实际位置→最近门店 128m，王府井→新东安 146m），所以排序与展示都用它。
     stores_out = []
     nearby_raw = mcp_call("query-nearby-stores",
                           {"beType": 1, "searchType": 2, "city": args.city,
