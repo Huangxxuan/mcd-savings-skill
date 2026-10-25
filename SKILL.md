@@ -39,7 +39,7 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
 2. 外送场景：调用 `delivery-query-addresses` 获取地址 → `delivery-query-stores` 查询可配送门店。
 3. 到店/自取场景：调用 `query-nearby-stores` 查询附近门店，**必须带 `searchType=2`**：
    ```
-   query-nearby-stores({"beType":1,"searchType":2,"city":"深圳市","keyword":"前海颐都大厦"})
+   query-nearby-stores({"beType":1,"searchType":2,"city":"深圳市","keyword":"<你的地址 / 地标>"})
    ```
    - `searchType=1` 是「收藏门店」——跟用户所在位置**毫无关系**（踩过坑，见踩坑 44）；
    - `searchType=2` + `city` + `keyword` 才是按位置搜，返回的 `distance` 是**相对 keyword 的真实米数**，
@@ -95,7 +95,7 @@ description: 麦当劳省钱点单助手。基于麦当劳 MCP 能力，帮用�
    - 命令行等价：`MCD_MCP_TOKEN=… python3 scripts/build_data.py --claim`（先领券再重建快照）。
    - 只刷新外送（换地址 / 只想知道配送费）：`python3 scripts/build_data.py --delivery-only`，
      不动到店菜单与榜单，产出 `delivery.{stores,menu,fee,probe}`。
-   - **换到用户所在位置**（最常用）：`python3 scripts/build_data.py --city "深圳市" --near "前海颐都大厦" --area "前海"`
+   - **换到用户所在位置**（最常用）：`python3 scripts/build_data.py --city "深圳市" --near "<你的地址 / 地标>" --area "前海"`
      —— `--near` 决定门店列表与距离，`--area` 只是写进公开快照的粗略标签（精确地址不进仓库）。
 2. 调用 `available-coupons` 读取券列表——**该接口自带「状态：已领取 / 未领取」字段**，
    优先采用该字段判定领取状态；接口未给状态时再回退到「标题出现在
@@ -632,7 +632,7 @@ python3 scripts/build_data.py --rank
     只给导航与复制地址；换店走 `🔁 切店指令`（复制 `--store-code` 命令重跑）。
     点未抓菜单的门店卡也必须给 toast 说明，不能静默。
 44. **到店门店列表必须按用户位置搜（`searchType=2`），不能用收藏门店**（真实 bug，用户当场被误导）
-    旧脚本参数默认 `--keyword 科技园`，门店列表一直是科技园那 5 家收藏店。用户站在前海颐都大厦
+    旧脚本参数默认 `--keyword 科技园`，门店列表一直是科技园那 5 家收藏店。用户站在另一个位置
     打开页面，看到的却是 0.4 km 外的同方信息港 —— 距离也是相对科技园算的。
     照着点单会跑到几公里外的店取餐。
     → `build_data.py` 现在：`--near "<用户地址/地标>"` 按位置搜、按 `distM` 升序、
