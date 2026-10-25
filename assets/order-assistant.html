@@ -215,7 +215,14 @@ body {
 
 /* ---------- 布局 ---------- */
 .layout { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 16px; margin-top: 18px; align-items: start; }
-@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 980px) {
+  /* `1fr` 等价于 minmax(auto,1fr)，网格列的 auto 下限 = 内容的 min-content。
+     只要里面有一个不换行的长块，整列就会被撑到 571px（实测 500px 视口 docScroll=591），
+     而 body 有 overflow-x:hidden → 右侧内容直接被裁掉、无法滚动，属于「内容静默丢失」。
+     必须显式 minmax(0,1fr)，并让两列都能收缩。 */
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .layout > * { min-width: 0; }
+}
 
 /* ---------- 面板（四角括号） ---------- */
 .panel {
@@ -574,8 +581,8 @@ body {
 #shakeResult { transition: opacity var(--dur-1) ease; }
 #shakeResult.loading { opacity: .3; }
 @media (max-width: 760px) {
-  .shake-banner .sb-grid { grid-template-columns: 1fr; }
-  .shake-card { grid-template-columns: 1fr; }
+  .shake-banner .sb-grid { grid-template-columns: minmax(0, 1fr); }
+  .shake-card { grid-template-columns: minmax(0, 1fr); }
   .sc-act { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -706,7 +713,11 @@ body {
   display: grid; grid-template-columns: minmax(0, 1fr) 322px;
   gap: 16px; padding: 12px 0 16px; align-items: start;
 }
-@media (max-width: 880px) { .dock-in { grid-template-columns: 1fr; gap: 12px; } }
+@media (max-width: 880px) {
+  /* 同上：结算舱单列也必须是 minmax(0,1fr)，否则舱内长品名会把整页撑宽 */
+  .dock-in { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .dock-in > * { min-width: 0; }
+}
 /* 热量 / 宏量 / 起送差额：从侧栏「已选」搬来，全宽铺在清单与金额下面 */
 .dock-extra { padding-top: 10px; border-top: 1px dashed var(--line); }
 .dock-extra .bar { margin-top: 0; }
@@ -872,6 +883,12 @@ body {
   padding: 14px 0 6px; line-height: 1.8; letter-spacing: .03em;
 }
 .empty { font-family: var(--mono); font-size: 11px; color: var(--muted); padding: 12px; text-align: center; }
+/* 场景兜底说明：告诉用户「为什么这个场景没有专属商品」，而不是让人以为推错了 */
+.fbnote {
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: var(--warn);
+  background: rgba(255, 159, 28, .08); border: 1px solid rgba(255, 159, 28, .3);
+  border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 10px;
+}
 
 /* ---------- 已选清单：每条可 +/−/移除，另有「清空」 ---------- */
 .mgroup { color: var(--acc); font-size: 10.5px; letter-spacing: .06em; margin: 6px 0 2px; }
@@ -1102,6 +1119,7 @@ body {
 
       <section class="panel reveal d2" id="bundlePanel">
         <h2><span class="idx">02</span> 场景推荐组合 <span class="tag" id="bundleTag">// Top 3</span></h2>
+        <div class="fbnote" id="bundleFallback" style="display:none"></div>
         <div id="bundles"></div>
       </section>
 
@@ -1788,7 +1806,7 @@ function renderTools() {
   if (!box) return;
   var T = toolIndex();
   if (!T) {
-    box.innerHTML = '<div class="empty">[ 未生成工具清单 · 运行 scripts/build_data.py --rank ]</div>';
+    box.innerHTML = '<div class="empty">[ 未生成工具清单 · 运行 scripts/build_data.py 重新生成 ]</div>';
     $("#toolsTag").textContent = "// 无";
     return;
   }
@@ -1822,7 +1840,19 @@ function renderBundles() {
   if (!sc) { panel.style.display = "none"; return; }
   panel.style.display = "block";
   $("#bundleTag").textContent = "// " + sc.name + " · Top " + ((sc.bundles || []).length || 0) +
-    (sc.fallback ? " · 当前时段无专属商品，已按热量/品类兜底" : "");
+    (sc.fallback ? " · 兜底方案" : "");
+  /* 兜底必须解释原因：只写「当前时段无专属商品」用户看不懂，而且会以为推错了。
+     fallbackNote 由 build_data.py 按场景生成（早餐写清 07:00–10:30 的供应时段）。 */
+  var fbNote = $("#bundleFallback");
+  if (fbNote) {
+    if (sc.fallback) {
+      fbNote.style.display = "block";
+      fbNote.textContent = "⏱ " + (sc.fallbackNote || "当前时段无专属商品，已按热量/品类兜底");
+    } else {
+      fbNote.style.display = "none";
+      fbNote.textContent = "";
+    }
+  }
   if (!sc.bundles || !sc.bundles.length) {
     $("#bundles").innerHTML = '<div class="empty">[ 当前时段无匹配组合，换个场景 ]</div>';
     return;
@@ -2810,7 +2840,7 @@ function renderRank() {
   if (!box) return;
   var sv = rankData();
   if (!sv) {
-    box.innerHTML = '<div class="empty">[ 省钱榜单未生成 · 运行 scripts/build_data.py --rank ]</div>';
+    box.innerHTML = '<div class="empty">[ 省钱榜单未生成 · 运行 scripts/build_data.py 重新生成 ]</div>';
     return;
   }
   $("#rankTag").textContent = "// 基于 " + (D.menu.length) + " 个餐品真实价格 + " +
